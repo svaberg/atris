@@ -1,34 +1,45 @@
 # AtRIS executable
 
 ```text
-AtRIS <physics-list> <simulation-name> <mode> <phantom-count>
+AtRIS <physics-list> <simulation-name> <mode> [phantom-count]
 AtRIS --version
 ```
 
-All four positional arguments are required for a simulation. Run from the
-directory containing its inputs and numbered phantom files.
+The first three positional arguments are required for a simulation. Run from
+the directory containing its inputs and numbered phantom files.
 
 | Argument | Meaning |
 | --- | --- |
 | `physics-list` | Geant4 reference physics-list name, for example `FTFP_BERT_HP`. Availability depends on the linked Geant4 installation. An unrecognized name prints the available reference lists and exits unsuccessfully. |
 | `simulation-name` | Input prefix and output filename, or a seeded chunk name as described below. An optional filename extension selects the Geant4 output backend. |
 | `mode` | Integer output mode from the table below. The executable does not accept the Python runner's mode names. |
-| `phantom-count` | Number of phantom pairs to load, indexed from zero. Use `0` for no phantom responses. This argument does not read `phantoms.txt`. |
+| `phantom-count` | Optional compatibility check against the staged phantom pairs discovered by the executable. It does not read `phantoms.txt`. |
+
+```bash
+AtRIS FTFP_BERT_HP protons -1
+```
+
+This reads `protons.gdml`, `protons.bins`, and `protons.mac`. It also discovers
+complete `radiation_phantomN.txt` and `counting_phantomN.txt` pairs in the
+current directory. IDs must be contiguous from zero. Files beginning with
+`protons` receive the outputs. Existing output names can be overwritten.
+
+The former explicit-count form remains accepted:
 
 ```bash
 AtRIS FTFP_BERT_HP protons -1 2
 ```
 
-This reads `protons.gdml`, `protons.bins`, `protons.mac`, and the two numbered
-phantom pairs in the current directory. Files beginning with `protons` receive
-the outputs. Existing output names can be overwritten.
+Here `2` must match the two staged pairs. AtRIS exits with an error if the
+count differs, either member of a pair is missing, or the IDs contain a gap.
+With no staged phantom files, the discovered count is zero.
 
 With no filename extension, the output format defaults to CSV. An explicit
 extension is passed to Geant4, independently of the output mode:
 
 ```bash
-AtRIS FTFP_BERT_HP protons.csv -1 2
-AtRIS FTFP_BERT_HP protons.root -1 2
+AtRIS FTFP_BERT_HP protons.csv -1
+AtRIS FTFP_BERT_HP protons.root -1
 ```
 
 Both commands use the same `protons.*` input files. Geant4 selects and validates
@@ -54,7 +65,7 @@ A basename ending in two underscore-separated, exactly six-digit decimal
 fields is interpreted as `<prefix>_<seed1>_<seed2>`:
 
 ```bash
-AtRIS FTFP_BERT_HP chunks/protons_123456_654321 -1 2
+AtRIS FTFP_BERT_HP chunks/protons_123456_654321 -1
 ```
 
 The full argument, including an optional output extension, selects the output.

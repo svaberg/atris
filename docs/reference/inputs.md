@@ -234,7 +234,8 @@ For each stem, staging locates `<stem>_response.txt` and `<stem>_counting.txt`
 in the run directory first, then the archive. It creates numbered relative
 symbolic links. Absolute stems are supported. `--copy` first copies the named
 tables into the run directory. A missing `phantoms.txt` means an empty selection
-in the Python tools; direct AtRIS runs still load the requested phantom count.
+in the Python tools. The executable does not read `phantoms.txt`; it discovers
+the staged `radiation_phantomN.txt` and `counting_phantomN.txt` pairs directly.
 
 ## Phantom response matrices
 
