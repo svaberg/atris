@@ -12,6 +12,8 @@
 #include "G4PhysListFactory.hh"
 #include "G4StepLimiterPhysics.hh"
 #include <array>
+#include <charconv>
+#include <filesystem>
 #include <vector>
 #include <string>
 #include <cstddef>
@@ -23,6 +25,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <set>
 #include <sstream>
 
 G4String outputFileName;
@@ -101,6 +104,72 @@ SimulationRun ParseSimulationRun(const G4String& argument) {
 	return run;
 }
 
+G4bool ParsePhantomIndex(
+	const std::string& fileName,
+	const std::string& prefix,
+	G4int& index
+) {
+	const std::string suffix = ".txt";
+	if (
+		fileName.size() <= prefix.size() + suffix.size()
+		|| fileName.compare(0, prefix.size(), prefix) != 0
+		|| fileName.compare(fileName.size() - suffix.size(), suffix.size(), suffix) != 0
+	) return false;
+
+	const char* const first = fileName.data() + prefix.size();
+	const char* const last = fileName.data() + fileName.size() - suffix.size();
+	const auto result = std::from_chars(first, last, index);
+	if (result.ec != std::errc() || result.ptr != last || index < 0) return false;
+
+	return fileName == prefix + std::to_string(index) + suffix;
+}
+
+G4bool DiscoverPhantomCount(G4int& count)
+{
+	const std::string radiationPrefix = "radiation_phantom";
+	const std::string countingPrefix = "counting_phantom";
+	std::set<G4int> radiationIndices;
+	std::set<G4int> countingIndices;
+	for (const auto& entry : std::filesystem::directory_iterator(".")) {
+		const std::string fileName = entry.path().filename().string();
+		G4int index;
+		if (ParsePhantomIndex(fileName, radiationPrefix, index)) {
+			radiationIndices.insert(index);
+		}
+		if (ParsePhantomIndex(fileName, countingPrefix, index)) {
+			countingIndices.insert(index);
+		}
+	}
+
+	for (const G4int index : radiationIndices) {
+		if (countingIndices.count(index) == 0) {
+			G4cerr << "### AtRIS: staged phantom " << index << " is missing "
+			       << countingPrefix << index << ".txt" << G4endl;
+			return false;
+		}
+	}
+	for (const G4int index : countingIndices) {
+		if (radiationIndices.count(index) == 0) {
+			G4cerr << "### AtRIS: staged phantom " << index << " is missing "
+			       << radiationPrefix << index << ".txt" << G4endl;
+			return false;
+		}
+	}
+
+	G4int expectedIndex = 0;
+	for (const G4int index : radiationIndices) {
+		if (index != expectedIndex) {
+			G4cerr << "### AtRIS: staged phantom IDs must be contiguous from 0; "
+			       << "expected " << expectedIndex << " but found " << index
+			       << G4endl;
+			return false;
+		}
+		++expectedIndex;
+	}
+	count = expectedIndex;
+	return true;
+}
+
 
 
 int main(int argc,char** argv){
@@ -108,16 +177,25 @@ int main(int argc,char** argv){
 		std::cout << "AtRIS " << ATRIS_VERSION << '\n';
 		return 0;
 	}
-	if (argc != 5){
+	if (argc != 4 && argc != 5){
 		G4cout << "Usage: " << argv[0]
-		       << " <physics-list> <simulation-name> <mode> <phantom-count>" << G4endl;
+		       << " <physics-list> <simulation-name> <mode> [phantom-count]" << G4endl;
 		return 0;
 	}
 	const auto totalStart = std::chrono::steady_clock::now();
 	mode = std::stoi(argv[3]);
-	numberOfPhantoms = std::stoi(argv[4]);
+	if (!DiscoverPhantomCount(numberOfPhantoms)) return 1;
+	if (argc == 5) {
+		const G4int requestedCount = std::stoi(argv[4]);
+		if (requestedCount != numberOfPhantoms) {
+			G4cerr << "### AtRIS: phantom-count mismatch: command line specifies "
+			       << requestedCount << " but found " << numberOfPhantoms
+			       << " staged phantom pair(s)" << G4endl;
+			return 1;
+		}
+	}
 	// The simulation name selects the geometry, energy bins, and macro inputs;
-	// the phantom count selects the numbered radiation and counting responses.
+	// staged numbered files select the radiation and counting responses.
 	if (!LoadPhantoms(numberOfPhantoms)) return 1;
 	const SimulationRun simulation = ParseSimulationRun(argv[2]);
 	outputFileName    = argv[2];

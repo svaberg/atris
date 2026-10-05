@@ -492,7 +492,7 @@ def test_wrong_argument_count_prints_usage_and_currently_returns_success(
 
     assert result.returncode == 0
     assert "Usage:" in result.stdout
-    assert "<physics-list> <simulation-name> <mode> <phantom-count>" in result.stdout
+    assert "<physics-list> <simulation-name> <mode> [phantom-count]" in result.stdout
 
 
 @pytest.mark.regression
@@ -590,6 +590,8 @@ def test_missing_energy_bins_currently_runs_with_zero_edges(tmp_path, atris_comm
 @pytest.mark.regression
 def test_zero_phantom_count_runs_without_phantom_histograms(tmp_path, atris_command):
     prepare_run(tmp_path)
+    (tmp_path / "radiation_phantom0.txt").unlink()
+    (tmp_path / "counting_phantom0.txt").unlink()
 
     result = run_atris(
         atris_command,
@@ -604,6 +606,82 @@ def test_zero_phantom_count_runs_without_phantom_histograms(tmp_path, atris_comm
         for path in tmp_path.glob("protons_*.csv")
     }
     assert written_suffixes == EXPECTED_HISTOGRAM_SUFFIXES_WITHOUT_PHANTOMS
+
+
+@pytest.mark.regression
+def test_phantom_count_is_discovered_from_staged_pairs(tmp_path, atris_command):
+    prepare_run(tmp_path)
+    shutil.copyfile(
+        tmp_path / "radiation_phantom0.txt",
+        tmp_path / "radiation_phantom1.txt",
+    )
+    shutil.copyfile(
+        tmp_path / "counting_phantom0.txt",
+        tmp_path / "counting_phantom1.txt",
+    )
+
+    result = invoke_atris(
+        atris_command,
+        tmp_path,
+        "FTFP_BERT_HP",
+        "protons",
+        "-1",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "### AtRIS: proceeding to load 2 phantom(s)." in result.stdout
+    assert (tmp_path / "protons_h2_h2.dos1.csv").is_file()
+
+
+@pytest.mark.regression
+@pytest.mark.parametrize(
+    ("missing_file", "expected_partner"),
+    [
+        ("radiation_phantom0.txt", "radiation_phantom0.txt"),
+        ("counting_phantom0.txt", "counting_phantom0.txt"),
+    ],
+)
+def test_incomplete_staged_phantom_pair_exits_nonzero(
+    tmp_path, atris_command, missing_file, expected_partner
+):
+    prepare_run(tmp_path)
+    (tmp_path / missing_file).unlink()
+
+    result = invoke_atris(
+        atris_command,
+        tmp_path,
+        "FTFP_BERT_HP",
+        "protons",
+        "-1",
+    )
+
+    assert result.returncode != 0
+    assert f"staged phantom 0 is missing {expected_partner}" in result.stderr
+
+
+@pytest.mark.regression
+def test_staged_phantom_id_gap_exits_nonzero(tmp_path, atris_command):
+    prepare_run(tmp_path)
+    shutil.copyfile(
+        tmp_path / "radiation_phantom0.txt",
+        tmp_path / "radiation_phantom2.txt",
+    )
+    shutil.copyfile(
+        tmp_path / "counting_phantom0.txt",
+        tmp_path / "counting_phantom2.txt",
+    )
+
+    result = invoke_atris(
+        atris_command,
+        tmp_path,
+        "FTFP_BERT_HP",
+        "protons",
+        "-1",
+    )
+
+    assert result.returncode != 0
+    assert "staged phantom IDs must be contiguous from 0" in result.stderr
+    assert "expected 1 but found 2" in result.stderr
 
 
 @pytest.mark.regression
@@ -653,20 +731,20 @@ def test_undocumented_integer_modes_currently_follow_csv_path(
 
 
 @pytest.mark.regression
-def test_negative_phantom_count_currently_behaves_as_zero(tmp_path, atris_command):
+@pytest.mark.parametrize("phantom_count", ["-1", "0", "2"])
+def test_explicit_phantom_count_mismatch_exits_nonzero(
+    tmp_path, atris_command, phantom_count
+):
     prepare_run(tmp_path)
 
     result = run_atris(
         atris_command,
         tmp_path,
         "protons",
-        phantom_count="-1",
+        phantom_count=phantom_count,
     )
 
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "### AtRIS: proceeding to load -1 phantom(s)." in result.stdout
-    written_suffixes = {
-        path.name[len("protons"):]
-        for path in tmp_path.glob("protons_*.csv")
-    }
-    assert written_suffixes == EXPECTED_HISTOGRAM_SUFFIXES_WITHOUT_PHANTOMS
+    assert result.returncode != 0
+    assert "phantom-count mismatch" in result.stderr
+    assert f"command line specifies {phantom_count}" in result.stderr
+    assert "found 1 staged phantom pair(s)" in result.stderr
