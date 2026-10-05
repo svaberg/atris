@@ -182,6 +182,7 @@ int main(int argc,char** argv){
 		       << " <physics-list> <simulation-name> <mode> [phantom-count]" << G4endl;
 		return 0;
 	}
+	G4UImanager* const uiManager = G4UImanager::GetUIpointer();
 	const auto totalStart = std::chrono::steady_clock::now();
 	mode = std::stoi(argv[3]);
 	if (!DiscoverPhantomCount(numberOfPhantoms)) return 1;
@@ -223,9 +224,6 @@ int main(int argc,char** argv){
 	}
 	G4cout << "### AtRIS: read " << binEdgeCount << " binedges." << G4endl;
 
-	// The log files could be necessary for the data analysis.
-	// Therefore, we redirect them to a file. 
-	G4UImanager* const uiManager = G4UImanager::GetUIpointer();
 	G4Random::setTheEngine(new CLHEP::MTwistEngine); // Choose the Random engine
 	G4MTRunManager* const runManager = new G4MTRunManager;   // Instantiate the run manager
 	if (simulation.hasSeeds) {
@@ -274,7 +272,7 @@ int main(int argc,char** argv){
 	runManager->SetUserInitialization(userAction);
 
 
-	// Get the pointer to the user interface manager and start the batch mode
+	// Select the macro and execute it through Geant4's UI manager.
 	G4String macroName = simulation.inputPrefix+".mac";
 	if (simulation.hasSeeds) {
 		const G4String chunkMacroName = simulation.inputPrefix+".chunk.mac";
