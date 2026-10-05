@@ -212,7 +212,6 @@ def run_chunks(
                     physics_list,
                     str(Path("chunks") / (run_name + output_suffix)),
                     str(mode),
-                    str(phantom_count),
                 ],
                 cwd=run_directory,
                 stdout=log,

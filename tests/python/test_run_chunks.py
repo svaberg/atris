@@ -42,14 +42,14 @@ def test_run_chunks_executes_plan_and_marks_success(tmp_path, monkeypatch):
     assert run_chunks(tmp_path) == 2
     assert calls == [
         (
-            ["AtRIS", "FTFP_BERT_HP", "chunks/protons_111111_222222", "-1", "2"],
+            ["AtRIS", "FTFP_BERT_HP", "chunks/protons_111111_222222", "-1"],
             tmp_path.resolve(),
             str(tmp_path / "chunks/protons_111111_222222.log"),
             subprocess.STDOUT,
             True,
         ),
         (
-            ["AtRIS", "FTFP_BERT_HP", "chunks/alphas_333333_444444", "-1", "2"],
+            ["AtRIS", "FTFP_BERT_HP", "chunks/alphas_333333_444444", "-1"],
             tmp_path.resolve(),
             str(tmp_path / "chunks/alphas_333333_444444.log"),
             subprocess.STDOUT,
@@ -73,7 +73,7 @@ def test_run_chunks_skips_complete_entries(tmp_path, monkeypatch, caplog):
         assert run_chunks(tmp_path) == 1
 
     assert calls == [
-        ["AtRIS", "FTFP_BERT_HP", "chunks/alphas_333333_444444", "-1", "2"]
+        ["AtRIS", "FTFP_BERT_HP", "chunks/alphas_333333_444444", "-1"]
     ]
     assert "Chunk 1/2 complete: chunks/protons_111111_222222" in caplog.text
     assert "Chunk 2/2 starting: chunks/alphas_333333_444444" in caplog.text
@@ -100,7 +100,7 @@ def test_run_chunks_can_select_one_plan_entry(tmp_path, monkeypatch):
 
     assert run_chunks(tmp_path, entry=2) == 1
     assert calls == [
-        ["AtRIS", "FTFP_BERT_HP", "chunks/alphas_333333_444444", "-1", "2"]
+        ["AtRIS", "FTFP_BERT_HP", "chunks/alphas_333333_444444", "-1"]
     ]
     assert not (tmp_path / "chunks/protons_111111_222222.COMPLETE").exists()
 
@@ -169,8 +169,8 @@ def test_run_chunks_executes_only_the_workers_shard(tmp_path, monkeypatch):
 
     assert run_chunks(tmp_path, worker_index=1, worker_count=2) == 2
     assert calls == [
-        ["AtRIS", "FTFP_BERT_HP", "chunks/protons_333333_444444", "-1", "2"],
-        ["AtRIS", "FTFP_BERT_HP", "chunks/alphas_777777_888888", "-1", "2"],
+        ["AtRIS", "FTFP_BERT_HP", "chunks/protons_333333_444444", "-1"],
+        ["AtRIS", "FTFP_BERT_HP", "chunks/alphas_777777_888888", "-1"],
     ]
 
 
