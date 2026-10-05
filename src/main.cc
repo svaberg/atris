@@ -55,20 +55,47 @@ namespace {
 constexpr std::size_t kChunkSeedDigits = 6;
 constexpr G4double kDetectorBinHalfWidth = 0.5;
 constexpr std::size_t kLegacyPhysicsListSuffixLength = 4;
+constexpr G4int kInvalidOutputMode = 2;
+
+G4int OutputModeValue(const G4String& name)
+{
+  if (name == "response") return atris::kResponseOutputMode;
+  if (name == "profile") return atris::kInterfaceOutputMode;
+  if (name == "shower") return atris::kStepOutputMode;
+  return kInvalidOutputMode;
+}
+
+G4String OutputModeName(const G4int value)
+{
+  if (value == atris::kResponseOutputMode) return "response";
+  if (value == atris::kInterfaceOutputMode) return "profile";
+  if (value == atris::kStepOutputMode) return "shower";
+  return "invalid";
+}
 
 class RunConfiguration {
   public:
-    explicit RunConfiguration(const G4String& physicsList)
+    RunConfiguration(const G4String& physicsList, const G4int outputMode)
       : fPhysicsList(physicsList),
+        fOutputMode(outputMode),
         fMessenger(this, "/atris/", "AtRIS run configuration.")
     {
-      auto& command = fMessenger.DeclareMethod(
+      auto& physicsListCommand = fMessenger.DeclareMethod(
         "physicsList",
         &RunConfiguration::RequirePhysicsList,
         "Require the named Geant4 reference physics list."
       );
-      command.SetStates(G4State_PreInit);
-      fPhysicsListCommand = command.command;
+      physicsListCommand.SetStates(G4State_PreInit);
+      fPhysicsListCommand = physicsListCommand.command;
+
+      auto& outputModeCommand = fMessenger.DeclareMethod(
+        "outputMode",
+        &RunConfiguration::RequireOutputMode,
+        "Require the named AtRIS output mode."
+      );
+      outputModeCommand.SetCandidates("response profile shower");
+      outputModeCommand.SetStates(G4State_PreInit);
+      fOutputModeCommand = outputModeCommand.command;
     }
 
   private:
@@ -83,9 +110,24 @@ class RunConfiguration {
       fPhysicsListCommand->CommandFailed(message);
     }
 
+    void RequireOutputMode(G4String requestedOutputMode)
+    {
+      const G4int requestedValue = OutputModeValue(requestedOutputMode);
+      if (requestedValue == fOutputMode) return;
+
+      G4ExceptionDescription message;
+      message << "AtRIS output-mode conflict: the command line selects '"
+              << OutputModeName(fOutputMode) << "' (" << fOutputMode
+              << ") but the macro requests '" << requestedOutputMode
+              << "' (" << requestedValue << ").";
+      fOutputModeCommand->CommandFailed(message);
+    }
+
     const G4String fPhysicsList;
+    const G4int fOutputMode;
     G4GenericMessenger fMessenger;
     G4UIcommand* fPhysicsListCommand = nullptr;
+    G4UIcommand* fOutputModeCommand = nullptr;
 };
 
 }  // namespace
@@ -295,7 +337,7 @@ int main(int argc,char** argv){
 		}
 		return -1;
 	}
-	RunConfiguration runConfiguration(physics);
+	RunConfiguration runConfiguration(physics, mode);
 	if (mode == atris::kInterfaceOutputMode) {
 		G4cout << "### AtRIS: mode 0 writes histograms and interface ntuples to "
 		       << outputFileName << G4endl;

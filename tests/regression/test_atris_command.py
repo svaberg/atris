@@ -565,6 +565,33 @@ def test_macro_physics_list_must_match_command_line(tmp_path, atris_command):
 
 
 @pytest.mark.regression
+def test_macro_output_mode_can_confirm_command_line(tmp_path, atris_command):
+    prepare_run(tmp_path)
+    macro = tmp_path / "protons.mac"
+    macro.write_text("/atris/outputMode response\n" + macro.read_text())
+
+    result = run_atris(atris_command, tmp_path, "protons")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert histogram_entries(tmp_path / "protons_h1_h1.1.csv") == 2
+
+
+@pytest.mark.regression
+def test_macro_output_mode_must_match_command_line(tmp_path, atris_command):
+    prepare_run(tmp_path)
+    macro = tmp_path / "protons.mac"
+    macro.write_text("/atris/outputMode profile\n" + macro.read_text())
+
+    result = run_atris(atris_command, tmp_path, "protons")
+
+    assert result.returncode != 0
+    assert "AtRIS output-mode conflict" in result.stdout
+    assert "command line selects 'response' (-1)" in result.stdout
+    assert "macro requests 'profile' (0)" in result.stdout
+    assert not list(tmp_path.glob("protons_*.csv"))
+
+
+@pytest.mark.regression
 @pytest.mark.parametrize(
     "macro_contents",
     [

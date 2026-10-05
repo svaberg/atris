@@ -12,7 +12,7 @@ the directory containing its inputs and numbered phantom files.
 | --- | --- |
 | `physics-list` | Geant4 reference physics-list name, for example `FTFP_BERT_HP`. Availability depends on the linked Geant4 installation. An unrecognized name prints the available reference lists and exits unsuccessfully. If the macro contains `/atris/physicsList`, its value must match. |
 | `simulation-name` | Input prefix and output filename, or a seeded chunk name as described below. An optional filename extension selects the Geant4 output backend. |
-| `mode` | Integer output mode from the table below. The executable does not accept the Python runner's mode names. |
+| `mode` | Integer output mode from the table below. The executable does not accept the Python runner's mode names. If the macro contains `/atris/outputMode`, its named value must match. |
 | `phantom-count` | Optional compatibility check against the staged phantom pairs discovered by the executable. It does not read `phantoms.txt`. |
 
 ```bash
@@ -24,10 +24,11 @@ complete `radiation_phantomN.txt` and `counting_phantomN.txt` pairs in the
 current directory. IDs must be contiguous from zero. Files beginning with
 `protons` receive the outputs. Existing output names can be overwritten.
 
-Newly generated macros begin with the pre-initialization command
-`/atris/physicsList NAME`. It records the physics list with the run inputs.
-AtRIS stops before `/run/initialize` if this value differs from the legacy
-command-line argument. Older macros without the command remain accepted.
+Newly generated macros begin with the pre-initialization commands
+`/atris/physicsList NAME` and `/atris/outputMode NAME`. They record the physics
+list and output mode with the run inputs. AtRIS stops before `/run/initialize`
+if either value differs from its legacy command-line argument. Older macros
+without these commands remain accepted.
 
 The former explicit-count form remains accepted:
 

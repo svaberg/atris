@@ -89,6 +89,8 @@ atris-generate-macros . \
   --energy-points 121 \
   --particles-per-bin 3000 \
   --alpha-factor 0.66 \
+  --physics-list FTFP_BERT_HP \
+  --output-mode response \
   --random-seed 12345
 ```
 
@@ -115,10 +117,11 @@ For more sampling with the existing macros, use [chunk extension](plan-chunks.md
 ## Record physics and output choices
 
 Choose a [Geant4 physics list](../background/physics-lists.md) and an
-[output mode](../reference/executable.md#output-modes). The launch guides use
-`FTFP_BERT_HP` and `response`; record your choices in your run notes and supply
-them consistently to `atris-run` if they differ. These choices belong to the
-physical calculation even though they are passed at launch time.
+[output mode](../reference/executable.md#output-modes) when generating the
+macros. The launch guides use `FTFP_BERT_HP` and `response`. During the current
+command-line transition, supply the same choices to `atris-run`; AtRIS rejects
+a mismatch. These choices belong to the physical calculation and remain in
+the generated macro files.
 
 ## Check the prepared inputs
 

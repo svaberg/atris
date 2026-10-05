@@ -1,4 +1,5 @@
 /atris/physicsList FTFP_BERT_HP
+/atris/outputMode response
 /run/initialize
 /run/verbose 2
 /gps/particle proton

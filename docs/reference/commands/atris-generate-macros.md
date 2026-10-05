@@ -11,10 +11,10 @@ atris-generate-macros . --particles-per-bin 100 --energy-points 10 --random-seed
 ```
 
 The directory defaults to `.`. Default settings are physics list
-`FTFP_BERT_HP`, 3000 proton histories per energy point, alpha factor 0.66, and
-121 logarithmic points from 1 to 1e6 MeV for protons. Alpha energies are four
-times those values. The alpha histories per point are truncated to an integer
-before multiplication by the point count. See
+`FTFP_BERT_HP`, output mode `response`, 3000 proton histories per energy point,
+alpha factor 0.66, and 121 logarithmic points from 1 to 1e6 MeV for protons.
+Alpha energies are four times those values. The alpha histories per point are
+truncated to an integer before multiplication by the point count. See
 [energy bins and macros](../inputs.md#energy-bins-and-macros) for the exact
 event-count convention. This command does not read `.spec` files.
 
@@ -26,7 +26,8 @@ The following is the command's `--help` output for this revision.
 usage: atris-generate-macros [-h] [--particles-per-bin COUNT] [--alpha-factor FACTOR]
                              [--random-seed SEED] [--energy-min-power POWER]
                              [--energy-max-power POWER] [--energy-points COUNT]
-                             [--physics-list NAME] [-q | -v] [--version]
+                             [--physics-list NAME] [--output-mode {response,profile,shower}]
+                             [-q | -v] [--version]
                              [RUN_DIRECTORY]
 
 Generate the proton and alpha macros, energy grids, and geometry copies needed to run AtRIS.
@@ -53,6 +54,8 @@ options:
                         (default: 121).
   --physics-list NAME   Geant4 reference physics list recorded in both macros (default:
                         FTFP_BERT_HP).
+  --output-mode {response,profile,shower}
+                        AtRIS output mode recorded in both macros (default: response).
   -q, --quiet           Suppress normal progress; show warnings and errors only.
   -v, --verbose         Include detailed per-file, per-request, or per-chunk progress.
   --version             Show the AtRIS and atris-tools versions and exit.
