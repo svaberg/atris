@@ -592,6 +592,36 @@ def test_macro_output_mode_must_match_command_line(tmp_path, atris_command):
 
 
 @pytest.mark.regression
+def test_macro_configures_source_histogram_bins(tmp_path, atris_command):
+    prepare_run(tmp_path)
+    macro = tmp_path / "protons.mac"
+    macro.write_text(
+        "/atris/directionBins 12 6\n"
+        "/atris/positionBins 10 5\n"
+        + macro.read_text()
+    )
+
+    result = run_atris(atris_command, tmp_path, "protons")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    with ResponseHistogramReader(tmp_path / "protons") as histograms:
+        assert [len(axis) - 1 for axis in histograms.axes("h2.dir")] == [12, 6]
+        assert [len(axis) - 1 for axis in histograms.axes("h2.pos")] == [10, 5]
+
+
+@pytest.mark.regression
+def test_macro_rejects_nonpositive_source_histogram_bins(tmp_path, atris_command):
+    prepare_run(tmp_path)
+    macro = tmp_path / "protons.mac"
+    macro.write_text("/atris/directionBins 0 6\n" + macro.read_text())
+
+    result = run_atris(atris_command, tmp_path, "protons")
+
+    assert result.returncode != 0
+    assert not list(tmp_path.glob("protons_*.csv"))
+
+
+@pytest.mark.regression
 @pytest.mark.parametrize(
     "macro_contents",
     [

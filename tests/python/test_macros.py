@@ -58,6 +58,8 @@ def test_macro_generation_is_reproducible_and_preserves_requested_counts(tmp_pat
     expected_start = (
         "/atris/physicsList QGSP_BERT\n"
         "/atris/outputMode profile\n"
+        "/atris/directionBins 120 60\n"
+        "/atris/positionBins 120 60\n"
         "/run/initialize\n"
     )
     assert proton_macro.startswith(expected_start)

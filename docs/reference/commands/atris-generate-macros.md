@@ -14,7 +14,9 @@ The directory defaults to `.`. Default settings are physics list
 `FTFP_BERT_HP`, output mode `response`, 3000 proton histories per energy point,
 alpha factor 0.66, and 121 logarithmic points from 1 to 1e6 MeV for protons.
 Alpha energies are four times those values. The alpha histories per point are
-truncated to an integer before multiplication by the point count. See
+truncated to an integer before multiplication by the point count. The generated
+source-direction and source-position histograms each use 120 azimuth bins and
+60 cosine bins. See
 [energy bins and macros](../inputs.md#energy-bins-and-macros) for the exact
 event-count convention. This command does not read `.spec` files.
 

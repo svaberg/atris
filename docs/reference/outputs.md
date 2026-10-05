@@ -24,15 +24,15 @@ $N_{\mathrm{phantom}}$ is the phantom count. Despite the histogram titles, raw
 phantom values have not yet been divided by primary counts, masses, or interface
 areas.
 
-Source-position and direction histograms have 120 azimuth bins from 0 to $2\pi$
-and 60 $\cos\theta$ bins from -1 to 1.
+By default, source-position and direction histograms have 120 azimuth bins from
+0 to $2\pi$ and 60 $\cos\theta$ bins from -1 to 1. Their separate dimensions
+are recorded in the species macro and may differ. Read the axes from the output
+when analyzing an existing run.
 
 ### CSV structure
 
 Files begin with `#` metadata lines, followed by a column header and numeric
 rows. Axes are described by `#axis edges ...` or `#axis fixed N low high`.
-Read the axes from the output when analyzing an existing run.
-
 AtRIS adds native Geant4 `#annotation` records identifying the histogram,
 quantity, accumulated weight, simulation input prefix, physics list, output
 mode, phantom count, software version, and random seed pair. Phantom-response

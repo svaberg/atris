@@ -20,6 +20,8 @@
 
 extern std::vector<G4double> energyBins;
 extern std::vector<G4double> detectorBins;
+extern std::array<G4int, 2> directionHistogramBins;
+extern std::array<G4int, 2> positionHistogramBins;
 extern G4int numberOfPhantoms;
 extern G4int mode;
 extern G4String simulationInputPrefix;
@@ -29,9 +31,6 @@ extern std::array<G4long, 2> explicitSeeds;
 
 namespace {
 
-// Fixed source diagnostics use 3-degree azimuth bins and 1/30-wide cosine bins.
-constexpr G4int kSourceAzimuthBins = 120;
-constexpr G4int kSourceCosineBins = 60;
 constexpr G4double kSourceAzimuthMin = 0.;
 constexpr G4double kSourceAzimuthMax = twopi;
 constexpr G4double kSourceCosineMin = -1.;
@@ -106,8 +105,8 @@ void HistoManager::Book() const
 	analysis->SetH1Activation(id, true);
 	// This is the direction histogram
 	id = analysis->CreateH2("h2.dir", "Primary source direction",
-				kSourceAzimuthBins, kSourceAzimuthMin, kSourceAzimuthMax,
-				kSourceCosineBins, kSourceCosineMin, kSourceCosineMax);
+				directionHistogramBins[0], kSourceAzimuthMin, kSourceAzimuthMax,
+				directionHistogramBins[1], kSourceCosineMin, kSourceCosineMax);
 	AnnotateHistogram(
 		analysis->GetH2(id),
 		"h2.dir",
@@ -120,8 +119,8 @@ void HistoManager::Book() const
 	analysis->SetH2Activation(id,true);
 	// This is the position histogram.
 	id = analysis->CreateH2("h2.pos", "Primary source position",
-				kSourceAzimuthBins, kSourceAzimuthMin, kSourceAzimuthMax,
-				kSourceCosineBins, kSourceCosineMin, kSourceCosineMax);
+				positionHistogramBins[0], kSourceAzimuthMin, kSourceAzimuthMax,
+				positionHistogramBins[1], kSourceCosineMin, kSourceCosineMax);
 	AnnotateHistogram(
 		analysis->GetH2(id),
 		"h2.pos",

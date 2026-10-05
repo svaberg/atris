@@ -88,6 +88,8 @@ GENERATED_INPUTS = (
 )
 DEFAULT_PHYSICS_LIST = "FTFP_BERT_HP"
 DEFAULT_OUTPUT_MODE = "response"
+DIRECTION_HISTOGRAM_BINS = (120, 60)
+POSITION_HISTOGRAM_BINS = (120, 60)
 OUTPUT_MODES = ("response", "profile", "shower")
 logger = logging.getLogger(__name__)
 
@@ -120,6 +122,8 @@ def genMacro(
     lines =  ""
     lines += "/atris/physicsList %s\n" % physics_list
     lines += "/atris/outputMode %s\n" % output_mode
+    lines += "/atris/directionBins %i %i\n" % DIRECTION_HISTOGRAM_BINS
+    lines += "/atris/positionBins %i %i\n" % POSITION_HISTOGRAM_BINS
     lines += "/run/initialize\n"
     lines += "/run/verbose 2\n"
     lines += part

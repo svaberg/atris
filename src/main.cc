@@ -49,6 +49,8 @@ std::vector<std::vector<G4double>> countingResponses;
 
 std::vector<G4double> energyBins;
 std::vector<G4double> detectorBins;
+std::array<G4int, 2> directionHistogramBins = {120, 60};
+std::array<G4int, 2> positionHistogramBins = {120, 60};
 
 namespace {
 
@@ -96,9 +98,33 @@ class RunConfiguration {
       outputModeCommand.SetCandidates("response profile shower");
       outputModeCommand.SetStates(G4State_PreInit);
       fOutputModeCommand = outputModeCommand.command;
+
+      DeclareHistogramBinsCommand(
+        "directionBins",
+        &RunConfiguration::SetDirectionBins,
+        "Set the azimuth and cosine bin counts for the source-direction histogram."
+      );
+      DeclareHistogramBinsCommand(
+        "positionBins",
+        &RunConfiguration::SetPositionBins,
+        "Set the azimuth and cosine bin counts for the source-position histogram."
+      );
     }
 
   private:
+    void DeclareHistogramBinsCommand(
+      const G4String& name,
+      void (RunConfiguration::*setter)(G4int, G4int),
+      const G4String& guidance
+    )
+    {
+      auto& command = fMessenger.DeclareMethod(name, setter, guidance);
+      command.SetParameterName(G4int{0}, "azimuthBins", false);
+      command.SetParameterName(G4int{1}, "cosineBins", false);
+      command.SetRange("azimuthBins>0 && cosineBins>0");
+      command.SetStates(G4State_PreInit);
+    }
+
     void RequirePhysicsList(G4String requestedPhysicsList)
     {
       if (requestedPhysicsList == fPhysicsList) return;
@@ -121,6 +147,16 @@ class RunConfiguration {
               << ") but the macro requests '" << requestedOutputMode
               << "' (" << requestedValue << ").";
       fOutputModeCommand->CommandFailed(message);
+    }
+
+    void SetDirectionBins(G4int azimuthBins, G4int cosineBins)
+    {
+      directionHistogramBins = {azimuthBins, cosineBins};
+    }
+
+    void SetPositionBins(G4int azimuthBins, G4int cosineBins)
+    {
+      positionHistogramBins = {azimuthBins, cosineBins};
     }
 
     const G4String fPhysicsList;

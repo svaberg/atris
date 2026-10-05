@@ -1,5 +1,7 @@
 /atris/physicsList FTFP_BERT_HP
 /atris/outputMode response
+/atris/directionBins 120 60
+/atris/positionBins 120 60
 /run/initialize
 /run/verbose 2
 /gps/particle alpha

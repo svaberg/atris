@@ -192,14 +192,18 @@ protons, and four times that grid for alphas. Alpha energies in the actual
 per nucleon.
 
 Generated macros first record the Geant4 reference physics list with
-`/atris/physicsList` and the named output mode with `/atris/outputMode`. They
-then initialize the run, select a proton or alpha GPS source, use `User` energy
-histograms, emit one primary per event from a spherical surface, use a cosine
-angular distribution over 0–90 degrees, set a 100 m production cut, set two
-random seeds, and issue one `/run/beamOn` command. Histogram point weights are
+`/atris/physicsList`, the named output mode with `/atris/outputMode`, and the
+two source histogram dimensions with `/atris/directionBins` and
+`/atris/positionBins`. Each histogram command takes its azimuth-bin count
+followed by its cosine-bin count; both counts must be positive. The macro then
+initializes the run, selects a proton or alpha GPS source, uses `User` energy
+histograms, emits one primary per event from a spherical surface, uses a cosine
+angular distribution over 0–90 degrees, sets a 100 m production cut, sets two
+random seeds, and issues one `/run/beamOn` command. Histogram point weights are
 zero for the first edge and one for the remaining edges. During the
-compatibility period in which the executable also receives these settings on
-its command line, the macro and command-line values must match.
+compatibility period in which the executable also receives the physics list
+and output mode on its command line, the macro and command-line values must
+match.
 
 Despite its option name, `--particles-per-bin` is multiplied by the number of
 **energy points**, not the number of intervals:

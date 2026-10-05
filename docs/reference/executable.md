@@ -25,10 +25,13 @@ current directory. IDs must be contiguous from zero. Files beginning with
 `protons` receive the outputs. Existing output names can be overwritten.
 
 Newly generated macros begin with the pre-initialization commands
-`/atris/physicsList NAME` and `/atris/outputMode NAME`. They record the physics
-list and output mode with the run inputs. AtRIS stops before `/run/initialize`
-if either value differs from its legacy command-line argument. Older macros
-without these commands remain accepted.
+`/atris/physicsList NAME`, `/atris/outputMode NAME`,
+`/atris/directionBins NPHI NCOS`, and `/atris/positionBins NPHI NCOS`. They
+record the physics list, output mode, and source histogram dimensions with the
+run inputs. AtRIS stops before `/run/initialize` if the physics list or output
+mode differs from its legacy command-line argument, or if a bin count is not
+positive. Older macros without these commands remain accepted and use the
+existing 120 by 60 source histogram dimensions.
 
 The former explicit-count form remains accepted:
 
