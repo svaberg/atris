@@ -2,6 +2,10 @@
 #include "G4MTRunManager.hh"
 #include "G4Threading.hh"
 #include "G4UImanager.hh"
+#include "G4UIcommand.hh"
+#include "G4GenericMessenger.hh"
+#include "G4ApplicationState.hh"
+#include "G4Exception.hh"
 #include "G4GDMLParser.hh"
 
 #include "DetectorConstruction.hh"
@@ -51,6 +55,38 @@ namespace {
 constexpr std::size_t kChunkSeedDigits = 6;
 constexpr G4double kDetectorBinHalfWidth = 0.5;
 constexpr std::size_t kLegacyPhysicsListSuffixLength = 4;
+
+class RunConfiguration {
+  public:
+    explicit RunConfiguration(const G4String& physicsList)
+      : fPhysicsList(physicsList),
+        fMessenger(this, "/atris/", "AtRIS run configuration.")
+    {
+      auto& command = fMessenger.DeclareMethod(
+        "physicsList",
+        &RunConfiguration::RequirePhysicsList,
+        "Require the named Geant4 reference physics list."
+      );
+      command.SetStates(G4State_PreInit);
+      fPhysicsListCommand = command.command;
+    }
+
+  private:
+    void RequirePhysicsList(G4String requestedPhysicsList)
+    {
+      if (requestedPhysicsList == fPhysicsList) return;
+
+      G4ExceptionDescription message;
+      message << "AtRIS physics-list conflict: the command line selects '"
+              << fPhysicsList << "' but the macro requests '"
+              << requestedPhysicsList << "'.";
+      fPhysicsListCommand->CommandFailed(message);
+    }
+
+    const G4String fPhysicsList;
+    G4GenericMessenger fMessenger;
+    G4UIcommand* fPhysicsListCommand = nullptr;
+};
 
 }  // namespace
 
@@ -259,6 +295,7 @@ int main(int argc,char** argv){
 		}
 		return -1;
 	}
+	RunConfiguration runConfiguration(physics);
 	if (mode == atris::kInterfaceOutputMode) {
 		G4cout << "### AtRIS: mode 0 writes histograms and interface ntuples to "
 		       << outputFileName << G4endl;

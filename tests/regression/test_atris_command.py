@@ -536,6 +536,35 @@ def test_unsupported_physics_list_exits_nonzero(tmp_path, atris_command):
 
 
 @pytest.mark.regression
+def test_macro_physics_list_can_confirm_command_line(tmp_path, atris_command):
+    prepare_run(tmp_path)
+    macro = tmp_path / "protons.mac"
+    macro.write_text(
+        "/atris/physicsList FTFP_BERT_HP\n" + macro.read_text()
+    )
+
+    result = run_atris(atris_command, tmp_path, "protons")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert histogram_entries(tmp_path / "protons_h1_h1.1.csv") == 2
+
+
+@pytest.mark.regression
+def test_macro_physics_list_must_match_command_line(tmp_path, atris_command):
+    prepare_run(tmp_path)
+    macro = tmp_path / "protons.mac"
+    macro.write_text("/atris/physicsList QGSP_BERT\n" + macro.read_text())
+
+    result = run_atris(atris_command, tmp_path, "protons")
+
+    assert result.returncode != 0
+    assert "AtRIS physics-list conflict" in result.stdout
+    assert "command line selects 'FTFP_BERT_HP'" in result.stdout
+    assert "macro requests 'QGSP_BERT'" in result.stdout
+    assert not list(tmp_path.glob("protons_*.csv"))
+
+
+@pytest.mark.regression
 @pytest.mark.parametrize(
     "macro_contents",
     [

@@ -86,6 +86,7 @@ GENERATED_INPUTS = (
     "alphas.bins",
     "alphas.gdml",
 )
+DEFAULT_PHYSICS_LIST = "FTFP_BERT_HP"
 logger = logging.getLogger(__name__)
 
 
@@ -101,8 +102,20 @@ def refuse_existing_inputs(output_dir):
         )
 
 
-def genMacro(nr1,nr2,N,name,part,fact,thebins,radius,output_dir="./atris/simulation"):
+def genMacro(
+    nr1,
+    nr2,
+    N,
+    name,
+    part,
+    fact,
+    thebins,
+    radius,
+    output_dir="./atris/simulation",
+    physics_list=DEFAULT_PHYSICS_LIST,
+):
     lines =  ""
+    lines += "/atris/physicsList %s\n" % physics_list
     lines += "/run/initialize\n"
     lines += "/run/verbose 2\n"
     lines += part
@@ -128,7 +141,16 @@ def genMacro(nr1,nr2,N,name,part,fact,thebins,radius,output_dir="./atris/simulat
     return lines
 
 
-def macroSetup(prefix,part,fact,partspb,output_dir="./atris/simulation",base_bins=None,rng=None):
+def macroSetup(
+    prefix,
+    part,
+    fact,
+    partspb,
+    output_dir="./atris/simulation",
+    base_bins=None,
+    rng=None,
+    physics_list=DEFAULT_PHYSICS_LIST,
+):
     if base_bins is None:
         base_bins = 10**np.linspace(0,6,121)
     if rng is None:
@@ -142,13 +164,22 @@ def macroSetup(prefix,part,fact,partspb,output_dir="./atris/simulation",base_bin
     #name      = str(seed1)+prefix
     name      = prefix
     shutil.copy2(os.path.join(output_dir, 'simulation.gdml'), os.path.join(output_dir, name + '.gdml'))
-    lines = genMacro(seed1,seed2,N,name,part,fact,bins,radius,output_dir)
+    lines = genMacro(seed1,seed2,N,name,part,fact,bins,radius,output_dir,physics_list)
     filehandle = open(os.path.join(output_dir, name + '.mac'), 'w')
     filehandle.writelines(lines)
     filehandle.close()
     
 
-def macroGenManager(partspb,alphafactor=1.0,output_dir="./atris/simulation",random_seed=None,energy_min_power=0.0,energy_max_power=6.0,energy_points=121):
+def macroGenManager(
+    partspb,
+    alphafactor=1.0,
+    output_dir="./atris/simulation",
+    random_seed=None,
+    energy_min_power=0.0,
+    energy_max_power=6.0,
+    energy_points=121,
+    physics_list=DEFAULT_PHYSICS_LIST,
+):
     if energy_points < 2:
         raise ValueError("energy_points must be at least 2")
     output_dir = os.path.abspath(output_dir)
@@ -157,8 +188,8 @@ def macroGenManager(partspb,alphafactor=1.0,output_dir="./atris/simulation",rand
     refuse_existing_inputs(output_dir)
     rng = random.Random(random_seed) if random_seed is not None else random
     base_bins = 10**np.linspace(energy_min_power,energy_max_power,energy_points)
-    macroSetup('protons',"/gps/particle proton\n",1,partspb,output_dir,base_bins,rng)
-    macroSetup('alphas',"/gps/particle alpha\n",4,int(partspb*alphafactor),output_dir,base_bins,rng)
+    macroSetup('protons',"/gps/particle proton\n",1,partspb,output_dir,base_bins,rng,physics_list)
+    macroSetup('alphas',"/gps/particle alpha\n",4,int(partspb*alphafactor),output_dir,base_bins,rng,physics_list)
 
 
 def main():
@@ -239,6 +270,15 @@ def main():
             "endpoints (default: 121)."
         ),
     )
+    parser.add_argument(
+        "--physics-list",
+        default=DEFAULT_PHYSICS_LIST,
+        metavar="NAME",
+        help=(
+            "Geant4 reference physics list recorded in both macros "
+            "(default: %(default)s)."
+        ),
+    )
     add_logging_arguments(parser)
     add_version_argument(parser)
     args = parser.parse_args()
@@ -258,6 +298,7 @@ def main():
         args.energy_min_power,
         args.energy_max_power,
         args.energy_points,
+        args.physics_list,
     )
     logger.info(
         "Generated proton and alpha input files in %s",

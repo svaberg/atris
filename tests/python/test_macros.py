@@ -34,6 +34,7 @@ def test_macro_generation_is_reproducible_and_preserves_requested_counts(tmp_pat
         energy_min_power=0,
         energy_max_power=2,
         energy_points=3,
+        physics_list="QGSP_BERT",
     )
     macroGenManager(output_dir=first, **arguments)
     macroGenManager(output_dir=second, **arguments)
@@ -53,6 +54,9 @@ def test_macro_generation_is_reproducible_and_preserves_requested_counts(tmp_pat
     alpha_macro = (first / "alphas.mac").read_text()
     assert "/gps/particle proton" in proton_macro
     assert "/gps/particle alpha" in alpha_macro
+    expected_start = "/atris/physicsList QGSP_BERT\n/run/initialize\n"
+    assert proton_macro.startswith(expected_start)
+    assert alpha_macro.startswith(expected_start)
     assert "/run/beamOn 6" in proton_macro
     assert "/run/beamOn 3" in alpha_macro
     assert "/gps/pos/radius 1.001 km" in proton_macro

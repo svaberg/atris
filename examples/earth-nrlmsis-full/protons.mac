@@ -1,3 +1,4 @@
+/atris/physicsList FTFP_BERT_HP
 /run/initialize
 /run/verbose 2
 /gps/particle proton
