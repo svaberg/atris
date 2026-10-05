@@ -173,6 +173,7 @@ G4bool DiscoverPhantomCount(G4int& count)
 
 
 int main(int argc,char** argv){
+	const auto totalStart = std::chrono::steady_clock::now();
 	if (argc == 2 && std::string(argv[1]) == "--version") {
 		std::cout << "AtRIS " << ATRIS_VERSION << '\n';
 		return 0;
@@ -183,7 +184,6 @@ int main(int argc,char** argv){
 		return 0;
 	}
 	G4UImanager* const uiManager = G4UImanager::GetUIpointer();
-	const auto totalStart = std::chrono::steady_clock::now();
 	mode = std::stoi(argv[3]);
 	if (!DiscoverPhantomCount(numberOfPhantoms)) return 1;
 	if (argc == 5) {
