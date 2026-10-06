@@ -32,6 +32,7 @@ set(ATRIS_HEADERS
   include/PhantomResponseSchema.hh
   include/PrimaryGeneratorAction.hh
   include/RunAction.hh
+  include/RunSettings.hh
   include/SensitiveDetector.hh
   include/UserActionInitialization.hh
 )

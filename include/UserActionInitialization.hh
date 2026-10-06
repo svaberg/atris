@@ -5,14 +5,19 @@
 
 namespace atris {
 
+struct RunSettings;
+
 class UserActionInitialization : public G4VUserActionInitialization
 {
   public:
-    UserActionInitialization();
+    explicit UserActionInitialization(const RunSettings& settings);
     ~UserActionInitialization() override;
 
     void Build() const override;
     void BuildForMaster() const override;
+
+  private:
+    const RunSettings& fSettings;
 };
 
 }  // namespace atris

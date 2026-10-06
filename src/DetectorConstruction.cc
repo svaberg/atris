@@ -1,5 +1,6 @@
 #include "DetectorConstruction.hh"
 #include "SensitiveDetector.hh"
+#include "RunSettings.hh"
 #include "G4GDMLParser.hh"
 #include "G4Element.hh"
 #include "G4Isotope.hh"
@@ -13,8 +14,6 @@
 #include "G4GenericMessenger.hh"
 #include "G4ApplicationState.hh"
 
-extern G4int numberOfDetectors;
-
 namespace {
 
 constexpr G4bool kAtrisVerbose = false;
@@ -24,9 +23,13 @@ constexpr G4int kDiagnosticPrecision = 15;
 
 namespace atris {
 
-DetectorConstruction::DetectorConstruction(const ::G4GDMLParser& parser)
+DetectorConstruction::DetectorConstruction(
+  const ::G4GDMLParser& parser,
+  const RunSettings& settings
+)
   : G4VUserDetectorConstruction(),
-    fParser(parser)
+    fParser(parser),
+    fSettings(settings)
 {
   G4cout << "### AtRIS: Initialized the DetectorConstruction object." << G4endl;
 }
@@ -54,7 +57,7 @@ void DetectorConstruction::ConstructSDandField() {
 				const G4String detectorName = auxiliary->value;
 				const G4int detectorId = std::stoi(detectorName);
 				SensitiveDetector* const sensitiveDetector =
-					new SensitiveDetector(detectorName);
+					new SensitiveDetector(detectorName, fSettings);
 				sdManager->AddNewDetector(sensitiveDetector);
 				G4VSensitiveDetector* const detector =
 					sdManager->FindSensitiveDetector(auxiliary->value);
@@ -84,7 +87,7 @@ void DetectorConstruction::ConstructSDandField() {
 	G4cout << "### AtRIS: printing detailed information about all materials" << G4endl;
 	if (kAtrisVerbose) G4cout << *(G4Material::GetMaterialTable()) << G4endl;
 	G4cout << "### AtRIS: gdml construction complete. In total we have "
-	       << numberOfDetectors << " sensitive detectors" << G4endl;
+	       << fSettings.detectorCount << " sensitive detectors" << G4endl;
 }
 
 DetectorConstruction::~DetectorConstruction(){

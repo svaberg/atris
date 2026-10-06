@@ -11,6 +11,7 @@
 #include "DetectorConstruction.hh"
 #include "OutputMode.hh"
 #include "PhantomResponseSchema.hh"
+#include "RunSettings.hh"
 #include "UserActionInitialization.hh"
 #include "Randomize.hh"
 #include "G4PhysListFactory.hh"
@@ -32,26 +33,11 @@
 #include <set>
 #include <sstream>
 
-G4String outputFileName;
-G4String outputFileFormat;
-G4String simulationInputPrefix;
-G4String physicsListName;
-G4int    mode = atris::kResponseOutputMode;
-G4int    numberOfDetectors = 0;
-G4bool   hasExplicitSeeds = false;
-std::array<G4long, 2> explicitSeeds = {0, 0};
-
 // For holding phantom responses
-G4int numberOfPhantoms;
 std::vector<G4int> lightParticleResponseIndices(atris::kLightParticleLookupSize, 0);
 std::map<G4int, G4int> ionResponseIndices;
 std::vector<std::vector<G4double>> radiationResponses;
 std::vector<std::vector<G4double>> countingResponses;
-
-std::vector<G4double> energyBins;
-std::vector<G4double> detectorBins;
-std::array<G4int, 2> directionHistogramBins = {120, 60};
-std::array<G4int, 2> positionHistogramBins = {120, 60};
 
 namespace {
 
@@ -59,8 +45,6 @@ constexpr std::size_t kChunkSeedDigits = 6;
 constexpr G4double kDetectorBinHalfWidth = 0.5;
 constexpr std::size_t kLegacyPhysicsListSuffixLength = 4;
 constexpr G4int kInvalidOutputMode = 2;
-G4bool hasConfiguredOutputMode = true;
-
 G4int OutputModeValue(const G4String& name)
 {
   if (name == "response") return atris::kResponseOutputMode;
@@ -81,13 +65,16 @@ class RunConfiguration {
   public:
     RunConfiguration(
       G4RunManager* runManager,
+      atris::RunSettings& settings,
       const G4String& physicsList,
       const G4int outputMode
     )
       : fRunManager(runManager),
+        fSettings(settings),
         fPhysicsList(physicsList),
         fOutputMode(outputMode),
         fHasCommandLineSettings(!physicsList.empty()),
+        fHasConfiguredOutputMode(fHasCommandLineSettings),
         fMessenger(this, "/atris/", "AtRIS run configuration.")
     {
       auto& physicsListCommand = fMessenger.DeclareMethod(
@@ -178,7 +165,7 @@ class RunConfiguration {
         factory.GetReferencePhysList(requestedPhysicsList);
       physicsList->RegisterPhysics(new G4StepLimiterPhysics());
       fRunManager->SetUserInitialization(physicsList);
-      physicsListName = requestedPhysicsList;
+      fSettings.physicsListName = requestedPhysicsList;
       return true;
     }
 
@@ -187,10 +174,12 @@ class RunConfiguration {
       if (
         fHasUserActions
         || fPhysicsList.empty()
-        || !hasConfiguredOutputMode
+        || !fHasConfiguredOutputMode
         || (!fHasCommandLineSettings && !fHasConfiguredOutputFormat)
       ) return;
-      fRunManager->SetUserInitialization(new atris::UserActionInitialization());
+      fRunManager->SetUserInitialization(
+        new atris::UserActionInitialization(fSettings)
+      );
       fHasUserActions = true;
     }
 
@@ -238,7 +227,7 @@ class RunConfiguration {
         return;
       }
 
-      if (hasConfiguredOutputMode) {
+      if (fHasConfiguredOutputMode) {
         if (requestedValue == fOutputMode) return;
 
         G4ExceptionDescription message;
@@ -251,8 +240,8 @@ class RunConfiguration {
       }
 
       fOutputMode = requestedValue;
-      mode = requestedValue;
-      hasConfiguredOutputMode = true;
+      fSettings.outputMode = requestedValue;
+      fHasConfiguredOutputMode = true;
       InstallUserActionsIfConfigured();
       ReportOutputMode();
     }
@@ -260,18 +249,18 @@ class RunConfiguration {
     void SetOutputFormat(G4String requestedOutputFormat)
     {
       if (
-        !outputFileFormat.empty()
-        && requestedOutputFormat != outputFileFormat
+        !fSettings.outputFileFormat.empty()
+        && requestedOutputFormat != fSettings.outputFileFormat
       ) {
         G4ExceptionDescription message;
         message << "AtRIS output-format conflict: the run already selects '"
-                << outputFileFormat << "' but the macro later requests '"
+                << fSettings.outputFileFormat << "' but the macro later requests '"
                 << requestedOutputFormat << "'.";
         fOutputFormatCommand->CommandFailed(message);
         return;
       }
 
-      outputFileFormat = requestedOutputFormat;
+      fSettings.outputFileFormat = requestedOutputFormat;
       fHasConfiguredOutputFormat = true;
       InstallUserActionsIfConfigured();
     }
@@ -291,18 +280,20 @@ class RunConfiguration {
 
     void SetDirectionBins(G4int azimuthBins, G4int cosineBins)
     {
-      directionHistogramBins = {azimuthBins, cosineBins};
+      fSettings.directionHistogramBins = {azimuthBins, cosineBins};
     }
 
     void SetPositionBins(G4int azimuthBins, G4int cosineBins)
     {
-      positionHistogramBins = {azimuthBins, cosineBins};
+      fSettings.positionHistogramBins = {azimuthBins, cosineBins};
     }
 
     G4RunManager* const fRunManager;
+    atris::RunSettings& fSettings;
     G4String fPhysicsList;
     G4int fOutputMode;
     const G4bool fHasCommandLineSettings;
+    G4bool fHasConfiguredOutputMode;
     G4bool fHasConfiguredOutputFormat = false;
     G4bool fIsValid = true;
     G4bool fHasUserActions = false;
@@ -316,7 +307,7 @@ class RunConfiguration {
 
 // Functions used by main.
 G4bool LoadPhantoms(G4int count);
-void DetermineNumberOfDetectors(const G4String& fileName);
+G4int DetermineNumberOfDetectors(const G4String& fileName);
 
 struct SimulationRun {
 	G4String inputPrefix;
@@ -451,40 +442,38 @@ int main(int argc,char** argv){
 	G4UImanager* const uiManager = G4UImanager::GetUIpointer();
 	const G4String simulationArgument = hasCommandLineSettings ? argv[2] : argv[1];
 	const G4String commandLinePhysicsList = hasCommandLineSettings ? argv[1] : "";
+	atris::RunSettings settings;
 	if (hasCommandLineSettings) {
-		mode = std::stoi(argv[3]);
-		hasConfiguredOutputMode = true;
-	} else {
-		hasConfiguredOutputMode = false;
+		settings.outputMode = std::stoi(argv[3]);
 	}
-	if (!DiscoverPhantomCount(numberOfPhantoms)) return 1;
+	if (!DiscoverPhantomCount(settings.phantomCount)) return 1;
 	if (argc == 5) {
 		const G4int requestedCount = std::stoi(argv[4]);
-		if (requestedCount != numberOfPhantoms) {
+		if (requestedCount != settings.phantomCount) {
 			G4cerr << "### AtRIS: phantom-count mismatch: command line specifies "
-			       << requestedCount << " but found " << numberOfPhantoms
+			       << requestedCount << " but found " << settings.phantomCount
 			       << " staged phantom pair(s)" << G4endl;
 			return 1;
 		}
 	}
 	// The simulation name selects the geometry, energy bins, and macro inputs;
 	// staged numbered files select the radiation and counting responses.
-	if (!LoadPhantoms(numberOfPhantoms)) return 1;
+	if (!LoadPhantoms(settings.phantomCount)) return 1;
 	const SimulationRun simulation = ParseSimulationRun(simulationArgument);
-	outputFileName = simulationArgument;
-	outputFileFormat = simulation.outputFormat;
-	simulationInputPrefix = simulation.inputPrefix;
-	hasExplicitSeeds = simulation.hasSeeds;
+	settings.outputFileName = simulationArgument;
+	settings.outputFileFormat = simulation.outputFormat;
+	settings.simulationInputPrefix = simulation.inputPrefix;
+	settings.hasExplicitSeeds = simulation.hasSeeds;
 	if (simulation.hasSeeds) {
-		explicitSeeds[0] = simulation.seeds[0];
-		explicitSeeds[1] = simulation.seeds[1];
+		settings.explicitSeeds[0] = simulation.seeds[0];
+		settings.explicitSeeds[1] = simulation.seeds[1];
 	}
 	const G4String gdmlName = simulation.inputPrefix+".gdml";
-	DetermineNumberOfDetectors(gdmlName);
+	settings.detectorCount = DetermineNumberOfDetectors(gdmlName);
 	G4cout << "### AtRIS: Generating detbins with the determined number of detectors" << G4endl;
-	for(int i=0;i<=numberOfDetectors;i++){
+	for(int i=0;i<=settings.detectorCount;i++){
 		// Integer detector IDs sit at the centers of these histogram bins.
-		detectorBins.push_back(i-kDetectorBinHalfWidth);
+		settings.detectorBins.push_back(i-kDetectorBinHalfWidth);
 	}
 	// Create the enbinsa for the histograms
 	const G4String binEdgesFile = simulation.inputPrefix+".bins";
@@ -492,7 +481,7 @@ int main(int argc,char** argv){
 	std::ifstream binEdges(binEdgesFile);
 	G4int binEdgeCount = 0;
 	while (binEdges >> newBinEdge){
-		energyBins.push_back(newBinEdge);
+		settings.energyBins.push_back(newBinEdge);
 		++binEdgeCount;
 	}
 	G4cout << "### AtRIS: read " << binEdgeCount << " binedges." << G4endl;
@@ -509,12 +498,14 @@ int main(int argc,char** argv){
 	}
 	G4GDMLParser parser;                             //instantiate a GDML parser
 	parser.Read(gdmlName);
-	atris::DetectorConstruction* const detector = new atris::DetectorConstruction(parser);
+	atris::DetectorConstruction* const detector =
+		new atris::DetectorConstruction(parser, settings);
 	runManager->SetUserInitialization(detector);
 	RunConfiguration runConfiguration(
 		runManager,
+		settings,
 		commandLinePhysicsList,
-		mode
+		settings.outputMode
 	);
 	if (!runConfiguration.IsValid()) return -1;
 
@@ -560,21 +551,23 @@ int main(int argc,char** argv){
 	return commandStatus == 0 ? 0 : 1;
 }
 
-void DetermineNumberOfDetectors(const G4String& fileName)
+G4int DetermineNumberOfDetectors(const G4String& fileName)
 {
 	// Each GDML auxiliary tag marks one sensitive detector.
 	G4String line;
 	const G4String auxiliaryTag = "<auxiliary";
 	G4String token;
+	G4int detectorCount = 0;
 	std::ifstream input(fileName);
 	while (std::getline(input, line)) {
 		std::stringstream words(line);
 		while (words >> token) {
-			if (token == auxiliaryTag) ++numberOfDetectors;
-			if (token == "</gdml>") return;
+			if (token == auxiliaryTag) ++detectorCount;
+			if (token == "</gdml>") return detectorCount;
 		}
 	}
-	G4cout << "### AtRIS: number of detectors: " << numberOfDetectors << G4endl;
+	G4cout << "### AtRIS: number of detectors: " << detectorCount << G4endl;
+	return detectorCount;
 }
 
 G4bool LoadPhantoms(G4int count)

@@ -8,10 +8,15 @@ class G4GDMLParser;
 
 namespace atris {
 
+struct RunSettings;
+
 class DetectorConstruction : public G4VUserDetectorConstruction
 {
   public:
-    explicit DetectorConstruction(const ::G4GDMLParser& parser);
+    DetectorConstruction(
+      const ::G4GDMLParser& parser,
+      const RunSettings& settings
+    );
     ~DetectorConstruction() override;
 
     void ConstructSDandField() override;
@@ -19,6 +24,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
 
   private:
     const ::G4GDMLParser& fParser;
+    const RunSettings& fSettings;
 };
 
 }  // namespace atris

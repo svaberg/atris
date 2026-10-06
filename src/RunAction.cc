@@ -9,6 +9,7 @@
 #include "G4AnalysisManager.hh"
 #include "G4UnitsTable.hh"
 #include "OutputMode.hh"
+#include "RunSettings.hh"
 #include <vector>
 #include <cmath>
 #include <fstream>
@@ -16,14 +17,11 @@
 #include <iostream>
 
 
-extern G4String outputFileName;                       // from src/main.cc
-extern G4String outputFileFormat;
-extern G4int mode;
-
 namespace atris {
 
-RunAction::RunAction(G4bool role)
-  : fHisto(nullptr)
+RunAction::RunAction(G4bool role, const RunSettings& settings)
+  : fHisto(nullptr),
+    fSettings(settings)
 {
   SetMaster(role);
 
@@ -59,15 +57,15 @@ void RunAction::BeginOfRunAction(const G4Run*)
   G4cout << "=== MASTER: " << IsMaster() << G4endl;
   G4AnalysisManager* const analysis = G4AnalysisManager::Instance();
   analysis->SetDefaultFileType(
-    outputFileFormat.empty() ? "csv" : outputFileFormat
+    fSettings.outputFileFormat.empty() ? "csv" : fSettings.outputFileFormat
   );
-  if (WritesInterfaceNtuple(mode)) analysis->SetNtupleMerging(true);
-  fHisto = new HistoManager();
+  if (WritesInterfaceNtuple(fSettings.outputMode)) analysis->SetNtupleMerging(true);
+  fHisto = new HistoManager(fSettings);
   if (analysis->IsActive()) {
-    analysis->SetFileName(outputFileName);
+    analysis->SetFileName(fSettings.outputFileName);
     if (!analysis->OpenFile()) {
       G4ExceptionDescription message;
-      message << "Cannot open analysis output '" << outputFileName
+      message << "Cannot open analysis output '" << fSettings.outputFileName
               << "'. Its filename extension may not be supported by this "
                  "Geant4 installation.";
       G4Exception(

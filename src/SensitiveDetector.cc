@@ -22,18 +22,16 @@
 #include "OutputMode.hh"
 #include "PhantomResponseSchema.hh"
 #include "PrimaryGeneratorAction.hh"
+#include "RunSettings.hh"
 #include "G4GeneralParticleSourceData.hh"
 #include "G4VProcess.hh"
 #include <algorithm>
 #include <cmath>
 #include <map>
 #include <vector>
-extern G4int mode;                      // from src/main.cc
-extern G4int numberOfDetectors;
 extern std::vector<G4int> lightParticleResponseIndices;
 extern std::vector<std::vector<G4double>> radiationResponses;
 extern std::vector<std::vector<G4double>> countingResponses;
-extern G4int numberOfPhantoms;
 extern std::map<G4int, G4int> ionResponseIndices;
 
 namespace atris {
@@ -60,9 +58,13 @@ SDHit::~SDHit() {}
 void SDHit::Print() {}
 
 
-SensitiveDetector::SensitiveDetector(const G4String& name)
+SensitiveDetector::SensitiveDetector(
+	const G4String& name,
+	const RunSettings& settings
+)
 	: G4VSensitiveDetector(name),
-	fHitsCollection(nullptr)
+	fHitsCollection(nullptr),
+	fSettings(settings)
 {
 	collectionName.insert(name);
 }
@@ -89,7 +91,7 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*){
 
 	const G4int detectorId = std::stoi(this->GetName());
 	const G4double nonionizingEnergyDeposit = step->GetNonIonizingEnergyDeposit();
-	if (WritesStepNtuple(mode)) {
+	if (WritesStepNtuple(fSettings.outputMode)) {
 		const G4Event* const event = G4RunManager::GetRunManager()->GetCurrentEvent();
 		const G4StepPoint* const prePoint = step->GetPreStepPoint();
 		const G4StepPoint* const postPoint = step->GetPostStepPoint();
@@ -169,7 +171,7 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*){
 		track->SetTrackStatus(fStopAndKill);
 		return false;
 	}
-	if (detectorId == (numberOfDetectors-1)){
+	if (detectorId == (fSettings.detectorCount-1)){
 		track->SetTrackStatus(fStopAndKill);
 		return false;
 	}
@@ -232,7 +234,9 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*){
 						radiationWeight = 2.5 + 3.25*std::exp(-std::log(std::pow(0.04*kineticEnergy/MeV,2.0))/6.0) ;
 					}
 				}
-				for (G4int phantomIndex = 0; phantomIndex < numberOfPhantoms; ++phantomIndex) {
+				for (G4int phantomIndex = 0;
+				     phantomIndex < fSettings.phantomCount;
+				     ++phantomIndex) {
 					const G4int offset = kFirstPhantomHistogramId
 						+ kPhantomHistogramsPerPhantom*phantomIndex;
 					analysis->FillH2(
@@ -265,7 +269,9 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*){
 					ionResponseIndices[particlePDG] * kPhantomResponseEnergyBins
 					+ responseEnergyBin;
 				const G4double radiationWeight = kHeavyIonRadiationWeight;
-				for (G4int phantomIndex = 0; phantomIndex < numberOfPhantoms; ++phantomIndex) {
+				for (G4int phantomIndex = 0;
+				     phantomIndex < fSettings.phantomCount;
+				     ++phantomIndex) {
 					const G4int offset = kFirstPhantomHistogramId
 						+ kPhantomHistogramsPerPhantom*phantomIndex;
 					analysis->FillH2(
@@ -289,7 +295,7 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*){
 			}
 		}
 
-		if (WritesInterfaceNtuple(mode)) {
+		if (WritesInterfaceNtuple(fSettings.outputMode)) {
 			analysis->FillNtupleIColumn(kInterfaceNtupleId, kInterfacePDG, particlePDG);
 			analysis->FillNtupleIColumn(kInterfaceNtupleId, kInterfaceId, interfaceId);
 			analysis->FillNtupleIColumn(

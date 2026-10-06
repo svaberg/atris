@@ -7,15 +7,19 @@
 
 namespace atris {
 
+struct RunSettings;
+
 class HistoManager
 {
   public:
-    HistoManager();
+    explicit HistoManager(const RunSettings& settings);
     ~HistoManager();
     void FillMetadata() const;
 
   private:
     void Book() const;
+
+    const RunSettings& fSettings;
 };
 
 }  // namespace atris

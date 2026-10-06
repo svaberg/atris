@@ -19,6 +19,7 @@ class G4HCofThisEvent;
 namespace atris {
 
 class SDHit;
+struct RunSettings;
 
 
 class SDHit : public G4VHit
@@ -56,7 +57,7 @@ inline void SDHit::operator delete(void* hit)
 class SensitiveDetector : public G4VSensitiveDetector, public G4UImessenger
 {
   public:
-    explicit SensitiveDetector(const G4String& name);
+    SensitiveDetector(const G4String& name, const RunSettings& settings);
     ~SensitiveDetector() override;
 
     void Initialize(G4HCofThisEvent* hitCollection) override;
@@ -64,6 +65,7 @@ class SensitiveDetector : public G4VSensitiveDetector, public G4UImessenger
 
   private:
     SDHitsCollection* fHitsCollection;
+    const RunSettings& fSettings;
 
 };
 

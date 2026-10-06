@@ -2,6 +2,7 @@
 #include "NtupleSchema.hh"
 #include "OutputMode.hh"
 #include "PhantomResponseSchema.hh"
+#include "RunSettings.hh"
 #include "G4AnalysisManager.hh"
 #include "G4Threading.hh"
 #include "G4UnitsTable.hh"
@@ -17,17 +18,6 @@
 #include <iterator>
 #include <fstream>
 #include <algorithm>
-
-extern std::vector<G4double> energyBins;
-extern std::vector<G4double> detectorBins;
-extern std::array<G4int, 2> directionHistogramBins;
-extern std::array<G4int, 2> positionHistogramBins;
-extern G4int numberOfPhantoms;
-extern G4int mode;
-extern G4String simulationInputPrefix;
-extern G4String physicsListName;
-extern G4bool hasExplicitSeeds;
-extern std::array<G4long, 2> explicitSeeds;
 
 namespace {
 
@@ -45,7 +35,8 @@ void AnnotateHistogram(
 	Histogram* const histogram,
 	const G4String& name,
 	const G4String& quantity,
-	const G4String& accumulatedWeight
+	const G4String& accumulatedWeight,
+	const atris::RunSettings& settings
 )
 {
 	if (histogram == nullptr) return;
@@ -57,14 +48,15 @@ void AnnotateHistogram(
 	histogram->add_annotation("atris.histogram_name", name);
 	histogram->add_annotation("atris.quantity", quantity);
 	histogram->add_annotation("atris.accumulated_weight", accumulatedWeight);
-	histogram->add_annotation("atris.input_prefix", simulationInputPrefix);
-	histogram->add_annotation("atris.physics_list", physicsListName);
-	histogram->add_annotation("atris.output_mode", std::to_string(mode));
-	histogram->add_annotation("atris.phantom_count", std::to_string(numberOfPhantoms));
-	if (hasExplicitSeeds) {
+	histogram->add_annotation("atris.input_prefix", settings.simulationInputPrefix);
+	histogram->add_annotation("atris.physics_list", settings.physicsListName);
+	histogram->add_annotation("atris.output_mode", std::to_string(settings.outputMode));
+	histogram->add_annotation("atris.phantom_count", std::to_string(settings.phantomCount));
+	if (settings.hasExplicitSeeds) {
 		histogram->add_annotation(
 			"atris.random_seed_pairs",
-			std::to_string(explicitSeeds[0]) + ":" + std::to_string(explicitSeeds[1])
+			std::to_string(settings.explicitSeeds[0]) + ":"
+				+ std::to_string(settings.explicitSeeds[1])
 		);
 	} else {
 		histogram->add_annotation("atris.random_seed_pairs", "runtime-default");
@@ -75,7 +67,8 @@ void AnnotateHistogram(
 
 namespace atris {
 
-HistoManager::HistoManager()
+HistoManager::HistoManager(const RunSettings& settings)
+	: fSettings(settings)
 {
 	Book();
 }
@@ -92,26 +85,30 @@ void HistoManager::Book() const
 	G4cout << "### AtRIS: configuring analysis histograms. " << G4endl;
 	analysis->SetVerboseLevel(0);
 	analysis->SetActivation(true);     //enable inactivation of histos, nTuples
-	G4int id = analysis->CreateH1("h1.1", "Primary kinetic energy", energyBins, "MeV");
+	G4int id = analysis->CreateH1(
+		"h1.1", "Primary kinetic energy", fSettings.energyBins, "MeV"
+	);
 	auto* const primaryEnergy = analysis->GetH1(id);
 	AnnotateHistogram(
 		primaryEnergy,
 		"h1.1",
 		"primary kinetic energy distribution",
-		"primary kinetic energy [MeV]"
+		"primary kinetic energy [MeV]",
+		fSettings
 	);
 	analysis->SetH1XAxisTitle(id, "Primary kinetic energy [MeV]");
 	analysis->SetH1YAxisTitle(id, "Accumulated primary kinetic energy [MeV]");
 	analysis->SetH1Activation(id, true);
 	// This is the direction histogram
 	id = analysis->CreateH2("h2.dir", "Primary source direction",
-				directionHistogramBins[0], kSourceAzimuthMin, kSourceAzimuthMax,
-				directionHistogramBins[1], kSourceCosineMin, kSourceCosineMax);
+				fSettings.directionHistogramBins[0], kSourceAzimuthMin, kSourceAzimuthMax,
+				fSettings.directionHistogramBins[1], kSourceCosineMin, kSourceCosineMax);
 	AnnotateHistogram(
 		analysis->GetH2(id),
 		"h2.dir",
 		"primary source direction",
-		"primary count"
+		"primary count",
+		fSettings
 	);
 	analysis->SetH2XAxisTitle(id, "Global azimuth phi [rad]");
 	analysis->SetH2YAxisTitle(id, "Cosine of global polar angle");
@@ -119,13 +116,14 @@ void HistoManager::Book() const
 	analysis->SetH2Activation(id,true);
 	// This is the position histogram.
 	id = analysis->CreateH2("h2.pos", "Primary source position",
-				positionHistogramBins[0], kSourceAzimuthMin, kSourceAzimuthMax,
-				positionHistogramBins[1], kSourceCosineMin, kSourceCosineMax);
+				fSettings.positionHistogramBins[0], kSourceAzimuthMin, kSourceAzimuthMax,
+				fSettings.positionHistogramBins[1], kSourceCosineMin, kSourceCosineMax);
 	AnnotateHistogram(
 		analysis->GetH2(id),
 		"h2.pos",
 		"primary source position",
-		"primary count"
+		"primary count",
+		fSettings
 	);
 	analysis->SetH2XAxisTitle(id, "Global azimuth phi [rad]");
 	analysis->SetH2YAxisTitle(id, "Cosine of global polar angle");
@@ -134,14 +132,16 @@ void HistoManager::Book() const
 	// Now we activate the phantom histograms, 3 per phantom
 	// This is the new ionization energy histogram, it gets the ID 2
 	id = analysis->CreateH2(
-		"h2.ion", "Ionizing energy deposition", energyBins, detectorBins,
+		"h2.ion", "Ionizing energy deposition", fSettings.energyBins,
+		fSettings.detectorBins,
 		"MeV", "none", "none", "none"
 	);
 	AnnotateHistogram(
 		analysis->GetH2(id),
 		"h2.ion",
 		"ionizing energy deposition",
-		"total energy deposit minus non-ionizing energy deposit [MeV]"
+		"total energy deposit minus non-ionizing energy deposit [MeV]",
+		fSettings
 	);
 	analysis->SetH2XAxisTitle(id, "Primary kinetic energy [MeV]");
 	analysis->SetH2YAxisTitle(id, "Sensitive detector ID");
@@ -150,29 +150,33 @@ void HistoManager::Book() const
 	// Total local energy deposition, retained separately so that atmospheric
 	// heating estimates do not have to rely on the ionizing component alone.
 	id = analysis->CreateH2(
-		"h2.edep", "Total energy deposition", energyBins, detectorBins,
+		"h2.edep", "Total energy deposition", fSettings.energyBins,
+		fSettings.detectorBins,
 		"MeV", "none", "none", "none"
 	);
 	AnnotateHistogram(
 		analysis->GetH2(id),
 		"h2.edep",
 		"total energy deposition",
-		"total energy deposit [MeV]"
+		"total energy deposit [MeV]",
+		fSettings
 	);
 	analysis->SetH2XAxisTitle(id, "Primary kinetic energy [MeV]");
 	analysis->SetH2YAxisTitle(id, "Sensitive detector ID");
 	analysis->SetH2ZAxisTitle(id, "Total energy deposited [MeV]");
 	analysis->SetH2Activation(id,true);
-	for (G4int phantomIndex = 0; phantomIndex < numberOfPhantoms; ++phantomIndex){
+	for (G4int phantomIndex = 0; phantomIndex < fSettings.phantomCount; ++phantomIndex){
 		G4cout << "### AtRIS: Initializing higher order histograms for "
-		       << numberOfPhantoms << " phantoms, with a total number of histograms "
+		       << fSettings.phantomCount
+		       << " phantoms, with a total number of histograms "
 		       << "equal to "
-		       << numberOfPhantoms*kPhantomHistogramsPerPhantom
+		       << fSettings.phantomCount*kPhantomHistogramsPerPhantom
 		          + kBaseHistogramCount << G4endl;
 		// Post-processing removes the extra detector boundary from interface data.
 		const G4String suffix = std::to_string(phantomIndex);
 		id = analysis->CreateH2(
-			"h2.dos" + suffix, "Phantom energy response", energyBins, detectorBins,
+			"h2.dos" + suffix, "Phantom energy response", fSettings.energyBins,
+			fSettings.detectorBins,
 			"MeV", "none", "none", "none"
 		);
 		auto* const dose = analysis->GetH2(id);
@@ -180,7 +184,8 @@ void HistoManager::Book() const
 			dose,
 			"h2.dos" + suffix,
 			"phantom energy response",
-			"response coefficient times crossing kinetic energy [eV]"
+			"response coefficient times crossing kinetic energy [eV]",
+			fSettings
 		);
 		if (dose != nullptr) dose->add_annotation("atris.phantom_id", suffix);
 		analysis->SetH2XAxisTitle(id, "Primary kinetic energy [MeV]");
@@ -190,14 +195,16 @@ void HistoManager::Book() const
 		// same as above, but only for the equivalent dose rate
 		id = analysis->CreateH2(
 			"h2.equi" + suffix, "Radiation-weighted phantom energy response",
-			energyBins, detectorBins, "MeV", "none", "none", "none"
+			fSettings.energyBins, fSettings.detectorBins,
+			"MeV", "none", "none", "none"
 		);
 		auto* const equivalentDose = analysis->GetH2(id);
 		AnnotateHistogram(
 			equivalentDose,
 			"h2.equi" + suffix,
 			"radiation-weighted phantom energy response",
-			"response coefficient times crossing kinetic energy and radiation weight [eV]"
+			"response coefficient times crossing kinetic energy and radiation weight [eV]",
+			fSettings
 		);
 		if (equivalentDose != nullptr) {
 			equivalentDose->add_annotation("atris.phantom_id", suffix);
@@ -208,7 +215,8 @@ void HistoManager::Book() const
 		analysis->SetH2Activation(id,true);
 		// a histogram to hold the count rates if the first phantom
 		id = analysis->CreateH2(
-			"h2.rates" + suffix, "Phantom counting response", energyBins, detectorBins,
+			"h2.rates" + suffix, "Phantom counting response", fSettings.energyBins,
+			fSettings.detectorBins,
 			"MeV", "none", "none", "none"
 		);
 		auto* const countRate = analysis->GetH2(id);
@@ -216,7 +224,8 @@ void HistoManager::Book() const
 			countRate,
 			"h2.rates" + suffix,
 			"phantom counting response",
-			"counting response coefficient"
+			"counting response coefficient",
+			fSettings
 		);
 		if (countRate != nullptr) countRate->add_annotation("atris.phantom_id", suffix);
 		analysis->SetH2XAxisTitle(id, "Primary kinetic energy [MeV]");
@@ -226,7 +235,7 @@ void HistoManager::Book() const
 
 	}
 
-	if (!WritesInterfaceNtuple(mode)) return;
+	if (!WritesInterfaceNtuple(fSettings.outputMode)) return;
 
 	id = analysis->CreateNtuple("metadata", "AtRIS output metadata");
 	analysis->CreateNtupleIColumn(id, "schema");
@@ -249,7 +258,7 @@ void HistoManager::Book() const
 	analysis->CreateNtupleDColumn(id, "kinetic_energy_MeV");
 	analysis->CreateNtupleDColumn(id, "primary_energy_MeV");
 	analysis->FinishNtuple(id);
-	if (!WritesStepNtuple(mode)) return;
+	if (!WritesStepNtuple(fSettings.outputMode)) return;
 
 	id = analysis->CreateNtuple("steps", "Particle transport steps");
 	analysis->CreateNtupleIColumn(id, "event_id");
@@ -279,7 +288,7 @@ void HistoManager::Book() const
 
 void HistoManager::FillMetadata() const
 {
-	if (!WritesInterfaceNtuple(mode)) return;
+	if (!WritesInterfaceNtuple(fSettings.outputMode)) return;
 	// One worker records the shared run metadata while Geant4 merges all ntuples.
 	if (G4Threading::G4GetThreadId() != 0) return;
 	auto* const analysis = G4AnalysisManager::Instance();
@@ -292,23 +301,25 @@ void HistoManager::FillMetadata() const
 		kMetadataNtupleId, kMetadataAtrisVersion, ATRIS_VERSION
 	);
 	analysis->FillNtupleSColumn(
-		kMetadataNtupleId, kMetadataInputPrefix, simulationInputPrefix
+		kMetadataNtupleId, kMetadataInputPrefix, fSettings.simulationInputPrefix
 	);
 	analysis->FillNtupleSColumn(
-		kMetadataNtupleId, kMetadataPhysicsList, physicsListName
-	);
-	analysis->FillNtupleIColumn(kMetadataNtupleId, kMetadataOutputMode, mode);
-	analysis->FillNtupleIColumn(
-		kMetadataNtupleId, kMetadataPhantomCount, numberOfPhantoms
+		kMetadataNtupleId, kMetadataPhysicsList, fSettings.physicsListName
 	);
 	analysis->FillNtupleIColumn(
-		kMetadataNtupleId, kMetadataSeedsExplicit, hasExplicitSeeds
+		kMetadataNtupleId, kMetadataOutputMode, fSettings.outputMode
 	);
 	analysis->FillNtupleIColumn(
-		kMetadataNtupleId, kMetadataRandomSeed1, explicitSeeds[0]
+		kMetadataNtupleId, kMetadataPhantomCount, fSettings.phantomCount
 	);
 	analysis->FillNtupleIColumn(
-		kMetadataNtupleId, kMetadataRandomSeed2, explicitSeeds[1]
+		kMetadataNtupleId, kMetadataSeedsExplicit, fSettings.hasExplicitSeeds
+	);
+	analysis->FillNtupleIColumn(
+		kMetadataNtupleId, kMetadataRandomSeed1, fSettings.explicitSeeds[0]
+	);
+	analysis->FillNtupleIColumn(
+		kMetadataNtupleId, kMetadataRandomSeed2, fSettings.explicitSeeds[1]
 	);
 	analysis->AddNtupleRow(kMetadataNtupleId);
 }
