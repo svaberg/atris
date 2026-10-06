@@ -2,6 +2,7 @@
 
 #include "HistoManager.hh"
 #include "OutputMode.hh"
+#include "PhantomResponses.hh"
 #include "RunSettings.hh"
 
 #include "G4AnalysisManager.hh"
@@ -21,9 +22,14 @@
 
 namespace atris {
 
-RunAction::RunAction(G4bool role, const RunSettings& settings)
+RunAction::RunAction(
+  G4bool role,
+  const RunSettings& settings,
+  const PhantomResponses& phantomResponses
+)
   : fHisto(nullptr),
-    fSettings(settings)
+    fSettings(settings),
+    fPhantomResponses(phantomResponses)
 {
   SetMaster(role);
 
@@ -62,7 +68,7 @@ void RunAction::BeginOfRunAction(const G4Run*)
     fSettings.outputFileFormat.empty() ? "csv" : fSettings.outputFileFormat
   );
   if (WritesInterfaceNtuple(fSettings.outputMode)) analysis->SetNtupleMerging(true);
-  fHisto = new HistoManager(fSettings);
+  fHisto = new HistoManager(fSettings, fPhantomResponses);
   if (analysis->IsActive()) {
     analysis->SetFileName(fSettings.outputFileName);
     if (!analysis->OpenFile()) {

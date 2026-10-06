@@ -15,8 +15,8 @@ your source settings. NRLMSIS tables are one optional source for creating a PSF.
 | `<species>.mac` | AtRIS | File selection, Geant4 initialization, source settings, seeds, and event count. |
 | `<species>.bins` | AtRIS | Primary kinetic-energy bin edges, in MeV; the macro names the file explicitly. |
 | `phantoms.txt` | Staging, chunk runner, post-processing, plotting | Selection of named phantom tables, masses, and areas. |
-| `<stem>_response.txt` | AtRIS | Energy-response table named by an `/atris/phantom/radiationFile` command. |
-| `<stem>_counting.txt` | AtRIS | Counting-response table named by an `/atris/phantom/countingFile` command. |
+| `<stem>_response.txt` | AtRIS | Response table named by one or more `/atris/phantom/response` commands. |
+| `<stem>_counting.txt` | AtRIS | Counting-response table named by an `/atris/phantom/response` command. |
 | `<prefix>.chunk.mac`, `chunks.txt` | Chunk workflow | Shared chunk macro and seed plan; see [Scatter/gather files](chunks.md). |
 
 The Python workflow uses the species names `protons` and `alphas`. The
@@ -233,16 +233,16 @@ ramona_zero_0.060MeV_detA          0.5082      6.928
 icru_zero_0.000MeV_detAB       14094.7550   1413.720
 ```
 
-Row order defines the zero-based phantom ID: the first data row is phantom 0,
-the second is phantom 1, and so on. Mass is in grams and area in cm². Use the
-area associated with the response table's calibration. The parser accepts
+The stem identifies the phantom in macros and output filenames. Mass is in
+grams and area in cm². Use the area associated with the response table's
+calibration. The parser accepts
 numeric mass and area values without checking that they are positive;
 post-processing requires physically valid values.
 
 The C++ executable does not read the mass or area. These values do not affect
 Geant4 transport or the raw phantom histograms. `atris-postprocess` reads them
 from `phantoms.txt` and applies the mass and area factors when producing
-`.doseN`, `.equiN`, and `.ratesN`; see the
+`.<stem>.dose`, `.<stem>.equi`, and `.<stem>.rates`; see the
 [normalization formulas](outputs.md#processed-response-tables).
 
 For each stem, staging locates `<stem>_response.txt` and `<stem>_counting.txt`
@@ -256,8 +256,8 @@ macros name each staged response and counting table explicitly.
 
 Each table starts with an uncommented, whitespace-separated list of integer
 PDG particle codes. Every subsequent particle row contains 650 coefficients,
-in the same particle order as the header. All loaded radiation and counting
-tables must have identical PDG headers. The executable expects
+in the same particle order as the header. All loaded response tables must have
+identical PDG headers. The executable expects
 `650 × number_of_PDG_codes` numeric values per table; a wrong count is reported
 and stops execution.
 
@@ -266,8 +266,10 @@ with 0.02 spacing in log10 energy. The lookup uses
 `max(0, int(log10(kinetic_energy/eV) / 0.02))`, without interpolation or an
 upper-bound clamp. Keep energies inside the represented range.
 
-Radiation coefficients multiply the crossing particle's kinetic energy in eV;
-counting coefficients are accumulated directly. See the
+The macro assigns each table one of three accumulation modes: `coefficient`
+accumulates the table value directly, `energy` also multiplies by crossing
+kinetic energy in eV, and `radiation-weighted-energy` additionally applies the
+implemented radiation weight. See the
 [normalization formulas](outputs.md#processed-response-tables). A dummy counting
 table created with `--accept-missing-counting` contains ones and represents
 unit counting response, not a measured efficiency.

@@ -19,8 +19,9 @@ with commands of this form:
 /atris/geometryFile protons.gdml
 /atris/energyBinsFile protons.bins
 /atris/outputFile protons
-/atris/phantom/radiationFile 0 ramona_zero_0.060MeV_detA_response.txt
-/atris/phantom/countingFile 0 ramona_zero_0.060MeV_detA_counting.txt
+/atris/phantom/response ramona_zero_0.060MeV_detA dos energy ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response ramona_zero_0.060MeV_detA equi radiation-weighted-energy ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response ramona_zero_0.060MeV_detA rates coefficient ramona_zero_0.060MeV_detA_counting.txt
 /atris/physicsList FTFP_BERT_HP
 /atris/outputMode response
 /atris/outputFormat csv
@@ -32,8 +33,10 @@ with commands of this form:
 
 Geometry, energy bins, output, and phantom tables do not have to share the
 macro's basename. Paths are interpreted relative to the directory in which
-AtRIS is run. Phantom IDs begin at zero and remain contiguous. Omit the phantom
-commands for a run without phantom responses.
+AtRIS is run. Each phantom response command supplies a phantom stem, response
+name, accumulation mode, and table path. A phantom can have any number of
+uniquely named responses. Omit these commands for a run without phantom
+responses.
 
 The pre-initialization commands must precede `/run/initialize`. The rest of the
 macro configures the Geant4 source and starts transport with `/run/beamOn`.

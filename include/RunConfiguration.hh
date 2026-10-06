@@ -2,9 +2,8 @@
 #define RunConfiguration_hh
 
 #include "G4GenericMessenger.hh"
+#include "G4UImessenger.hh"
 #include "globals.hh"
-
-#include <map>
 
 class G4RunManager;
 class G4GDMLParser;
@@ -15,7 +14,7 @@ namespace atris {
 class PhantomResponses;
 struct RunSettings;
 
-class RunConfiguration
+class RunConfiguration : public G4UImessenger
 {
   public:
     RunConfiguration(
@@ -24,14 +23,11 @@ class RunConfiguration
       ::G4GDMLParser& parser,
       PhantomResponses& phantomResponses
     );
+    ~RunConfiguration() override;
+
+    void SetNewValue(G4UIcommand* command, G4String newValue) override;
 
   private:
-    struct PhantomFiles
-    {
-      G4String radiation;
-      G4String counting;
-    };
-
     void DeclareHistogramBinsCommand(
       const G4String& name,
       void (RunConfiguration::*setter)(G4int, G4int),
@@ -43,13 +39,7 @@ class RunConfiguration
     void SetEnergyBinsFile(G4String requestedFile);
     void SetOutputFile(G4String requestedFile);
     void SetRandomSeeds(G4long firstSeed, G4long secondSeed);
-    void SetPhantomRadiationFile(G4int phantomIndex, G4String fileName);
-    void SetPhantomCountingFile(G4int phantomIndex, G4String fileName);
-    void SetPhantomFile(
-      G4int phantomIndex,
-      G4String fileName,
-      G4bool radiation
-    );
+    void SetPhantomResponse(G4String specification);
     void SetPhysicsList(G4String requestedPhysicsList);
     void SetOutputMode(G4String requestedOutputMode);
     void SetOutputFormat(G4String requestedOutputFormat);
@@ -70,13 +60,11 @@ class RunConfiguration
     G4bool fHasUserActions = false;
     G4GenericMessenger fMessenger;
     G4GenericMessenger fPhantomMessenger;
-    std::map<G4int, PhantomFiles> fPhantomFiles;
     G4UIcommand* fGeometryFileCommand = nullptr;
     G4UIcommand* fEnergyBinsFileCommand = nullptr;
     G4UIcommand* fOutputFileCommand = nullptr;
     G4UIcommand* fRandomSeedsCommand = nullptr;
-    G4UIcommand* fPhantomRadiationFileCommand = nullptr;
-    G4UIcommand* fPhantomCountingFileCommand = nullptr;
+    G4UIcommand* fPhantomResponseCommand = nullptr;
     G4UIcommand* fPhysicsListCommand = nullptr;
     G4UIcommand* fOutputModeCommand = nullptr;
     G4UIcommand* fOutputFormatCommand = nullptr;

@@ -30,11 +30,7 @@ constexpr G4int kProtonPDG = 2212;
 // H2 histogram IDs are assigned in HistoManager::Book() in this order.
 constexpr G4int kIonizingEnergyHistogramId = 2;
 constexpr G4int kTotalEnergyHistogramId = 3;
-constexpr G4int kFirstPhantomHistogramId = 4;
-constexpr G4int kPhantomHistogramsPerPhantom = 3;
-constexpr G4int kPhantomDoseHistogramOffset = 0;
-constexpr G4int kPhantomEquivalentDoseHistogramOffset = 1;
-constexpr G4int kPhantomCountingHistogramOffset = 2;
+constexpr G4int kFirstResponseHistogramId = 4;
 
 }  // namespace atris
 

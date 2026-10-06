@@ -40,9 +40,9 @@ atris-stage-phantoms . --copy
 ```
 
 For your own selection, edit `phantoms.txt` before staging. Each stem identifies
-`<stem>_response.txt` and `<stem>_counting.txt`; row order assigns the phantom
-IDs. The staging command places those named files in the run directory. See
-[phantom selection](inputs.md#phantom-selection) for row order and metadata,
+`<stem>_response.txt` and `<stem>_counting.txt` and remains the identity used in
+output filenames. The staging command places those named files in the run
+directory. See [phantom selection](inputs.md#phantom-selection) for metadata,
 [response-matrix format](inputs.md#phantom-response-matrices) for the table
 layout and fixed energy grid, and [atris-stage-phantoms](commands/atris-stage-phantoms.md)
 for archive paths and staging options.

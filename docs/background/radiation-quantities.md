@@ -68,8 +68,8 @@ therefore determines which material and detector response the result describes.
 
 ## Radiation-weighted response
 
-The `.equiN` output applies the radiation weights implemented in AtRIS to the
-phantom response. It is intended to distinguish radiation types, rather than
+The `.<stem>.equi` output applies the radiation weights implemented in AtRIS to
+the phantom response. It is intended to distinguish radiation types, rather than
 treat equal deposited energies as interchangeable. It is not effective dose,
 which requires tissue weighting and an appropriate anatomical model.
 
@@ -80,7 +80,7 @@ matches a radiation-protection standard solely from the output's name.
 ## Counts and count rates
 
 The counting table supplies the detector response for a crossing particle.
-The processed `.ratesN` output is a response per primary, not counts per second.
+The processed `.<stem>.rates` output is a response per primary, not counts per second.
 A rate requires combining it with a physical incident source rate, using a
 consistent source area and angular distribution. The same simulated particle
 field can give different detector responses for different phantom tables.

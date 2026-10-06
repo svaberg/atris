@@ -13,6 +13,7 @@ import uproot
 from atris_tools.atrismacrogen import macroGenManager
 from atris_tools.gather import gather_simulation
 from atris_tools.interface_output import read_root
+from atris_tools.postprocess import process_run
 from atris_tools.response_histograms import ResponseHistogramReader
 from atris_tools.root_output import has_ntuple, read_ntuple
 from atris_tools.run_chunks import run_chunks
@@ -27,12 +28,12 @@ RESPONSE_STEM = "ramona_zero_0.060MeV_detA"
 EXPECTED_HISTOGRAM_SUFFIXES = {
     "_h1_h1.1.csv",
     "_h2_h2.dir.csv",
-    "_h2_h2.dos0.csv",
-    "_h2_h2.equi0.csv",
+    "_h2_h2.%s.dos.csv" % RESPONSE_STEM,
+    "_h2_h2.%s.equi.csv" % RESPONSE_STEM,
     "_h2_h2.edep.csv",
     "_h2_h2.ion.csv",
     "_h2_h2.pos.csv",
-    "_h2_h2.rates0.csv",
+    "_h2_h2.%s.rates.csv" % RESPONSE_STEM,
 }
 EXPECTED_HISTOGRAM_SUFFIXES_WITHOUT_PHANTOMS = {
     "_h1_h1.1.csv",
@@ -44,12 +45,12 @@ EXPECTED_HISTOGRAM_SUFFIXES_WITHOUT_PHANTOMS = {
 EXPECTED_ROOT_HISTOGRAMS = {
     "h1.1",
     "h2.dir",
-    "h2.dos0",
+    "h2.%s.dos" % RESPONSE_STEM,
     "h2.edep",
-    "h2.equi0",
+    "h2.%s.equi" % RESPONSE_STEM,
     "h2.ion",
     "h2.pos",
-    "h2.rates0",
+    "h2.%s.rates" % RESPONSE_STEM,
 }
 EXPECTED_ROOT_METADATA = {
     "schema",
@@ -110,6 +111,7 @@ def write_macro(
     if phantom_files is None:
         phantom_files = [
             (
+                RESPONSE_STEM,
                 RESPONSE_STEM + "_response.txt",
                 RESPONSE_STEM + "_counting.txt",
             )
@@ -119,13 +121,15 @@ def write_macro(
         "/atris/energyBinsFile " + energy_bins_file,
         "/atris/outputFile " + output_file,
     ]
-    for phantom_id, (response_file, counting_file) in enumerate(phantom_files):
+    for stem, response_file, counting_file in phantom_files:
         lines.extend(
             (
-                "/atris/phantom/radiationFile %i %s"
-                % (phantom_id, response_file),
-                "/atris/phantom/countingFile %i %s"
-                % (phantom_id, counting_file),
+                "/atris/phantom/response %s dos energy %s"
+                % (stem, response_file),
+                "/atris/phantom/response %s equi "
+                "radiation-weighted-energy %s" % (stem, response_file),
+                "/atris/phantom/response %s rates coefficient %s"
+                % (stem, counting_file),
             )
         )
     lines.extend(
@@ -174,7 +178,7 @@ def prepare_run(
             PHANTOMS / (RESPONSE_STEM + "_counting.txt"),
             run_directory / counting_file,
         )
-        phantom_files.append((response_file, counting_file))
+        phantom_files.append((stem, response_file, counting_file))
         phantom_rows.append("%s 1.0 1.0\n" % stem)
     if phantom_rows:
         (run_directory / "phantoms.txt").write_text("".join(phantom_rows))
@@ -337,6 +341,22 @@ def test_macro_runs_one_worker_and_writes_expected_histograms(
             )
             assert annotations["atris.random_seed_pairs"] == "123456:654321"
             assert annotations["atris.quantity"]
+        for response_name, accumulation, source_suffix in (
+            ("dos", "energy", "response"),
+            ("equi", "radiation-weighted-energy", "response"),
+            ("rates", "coefficient", "counting"),
+        ):
+            path = tmp_path / (
+                "protons_h2_h2.%s.%s.csv" % (RESPONSE_STEM, response_name)
+            )
+            annotations = histogram_annotations(path)
+            assert annotations["atris.phantom_stem"] == RESPONSE_STEM
+            assert annotations["atris.response_name"] == response_name
+            assert annotations["atris.response_file"] == (
+                "%s_%s.txt" % (RESPONSE_STEM, source_suffix)
+            )
+            assert annotations["atris.response_accumulation"] == accumulation
+            assert "atris.phantom_id" not in annotations
 
     with ResponseHistogramReader(tmp_path / "protons") as histograms:
         total_deposition = histograms.values("h2.edep")
@@ -733,15 +753,15 @@ def test_zero_phantoms_runs_without_phantom_histograms(tmp_path, atris_command):
 
 
 @pytest.mark.regression
-def test_macro_loads_each_explicit_phantom_pair(tmp_path, atris_command):
+def test_macro_loads_each_explicit_phantom(tmp_path, atris_command):
     prepare_run(tmp_path, phantom_count=2)
 
     result = run_atris(atris_command, tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "loading radiation response matrix for phantom 0" in result.stdout
-    assert "loading radiation response matrix for phantom 1" in result.stdout
-    assert (tmp_path / "protons_h2_h2.dos1.csv").is_file()
+    assert "for phantom '%s'" % RESPONSE_STEM in result.stdout
+    assert "for phantom 'phantom-1'" in result.stdout
+    assert (tmp_path / "protons_h2_h2.phantom-1.dos.csv").is_file()
 
 
 @pytest.mark.regression
@@ -763,19 +783,48 @@ def test_missing_explicit_phantom_file_exits_nonzero(
 
 
 @pytest.mark.regression
-def test_phantom_ids_must_be_contiguous_in_macro(tmp_path, atris_command):
-    macro = prepare_run(tmp_path, phantom_count=2)
+def test_macro_accepts_an_additional_named_response(tmp_path, atris_command):
+    macro = prepare_run(tmp_path)
+    extra = RESPONSE_STEM + "_bounting.txt"
+    shutil.copyfile(tmp_path / (RESPONSE_STEM + "_counting.txt"), tmp_path / extra)
     macro.write_text(
-        macro.read_text()
-        .replace("/atris/phantom/radiationFile 1 ", "/atris/phantom/radiationFile 2 ")
-        .replace("/atris/phantom/countingFile 1 ", "/atris/phantom/countingFile 2 ")
+        macro.read_text().replace(
+            "/atris/physicsList ",
+            "/atris/phantom/response %s bounting coefficient %s\n"
+            "/atris/physicsList " % (RESPONSE_STEM, extra),
+        )
     )
 
     result = run_atris(atris_command, tmp_path)
 
-    assert result.returncode != 0
-    assert "phantom IDs must be contiguous from 0" in result.stderr
-    assert "expected 1 but found 2" in result.stderr
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (tmp_path / ("protons_h2_h2.%s.bounting.csv" % RESPONSE_STEM)).is_file()
+
+
+@pytest.mark.regression
+def test_postprocess_writes_stem_named_phantom_outputs(
+    tmp_path,
+    monkeypatch,
+    atris_command,
+):
+    prepare_run(tmp_path, interface=True)
+    psf = (FIXTURE / "simulation.psf").read_text()
+    psf += (
+        "2.000000 3.000000 0.000000 6.283185 0.000000 3.141593 "
+        "2 293.150000 1.000000e-25 1.000000e-10 1.000000 0.000000\n"
+    )
+    (tmp_path / "simulation.psf").write_text(psf)
+    result = run_atris(atris_command, tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    monkeypatch.chdir(tmp_path)
+
+    process_run("protons")
+
+    for response_name in ("dose", "equi", "rates"):
+        assert Path("protons.%s.%s" % (RESPONSE_STEM, response_name)).is_file()
+    assert not list(tmp_path.glob("protons.dose*"))
+    assert not list(tmp_path.glob("protons.equi*"))
+    assert not list(tmp_path.glob("protons.rates*"))
 
 
 @pytest.mark.regression

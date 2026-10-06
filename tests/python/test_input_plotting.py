@@ -9,8 +9,9 @@ MACRO = """\
 /atris/geometryFile protons.gdml
 /atris/energyBinsFile protons.bins
 /atris/outputFile protons
-/atris/phantom/radiationFile 0 test-phantom_response.txt
-/atris/phantom/countingFile 0 test-phantom_counting.txt
+/atris/phantom/response test-phantom dos energy test-phantom_response.txt
+/atris/phantom/response test-phantom equi radiation-weighted-energy test-phantom_response.txt
+/atris/phantom/response test-phantom rates coefficient test-phantom_counting.txt
 /gps/particle proton
 /gps/ene/type User
 /gps/hist/type energy
@@ -291,7 +292,7 @@ def test_plot_inputs_writes_planet_specification_alongside_species_inputs(
     assert errors == []
 
 
-def test_plot_inputs_reports_missing_phantom_pair_but_keeps_species_plot(
+def test_plot_inputs_reports_missing_phantom_response_but_keeps_species_plot(
     tmp_path, monkeypatch, gdml_text
 ):
     prepare_inputs(tmp_path, gdml_text)
@@ -302,11 +303,11 @@ def test_plot_inputs_reports_missing_phantom_pair_but_keeps_species_plot(
 
     assert filenames == ["protons.inputs.png"]
     assert errors == [
-        "phantom 0 inputs: missing test-phantom_counting.txt"
+        "phantom test-phantom inputs: missing test-phantom_counting.txt"
     ]
 
 
-def test_plot_inputs_uses_numbered_name_without_phantom_metadata(
+def test_plot_inputs_uses_macro_stem_without_phantom_metadata(
     tmp_path, monkeypatch, gdml_text
 ):
     prepare_inputs(tmp_path, gdml_text)
@@ -315,5 +316,8 @@ def test_plot_inputs_uses_numbered_name_without_phantom_metadata(
 
     filenames, errors = input_plotting.plot_inputs()
 
-    assert filenames == ["protons.inputs.png", "phantom-0.inputs.png"]
+    assert filenames == [
+        "protons.inputs.png",
+        "phantom.test-phantom.inputs.png",
+    ]
     assert errors == []

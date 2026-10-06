@@ -170,12 +170,14 @@ class ResponseHistogramReader:
             )
         return values
 
-    def phantom_count(self):
-        indexes = {
-            int(match.group(1))
-            for name in self.names()
-            if (match := re.fullmatch(r"h2\.dos(\d+)", name)) is not None
-        }
-        if indexes and indexes != set(range(max(indexes) + 1)):
-            raise ValueError("Phantom response histogram indexes are not contiguous")
-        return len(indexes)
+    def responses(self):
+        """Return response names grouped by their phantom stem."""
+        responses = {}
+        for name in self.names():
+            match = re.fullmatch(r"h2\.(.+)\.([^.]+)", name)
+            if match is not None:
+                responses.setdefault(match.group(1), set()).add(match.group(2))
+        return responses
+
+    def phantom_stems(self):
+        return set(self.responses())

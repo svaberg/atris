@@ -106,7 +106,7 @@ def test_input_output_warnings_report_mismatched_run_files(tmp_path, monkeypatch
         "protons_h1_h1.1.csv records 8",
         "protons: simulation.psf defines 2 detector layers, but "
         "protons_h2_h2.ion.csv records 3",
-        "protons: phantoms.txt defines 1 phantoms, but raw output contains 0",
+        "protons: phantoms.txt selects test, but raw output contains no phantoms",
     ]
 
 
@@ -174,28 +174,31 @@ def test_process_psf_and_phantoms_return_numpy_data(tmp_path, monkeypatch):
 
     shutil.copy2(FIXTURE / "phantoms.txt", tmp_path)
     monkeypatch.chdir(tmp_path)
-    phantoms = postprocess.process_phantoms(1)
+    phantoms = postprocess.process_phantoms(["icru_zero"])
     np.testing.assert_allclose(phantoms, [[14094.7550, 1413.72]])
 
 
 def test_process_phantoms_accepts_run_without_phantoms(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
-    phantoms = postprocess.process_phantoms(0)
+    phantoms = postprocess.process_phantoms([])
 
     assert phantoms.shape == (0, 2)
 
 
-def test_process_phantoms_follows_row_order(tmp_path, monkeypatch):
+def test_process_phantoms_uses_stems_independently_of_row_order(
+    tmp_path,
+    monkeypatch,
+):
     (tmp_path / "phantoms.txt").write_text(
         "second  30.5 40.5\n"
         "first   10.5 20.5\n"
     )
     monkeypatch.chdir(tmp_path)
 
-    phantoms = postprocess.process_phantoms(2)
+    phantoms = postprocess.process_phantoms(["first", "second"])
 
-    np.testing.assert_allclose(phantoms, [[30.5, 40.5], [10.5, 20.5]])
+    np.testing.assert_allclose(phantoms, [[10.5, 20.5], [30.5, 40.5]])
 
 
 def test_main_skips_missing_species(tmp_path, monkeypatch, caplog):
@@ -247,7 +250,7 @@ def test_postprocess_reads_root_response_histograms(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     with ResponseHistogramReader("protons") as histograms:
-        assert histograms.phantom_count() == 0
+        assert histograms.phantom_stems() == set()
         np.testing.assert_array_equal(
             histograms.axes(PRIMARY_HISTOGRAM)[0],
             [1.0, 10.0, 100.0],

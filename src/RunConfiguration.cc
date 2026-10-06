@@ -13,11 +13,13 @@
 #include "G4RunManager.hh"
 #include "G4StepLimiterPhysics.hh"
 #include "G4UIcommand.hh"
+#include "G4UIparameter.hh"
 #include "Randomize.hh"
 
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <utility>
 #include <vector>
 
@@ -103,25 +105,32 @@ RunConfiguration::RunConfiguration(
   randomSeedsCommand.SetStates(G4State_PreInit);
   fRandomSeedsCommand = randomSeedsCommand.command;
 
-  auto& phantomRadiationFileCommand = fPhantomMessenger.DeclareMethod(
-    "radiationFile",
-    &RunConfiguration::SetPhantomRadiationFile,
-    "Set one phantom's radiation response file."
+  fPhantomResponseCommand = new G4UIcommand(
+    "/atris/phantom/response",
+    this
   );
-  phantomRadiationFileCommand.SetParameterName(G4int{0}, "id", false);
-  phantomRadiationFileCommand.SetParameterName(G4int{1}, "fileName", false);
-  phantomRadiationFileCommand.SetStates(G4State_PreInit);
-  fPhantomRadiationFileCommand = phantomRadiationFileCommand.command;
-
-  auto& phantomCountingFileCommand = fPhantomMessenger.DeclareMethod(
-    "countingFile",
-    &RunConfiguration::SetPhantomCountingFile,
-    "Set one phantom's counting response file."
+  fPhantomResponseCommand->SetGuidance(
+    "Add a named response table for a phantom."
   );
-  phantomCountingFileCommand.SetParameterName(G4int{0}, "id", false);
-  phantomCountingFileCommand.SetParameterName(G4int{1}, "fileName", false);
-  phantomCountingFileCommand.SetStates(G4State_PreInit);
-  fPhantomCountingFileCommand = phantomCountingFileCommand.command;
+  fPhantomResponseCommand->SetParameter(
+    new G4UIparameter("phantomStem", 's', false)
+  );
+  fPhantomResponseCommand->SetParameter(
+    new G4UIparameter("responseName", 's', false)
+  );
+  auto* const accumulationParameter = new G4UIparameter(
+    "accumulation",
+    's',
+    false
+  );
+  accumulationParameter->SetParameterCandidates(
+    "coefficient energy radiation-weighted-energy"
+  );
+  fPhantomResponseCommand->SetParameter(accumulationParameter);
+  fPhantomResponseCommand->SetParameter(
+    new G4UIparameter("file", 's', false)
+  );
+  fPhantomResponseCommand->AvailableForStates(G4State_PreInit);
 
   auto& physicsListCommand = fMessenger.DeclareMethod(
     "physicsList",
@@ -159,6 +168,19 @@ RunConfiguration::RunConfiguration(
     "Set the azimuth and cosine bin counts for the source-position histogram."
   );
 
+}
+
+RunConfiguration::~RunConfiguration()
+{
+  delete fPhantomResponseCommand;
+}
+
+void RunConfiguration::SetNewValue(
+  G4UIcommand* const command,
+  G4String newValue
+)
+{
+  if (command == fPhantomResponseCommand) SetPhantomResponse(newValue);
 }
 
 void RunConfiguration::DeclareHistogramBinsCommand(
@@ -217,7 +239,9 @@ void RunConfiguration::InstallUserActionsIfConfigured()
     || !fHasConfiguredOutputMode
     || !fHasConfiguredOutputFormat
   ) return;
-  fRunManager->SetUserInitialization(new UserActionInitialization(fSettings));
+  fRunManager->SetUserInitialization(
+    new UserActionInitialization(fSettings, fPhantomResponses)
+  );
   fHasUserActions = true;
 }
 
@@ -346,63 +370,36 @@ void RunConfiguration::SetRandomSeeds(
          << secondSeed << G4endl;
 }
 
-void RunConfiguration::SetPhantomRadiationFile(
-  const G4int phantomIndex,
-  G4String fileName
-)
+void RunConfiguration::SetPhantomResponse(G4String specification)
 {
-  SetPhantomFile(phantomIndex, fileName, true);
-}
-
-void RunConfiguration::SetPhantomCountingFile(
-  const G4int phantomIndex,
-  G4String fileName
-)
-{
-  SetPhantomFile(phantomIndex, fileName, false);
-}
-
-void RunConfiguration::SetPhantomFile(
-  const G4int phantomIndex,
-  G4String fileName,
-  const G4bool radiation
-)
-{
-  G4UIcommand* const command = radiation
-    ? fPhantomRadiationFileCommand
-    : fPhantomCountingFileCommand;
-  if (phantomIndex < 0 || fileName.empty()) {
+  std::istringstream fields(specification);
+  G4String phantomStem;
+  G4String responseName;
+  G4String accumulationName;
+  G4String fileName;
+  G4String extra;
+  if (
+    !(fields >> phantomStem >> responseName >> accumulationName >> fileName)
+    || fields >> extra
+  ) {
     G4ExceptionDescription message;
-    message << "Phantom ID must be nonnegative and its filename cannot be empty.";
-    command->CommandFailed(message);
+    message << "Expected: <phantom-stem> <response-name> "
+            << "<accumulation> <file>.";
+    fPhantomResponseCommand->CommandFailed(message);
     return;
   }
-
-  PhantomFiles& files = fPhantomFiles[phantomIndex];
-  G4String& selectedFile = radiation ? files.radiation : files.counting;
-  if (!selectedFile.empty()) {
-    if (selectedFile == fileName) return;
-    G4ExceptionDescription message;
-    message << "Phantom " << phantomIndex << " "
-            << (radiation ? "radiation" : "counting")
-            << " file is configured more than once with different values.";
-    command->CommandFailed(message);
-    return;
-  }
-  selectedFile = std::move(fileName);
-
-  if (files.radiation.empty() || files.counting.empty()) return;
   if (!fPhantomResponses.Add(
-        phantomIndex,
-        files.radiation,
-        files.counting
+        phantomStem,
+        responseName,
+        accumulationName,
+        fileName
       )) {
     G4ExceptionDescription message;
-    message << "Could not configure phantom " << phantomIndex << ".";
-    command->CommandFailed(message);
+    message << "Could not configure response '" << responseName
+            << "' for phantom '" << phantomStem << "'.";
+    fPhantomResponseCommand->CommandFailed(message);
     return;
   }
-  fSettings.phantomCount = fPhantomResponses.GetCount();
 }
 
 void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)

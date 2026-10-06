@@ -34,8 +34,9 @@ atris-plot .
 Post-processing needs `simulation.psf`, the species inputs, and optional
 `phantoms.txt` alongside the gathered histograms. It produces ionizing and
 total energy-deposition response tables (`.ioni` and `.edep`) for each
-available species and, when phantoms are selected, `.doseN`, `.equiN`, and
-`.ratesN` tables. Raw output from older AtRIS versions has no `h2.edep` tally;
+available species and, when phantoms are selected, `.<stem>.dose`,
+`.<stem>.equi`, and `.<stem>.rates` tables. Raw output from older AtRIS versions
+has no `h2.edep` tally;
 it remains processable but produces only `.ioni` for atmospheric deposition.
 
 Plotting creates species result images such as `protons.png` and `alphas.png`,

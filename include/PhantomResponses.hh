@@ -4,30 +4,43 @@
 #include "globals.hh"
 
 #include <map>
-#include <string>
+#include <set>
 #include <vector>
 
 namespace atris {
+
+enum class ResponseAccumulation
+{
+  kCoefficient,
+  kEnergy,
+  kRadiationWeightedEnergy
+};
+
+struct PhantomResponse
+{
+  G4String phantomStem;
+  G4String name;
+  G4String fileName;
+  ResponseAccumulation accumulation;
+  const std::vector<G4double>* values;
+};
 
 class PhantomResponses
 {
   public:
     G4bool Add(
-      G4int phantomIndex,
-      const G4String& radiationFile,
-      const G4String& countingFile
+      const G4String& phantomStem,
+      const G4String& responseName,
+      const G4String& accumulationName,
+      const G4String& fileName
     );
 
-    G4int GetCount() const { return static_cast<G4int>(fRadiation.size()); }
+    const std::vector<PhantomResponse>& GetAll() const { return fResponses; }
+    G4int GetPhantomCount() const
+    {
+      return static_cast<G4int>(fPhantomStems.size());
+    }
     G4int FindParticleIndex(G4int pdg) const;
-    G4double GetRadiation(G4int phantomIndex, G4int responseIndex) const
-    {
-      return fRadiation[phantomIndex][responseIndex];
-    }
-    G4double GetCounting(G4int phantomIndex, G4int responseIndex) const
-    {
-      return fCounting[phantomIndex][responseIndex];
-    }
 
   private:
     void ConfigureParticleLookup(
@@ -40,8 +53,9 @@ class PhantomResponses
     G4int fExpectedValueCount = 0;
     std::vector<G4int> fLightParticleIndices;
     std::map<G4int, G4int> fIonIndices;
-    std::vector<std::vector<G4double>> fRadiation;
-    std::vector<std::vector<G4double>> fCounting;
+    std::set<G4String> fPhantomStems;
+    std::map<G4String, std::vector<G4double>> fTables;
+    std::vector<PhantomResponse> fResponses;
 };
 
 }  // namespace atris

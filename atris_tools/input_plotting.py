@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import numpy as np
 
-from .phantoms import read_phantoms
 from .psf import read_psf_layers
 
 
@@ -198,29 +197,31 @@ def read_macro(filename):
 
 def read_macro_phantoms(filename):
     phantoms = {}
-    commands = {
-        "/atris/phantom/radiationFile": "response",
-        "/atris/phantom/countingFile": "counting",
-    }
     with Path(filename).open() as macro:
         for line_number, line in enumerate(macro, start=1):
             fields = line.split()
-            if not fields or fields[0].startswith("#") or fields[0] not in commands:
+            if (
+                not fields
+                or fields[0].startswith("#")
+                or fields[0] != "/atris/phantom/response"
+            ):
                 continue
-            if len(fields) != 3:
+            if len(fields) != 5:
                 raise ValueError(
-                    "Invalid phantom file command at %s:%i"
+                    "Invalid phantom response command at %s:%i"
                     % (filename, line_number)
                 )
-            phantom_id = int(fields[1])
-            file_type = commands[fields[0]]
-            configured = phantoms.setdefault(phantom_id, {})
-            if file_type in configured:
+            stem, response_name, accumulation, response_file = fields[1:]
+            configured = phantoms.setdefault(stem, {})
+            if response_name in configured:
                 raise ValueError(
-                    "Duplicate phantom %s file command at %s:%i"
-                    % (file_type, filename, line_number)
+                    "Duplicate %s response for phantom %s at %s:%i"
+                    % (response_name, stem, filename, line_number)
                 )
-            configured[file_type] = Path(fields[2])
+            configured[response_name] = {
+                "accumulation": accumulation,
+                "file": Path(response_file),
+            }
     return phantoms
 
 
@@ -635,7 +636,6 @@ def read_phantom_table(filename):
 
 
 def plot_phantom_inputs(
-    phantom_id,
     phantom_name,
     radiation_file,
     counting_file,
@@ -644,8 +644,8 @@ def plot_phantom_inputs(
     counting_codes, counting = read_phantom_table(counting_file)
     if not np.array_equal(radiation_codes, counting_codes):
         raise ValueError(
-            "Radiation and counting particle codes differ for phantom %i"
-            % phantom_id
+            "Radiation and counting particle codes differ for phantom "
+            + phantom_name
         )
 
     groups = _particle_groups(radiation_codes)
@@ -703,14 +703,10 @@ def plot_phantom_inputs(
 
     axes[0, 0].set_ylabel("Counting efficiency")
     axes[1, 0].set_ylabel("Ionization response [MeV]")
-    display_name = phantom_name or "Phantom %i" % phantom_id
-    figure.suptitle(display_name)
+    figure.suptitle(phantom_name)
     figure.tight_layout()
-    if phantom_name:
-        safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "-", phantom_name)
-        filename = "phantom.%s.inputs.png" % safe_name
-    else:
-        filename = "phantom-%i.inputs.png" % phantom_id
+    safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "-", phantom_name)
+    filename = "phantom.%s.inputs.png" % safe_name
     figure.savefig(filename)
     plt.close(figure)
     return filename
@@ -737,43 +733,33 @@ def plot_inputs():
         except Exception as error:
             errors.append("simulation PSF: %s" % error)
 
-    try:
-        metadata = {
-            phantom["id"]: phantom["stem"]
-            for phantom in read_phantoms(Path.cwd())
-        }
-    except Exception as error:
-        metadata = {}
-        errors.append("phantom metadata: " + str(error))
-    for phantom_id, configured in sorted(configured_phantoms.items()):
-        missing = {"response", "counting"} - configured.keys()
+    for phantom_name, configured in configured_phantoms.items():
+        missing = {"dos", "rates"} - configured.keys()
         if missing:
             errors.append(
-                "phantom %i inputs: missing %s file command"
-                % (phantom_id, " and ".join(sorted(missing)))
+                "phantom %s inputs: missing %s response"
+                % (phantom_name, " and ".join(sorted(missing)))
             )
             continue
         missing_files = [
-            str(configured[file_type])
-            for file_type in ("response", "counting")
-            if not configured[file_type].is_file()
+            str(configured[response_name]["file"])
+            for response_name in ("dos", "rates")
+            if not configured[response_name]["file"].is_file()
         ]
         if missing_files:
             errors.append(
-                "phantom %i inputs: missing %s"
-                % (phantom_id, ", ".join(missing_files))
+                "phantom %s inputs: missing %s"
+                % (phantom_name, ", ".join(missing_files))
             )
             continue
-        phantom_name = metadata.get(phantom_id)
         try:
             filenames.append(
                 plot_phantom_inputs(
-                    phantom_id,
                     phantom_name,
-                    configured["response"],
-                    configured["counting"],
+                    configured["dos"]["file"],
+                    configured["rates"]["file"],
                 )
             )
         except Exception as error:
-            errors.append("phantom %i inputs: %s" % (phantom_id, error))
+            errors.append("phantom %s inputs: %s" % (phantom_name, error))
     return filenames, errors

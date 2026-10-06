@@ -152,16 +152,19 @@ def _input_output_warnings(simname, histograms):
 
     phantom_path = Path("phantoms.txt")
     if phantom_path.is_file():
-        configured_phantoms = len(read_phantoms(Path.cwd()))
-        output_phantoms = histograms.phantom_count()
-        if output_phantoms != configured_phantoms:
+        configured_stems = {
+            Path(phantom["stem"]).name
+            for phantom in read_phantoms(Path.cwd())
+        }
+        output_stems = histograms.phantom_stems()
+        if output_stems != configured_stems:
             warnings.append(
-                "%s: %s defines %i phantoms, but raw output contains %i"
+                "%s: %s selects %s, but raw output contains %s"
                 % (
                     simname,
                     phantom_path.name,
-                    configured_phantoms,
-                    output_phantoms,
+                    ", ".join(sorted(configured_stems)) or "no phantoms",
+                    ", ".join(sorted(output_stems)) or "no phantoms",
                 )
             )
     return warnings
@@ -177,18 +180,22 @@ def warn_if_inputs_do_not_match_output(simname):
         logger.warning("%s", warning)
 
 
-def process_phantoms(nrphantoms):
-    if nrphantoms == 0:
+def process_phantoms(phantom_stems):
+    if not phantom_stems:
         return np.empty((0, 2))
-    phantoms = read_phantoms(Path.cwd())
-    if len(phantoms) < nrphantoms:
+    phantoms = {
+        Path(phantom["stem"]).name: phantom
+        for phantom in read_phantoms(Path.cwd())
+    }
+    missing = set(phantom_stems) - phantoms.keys()
+    if missing:
         raise ValueError(
-            "AtRIS produced output for more phantoms than phantoms.txt defines"
+            "phantoms.txt has no metadata for " + ", ".join(sorted(missing))
         )
     return np.array(
         [
-            [phantom["mass"], phantom["area"]]
-            for phantom in phantoms[:nrphantoms]
+            [phantoms[stem]["mass"], phantoms[stem]["area"]]
+            for stem in phantom_stems
         ]
     )
 
@@ -226,14 +233,14 @@ def make_output(
     data,
     geometry,
     simname,
-    nphant,
+    phantom_stems,
     atmospheric_extensions=(".ioni",),
 ):
     altitude = (geometry["inn_surface/cm2"] / (4.0 * np.pi)) ** 0.5 / 100000.0
     altitude = altitude - altitude[2]
     altitude = altitude[1:-1, None]
     sdid = geometry["sdid"][1:-1, None]
-    extensions = [".dose", ".equi", ".rates"]
+    extensions = ("dose", "equi", "rates")
     number_format = ["%.5e"] * data[3].shape[1]
     number_format = ["%8.3f"] + number_format
     number_format = ["%5i"] + number_format
@@ -244,10 +251,11 @@ def make_output(
     ]
     outputs.extend(
         (
-            phantom_start + offset,
-            extensions[offset % 3] + str(int(offset / 3)),
+            phantom_start + phantom_index * 3 + response_index,
+            ".%s.%s" % (stem, extension),
         )
-        for offset in range(nphant * 3)
+        for phantom_index, stem in enumerate(phantom_stems)
+        for response_index, extension in enumerate(extensions)
     )
     for hist_index, extension in outputs:
         histogram_data = data[hist_index][1:-1, :]
@@ -266,9 +274,16 @@ def process_run(simname):
         for warning in _input_output_warnings(simname, histograms):
             logger.warning("%s", warning)
         geometry, _ = process_psf()
-        phantom_count = histograms.phantom_count()
+        response_names = histograms.responses()
+        standard_responses = {"dos", "equi", "rates"}
+        phantom_stems = sorted(
+            stem
+            for stem, names in response_names.items()
+            if names & standard_responses
+        )
+        phantom_count = len(phantom_stems)
         energy_edges = histograms.axes(PRIMARY_HISTOGRAM)[0]
-        phantom_data = process_phantoms(phantom_count)
+        phantom_data = process_phantoms(phantom_stems)
         logger.info(
             "Post-processing %s %s output with %i energy bins and %i phantoms",
             simname,
@@ -283,8 +298,8 @@ def process_run(simname):
         names = [PRIMARY_HISTOGRAM, "h2.dir", "h2.pos"]
         names += [name for name, _ in atmospheric_outputs]
         names += [
-            "h2.%s%i" % (quantity, phantom_nr)
-            for phantom_nr in range(phantom_count)
+            "h2.%s.%s" % (stem, quantity)
+            for stem in phantom_stems
             for quantity in ("dos", "equi", "rates")
         ]
         data = [histograms.values(name) for name in names]
@@ -301,7 +316,7 @@ def process_run(simname):
         scaled_data,
         geometry,
         simname,
-        phantom_count,
+        phantom_stems,
         atmospheric_extensions=tuple(
             extension for _, extension in atmospheric_outputs
         ),
@@ -321,8 +336,8 @@ def main():
             "The command processes the protons and alphas prefixes when their "
             "primary histogram files are present. It reads simulation.psf and, "
             "for phantom responses, phantoms.txt; it writes .ioni, .edep when "
-            "total-deposition input is present, and .doseN, .equiN, and .ratesN "
-            "files, replacing existing processed files. "
+            "total-deposition input is present, and stem-named dose, equi, and "
+            "rates files, replacing existing processed files. "
             "Missing species are skipped. This command does not gather chunk "
             "histograms, run simulations, or make plots."
         ),

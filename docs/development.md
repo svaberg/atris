@@ -108,38 +108,31 @@ chunk executions assigned to that worker, so AtRIS would not need worker-count,
 worker-index, or modulo-dispatch logic. Such worker macros would be generated
 execution artifacts rather than the authoritative species configuration.
 
-Phantom configuration should expose the properties of each indexed phantom
-individually rather than packing them into one opaque command. Conceptually,
-the generated macro configuration should provide entries such as:
+Phantom responses are declared independently in the generated macro. Each
+command retains the phantom stem, response name, accumulation rule, and source
+table:
 
 ```text
-/atris/phantom/name              0 ramona_zero_0.060MeV_detA
-/atris/phantom/mass              0 0.5082 g
-/atris/phantom/area              0 6.928 cm2
-/atris/phantom/response/path      0 radiation ramona_zero_0.060MeV_detA_response.txt
-/atris/phantom/response/kernel    0 radiation energy
-/atris/phantom/response/path      0 counting ramona_zero_0.060MeV_detA_counting.txt
-/atris/phantom/response/kernel    0 counting count
+/atris/phantom/response ramona_zero_0.060MeV_detA dos energy ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response ramona_zero_0.060MeV_detA equi radiation-weighted-energy ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response ramona_zero_0.060MeV_detA rates coefficient ramona_zero_0.060MeV_detA_counting.txt
 ```
 
-Mass and cross-sectional area describe the phantom itself and should appear
-once. A phantom should own an arbitrary collection of named response channels,
-not two fixed radiation and counting fields. Each channel identifies its table
-and the calculation that applies its coefficients at a particle crossing. The
-existing radiation and counting tables are the first two channel types: the
-radiation table supplies the dose and equivalent-dose responses, while the
-counting table supplies the count response. Another channel may reuse an
-existing calculation or introduce a new one without being represented as a new
-physical phantom.
+Mass and cross-sectional area describe the phantom itself and remain in
+`phantoms.txt` for post-processing. A phantom owns an arbitrary collection of
+named response channels rather than two fixed radiation and counting fields.
+Each channel identifies its table and the calculation that applies its
+coefficients at a particle crossing. Multiple channels can reuse one table;
+the executable caches that table rather than loading another copy.
 
 The channels' numerical values and table schemas are independent. Channels
 with matching particle and energy indexing may share one lookup for efficiency,
 but this is an implementation optimization rather than a format requirement.
 
-The phantom ID identifies configuration and output; it should not impose a
-numbered filename. Macros should refer directly to the named response files.
-Run preparation may copy those files or create ordinary symbolic links that
-retain their names, and users may equivalently stage them with `ln -s`.
+The phantom stem identifies configuration and output. Macros refer directly to
+the named response files. Run preparation may copy those files or create
+ordinary symbolic links that retain their names, and users may equivalently
+stage them with `ln -s`.
 Numbered aliases such as `radiation_phantom0.txt` and
 `counting_phantom0.txt` have been removed with the executable's filename
 discovery logic.

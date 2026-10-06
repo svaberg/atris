@@ -1,5 +1,5 @@
 # Each row defines one phantom.
-# Row order defines the zero-based phantom ID used in AtRIS input and output.
+# The phantom stem identifies its response tables and processed output.
 # Phantom is the filename stem shared by _response.txt and _counting.txt.
 # Mass is the phantom mass; area is its cross-sectional area.
 # Phantom                                mass [g]   area [cm2]

@@ -5,10 +5,12 @@
 /atris/geometryFile protons.gdml
 /atris/energyBinsFile protons.bins
 /atris/outputFile protons
-/atris/phantom/radiationFile 0 ramona_zero_0.060MeV_detA_response.txt
-/atris/phantom/countingFile 0 ramona_zero_0.060MeV_detA_counting.txt
-/atris/phantom/radiationFile 1 icru_zero_0.000MeV_detAB_response.txt
-/atris/phantom/countingFile 1 icru_zero_0.000MeV_detAB_counting.txt
+/atris/phantom/response ramona_zero_0.060MeV_detA dos energy ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response ramona_zero_0.060MeV_detA equi radiation-weighted-energy ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response ramona_zero_0.060MeV_detA rates coefficient ramona_zero_0.060MeV_detA_counting.txt
+/atris/phantom/response icru_zero_0.000MeV_detAB dos energy icru_zero_0.000MeV_detAB_response.txt
+/atris/phantom/response icru_zero_0.000MeV_detAB equi radiation-weighted-energy icru_zero_0.000MeV_detAB_response.txt
+/atris/phantom/response icru_zero_0.000MeV_detAB rates coefficient icru_zero_0.000MeV_detAB_counting.txt
 
 # Physics and analysis configuration
 /atris/physicsList FTFP_BERT_HP

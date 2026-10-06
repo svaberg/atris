@@ -23,7 +23,7 @@ ENTRY_POINT_HELP = (
     (
         "atris-stage-phantoms",
         "phantoms",
-        ("does not create radiation-response tables", "dummy table"),
+        ("does not create response tables", "dummy table"),
     ),
     (
         "atris-clone",

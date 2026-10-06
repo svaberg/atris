@@ -5,12 +5,16 @@
 
 namespace atris {
 
+class PhantomResponses;
 struct RunSettings;
 
 class UserActionInitialization : public G4VUserActionInitialization
 {
   public:
-    explicit UserActionInitialization(const RunSettings& settings);
+    UserActionInitialization(
+      const RunSettings& settings,
+      const PhantomResponses& phantomResponses
+    );
     ~UserActionInitialization() override;
 
     void Build() const override;
@@ -18,6 +22,7 @@ class UserActionInitialization : public G4VUserActionInitialization
 
   private:
     const RunSettings& fSettings;
+    const PhantomResponses& fPhantomResponses;
 };
 
 }  // namespace atris

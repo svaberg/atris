@@ -2,6 +2,7 @@
 
 #include "PhantomResponseSchema.hh"
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <sstream>
@@ -59,6 +60,29 @@ G4bool ValidateValueCount(
   return false;
 }
 
+G4bool ParseAccumulation(
+  const G4String& name,
+  atris::ResponseAccumulation& accumulation
+)
+{
+  if (name == "coefficient") {
+    accumulation = atris::ResponseAccumulation::kCoefficient;
+    return true;
+  }
+  if (name == "energy") {
+    accumulation = atris::ResponseAccumulation::kEnergy;
+    return true;
+  }
+  if (name == "radiation-weighted-energy") {
+    accumulation = atris::ResponseAccumulation::kRadiationWeightedEnergy;
+    return true;
+  }
+  G4cerr << "### AtRIS: unknown response accumulation '" << name
+         << "'; expected coefficient, energy, or radiation-weighted-energy"
+         << G4endl;
+  return false;
+}
+
 }  // namespace
 
 namespace atris {
@@ -101,54 +125,66 @@ void PhantomResponses::ConfigureParticleLookup(
 }
 
 G4bool PhantomResponses::Add(
-  const G4int phantomIndex,
-  const G4String& radiationFile,
-  const G4String& countingFile
+  const G4String& phantomStem,
+  const G4String& responseName,
+  const G4String& accumulationName,
+  const G4String& fileName
 )
 {
-  if (phantomIndex != GetCount()) {
-    G4cerr << "### AtRIS: phantom IDs must be contiguous from 0; expected "
-           << GetCount() << " but found " << phantomIndex << G4endl;
+  ResponseAccumulation accumulation;
+  if (!ParseAccumulation(accumulationName, accumulation)) return false;
+  const auto duplicate = std::find_if(
+    fResponses.begin(),
+    fResponses.end(),
+    [&](const PhantomResponse& response) {
+      return response.phantomStem == phantomStem
+        && response.name == responseName;
+    }
+  );
+  if (duplicate != fResponses.end()) {
+    G4cerr << "### AtRIS: response '" << responseName
+           << "' is configured more than once for phantom '"
+           << phantomStem << "'" << G4endl;
     return false;
   }
 
-  G4cout << "### AtRIS: loading radiation response matrix for phantom "
-         << phantomIndex << " from " << radiationFile << G4endl << std::flush;
-  ResponseTable radiation;
-  if (!ReadResponseTable(radiationFile, radiation)) return false;
-
-  G4cout << "### AtRIS: loading counting response matrix for phantom "
-         << phantomIndex << " from " << countingFile << G4endl << std::flush;
-  ResponseTable counting;
-  if (!ReadResponseTable(countingFile, counting)) return false;
-
-  if (phantomIndex == 0) {
-    ConfigureParticleLookup(radiation.pdgs, radiationFile);
-  } else if (radiation.pdgs != fParticleCodes) {
-    G4cerr << "### AtRIS: PDG header mismatch: " << radiationFile
-           << " does not match " << fParticleHeaderFile << G4endl;
-    return false;
-  }
-  if (counting.pdgs != fParticleCodes) {
-    G4cerr << "### AtRIS: PDG header mismatch: " << countingFile
-           << " does not match " << fParticleHeaderFile << G4endl;
-    return false;
-  }
-  if (!ValidateValueCount(radiationFile, radiation, fExpectedValueCount)) {
-    return false;
-  }
-  if (!ValidateValueCount(countingFile, counting, fExpectedValueCount)) {
-    return false;
+  auto table = fTables.find(fileName);
+  if (table == fTables.end()) {
+    G4cout << "### AtRIS: loading response '" << responseName
+           << "' for phantom '" << phantomStem << "' from " << fileName
+           << G4endl << std::flush;
+    ResponseTable loaded;
+    if (!ReadResponseTable(fileName, loaded)) return false;
+    if (fParticleCodes.empty()) {
+      ConfigureParticleLookup(loaded.pdgs, fileName);
+    } else if (loaded.pdgs != fParticleCodes) {
+      G4cerr << "### AtRIS: PDG header mismatch: " << fileName
+             << " does not match " << fParticleHeaderFile << G4endl;
+      return false;
+    }
+    if (!ValidateValueCount(fileName, loaded, fExpectedValueCount)) {
+      return false;
+    }
+    table = fTables.emplace(
+      fileName,
+      std::move(loaded.values)
+    ).first;
   }
 
-  fRadiation.push_back(std::move(radiation.values));
-  fCounting.push_back(std::move(counting.values));
+  fPhantomStems.insert(phantomStem);
+  fResponses.push_back({
+    phantomStem,
+    responseName,
+    fileName,
+    accumulation,
+    &table->second,
+  });
   return true;
 }
 
 G4int PhantomResponses::FindParticleIndex(const G4int pdg) const
 {
-  if (fRadiation.empty()) return -1;
+  if (fResponses.empty()) return -1;
   if (std::abs(pdg) < kLightParticlePDGLimit) {
     const G4int index = fLightParticleIndices[pdg + kLightParticlePDGOffset];
     return index != 0 || pdg == kPhotonPDG ? index : -1;

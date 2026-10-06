@@ -46,7 +46,6 @@ def read_phantoms(run_directory):
                 ) from error
             phantoms.append(
                 {
-                    "id": len(phantoms),
                     "stem": columns[0],
                     "mass": mass,
                     "area": area,
@@ -203,9 +202,8 @@ def _stage_phantom(
 
     if dummy is not None:
         logger.info(
-            "Using dummy counting response with values of one for phantom %i "
-            "(%s): %s",
-            phantom["id"],
+            "Using dummy counting response with values of one for phantom "
+            "%s: %s",
             source_stem,
             counting_source,
         )
@@ -238,8 +236,7 @@ def stage_phantoms(
             )
         except (OSError, ValueError) as error:
             logger.error(
-                "Could not stage phantom %i (%s): %s",
-                phantom["id"],
+                "Could not stage phantom %s: %s",
                 phantom["stem"],
                 error,
             )
@@ -257,8 +254,8 @@ def main():
         ),
         epilog=(
             "Each phantoms.txt row must contain file stem, mass, and area; "
-            "row order defines zero-based phantom IDs. The command does not create "
-            "radiation-response tables or change phantoms.txt. Symbolic links are "
+            "the stem identifies the phantom. The command does not create "
+            "response tables or change phantoms.txt. Symbolic links are "
             "updated to match the current selection, while regular destination "
             "files are not overwritten. An error in one row does not prevent "
             "other rows from being staged."

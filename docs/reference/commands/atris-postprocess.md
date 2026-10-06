@@ -13,7 +13,8 @@ is no positional species filter.
 **Inputs:** canonical histogram CSV or ROOT files, `simulation.psf`, and phantom
 mass/area metadata from `phantoms.txt` when phantom products are present.
 **Outputs:** `.ioni`, `.edep` when the raw total-deposition tally is present,
-`.doseN`, `.equiN`, and `.ratesN`, replacing existing processed files.
+and `.<stem>.dose`, `.<stem>.equi`, and `.<stem>.rates`, replacing existing
+processed files.
 Available input/output consistency checks produce warnings.
 
 Phantom mass and area are post-processing scale factors only. They are not
@@ -50,8 +51,8 @@ options:
 The command processes the protons and alphas prefixes when their primary
 histogram files are present. It reads simulation.psf and, for phantom
 responses, phantoms.txt; it writes .ioni, .edep when total-deposition input is
-present, and .doseN, .equiN, and .ratesN files, replacing existing processed
-files. Missing species are skipped. This command does not gather chunk
+present, and stem-named dose, equi, and rates files, replacing existing
+processed files. Missing species are skipped. This command does not gather chunk
 histograms, run simulations, or make plots.
 ```
 

@@ -43,7 +43,7 @@ flowchart TD
     I --> J["atris-postprocess"]
     B --> J
     F -. optional metadata .-> J
-    J --> K[".ioni + .edep + optional .doseN, .equiN, .ratesN"]
+    J --> K[".ioni + .edep + optional stem-named phantom responses"]
     K --> L["atris-plot"]
     I --> L
     E --> L
@@ -144,8 +144,8 @@ atris-stage-phantoms . --copy
 | `phantoms.txt`, selected named tables in `$ATRIS_ROOT/phantoms` | Local named response/counting table copies |
 
 `phantoms.txt` selects two table filename stems with their masses and areas.
-Their row order assigns phantom IDs `0` and `1`. The file contains metadata,
-not the response matrices themselves.
+Each stem remains the phantom's identity in the macro and output filenames.
+The file contains metadata, not the response matrices themselves.
 The named copies in this example are:
 
 ```text
@@ -289,7 +289,7 @@ atris-postprocess .
 | Reads | Creates |
 | --- | --- |
 | Raw proton and alpha CSV or ROOT histograms, `simulation.psf` | `.ioni` and `.edep` for each species |
-| Optional raw phantom histograms and `phantoms.txt` | `.doseN`, `.equiN`, `.ratesN` for each selected phantom and species |
+| Optional raw phantom histograms and `phantoms.txt` | `.<stem>.dose`, `.<stem>.equi`, and `.<stem>.rates` for each selected phantom and species |
 
 The post-processor also checks available `.bins` and `.mac` inputs for
 consistency. The PSF supplies layer volumes and interface areas. When phantoms
@@ -327,8 +327,8 @@ are added when step 4 was followed:
 protons.inputs.png                       # source and atmosphere inputs
 phantom.ramona_zero_0.060MeV_detA.inputs.png
 protons.png                              # source diagnostics and ionization
-protons.ramona_zero_0.060MeV_detA.png       # phantom 0 responses
-protons.icru_zero_0.000MeV_detAB.png        # phantom 1 responses
+protons.ramona_zero_0.060MeV_detA.png       # RAMONA responses
+protons.icru_zero_0.000MeV_detAB.png        # water-sphere responses
 ```
 
 There are corresponding alpha plots. A PNG is a visual summary; the numerical

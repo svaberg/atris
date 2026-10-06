@@ -8,12 +8,17 @@ class G4Run;
 namespace atris {
 
 class HistoManager;
+class PhantomResponses;
 struct RunSettings;
 
 class RunAction : public ::G4UserRunAction
 {
   public:
-    RunAction(G4bool role, const RunSettings& settings);
+    RunAction(
+      G4bool role,
+      const RunSettings& settings,
+      const PhantomResponses& phantomResponses
+    );
     ~RunAction() override;
 
     G4Run* GenerateRun() override;
@@ -23,6 +28,7 @@ class RunAction : public ::G4UserRunAction
   private:
     HistoManager* fHisto;
     const RunSettings& fSettings;
+    const PhantomResponses& fPhantomResponses;
 };
 
 }  // namespace atris

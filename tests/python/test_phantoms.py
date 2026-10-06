@@ -28,7 +28,7 @@ def write_phantoms(
     return contents
 
 
-def test_phantom_ids_follow_row_order(tmp_path):
+def test_phantom_stems_preserve_row_order(tmp_path):
     archive = make_archive(tmp_path)
     run_directory = tmp_path / "run"
     run_directory.mkdir()
@@ -42,10 +42,7 @@ def test_phantom_ids_follow_row_order(tmp_path):
     phantoms = read_phantoms(run_directory)
 
     assert count == 2
-    assert [(phantom["id"], phantom["stem"]) for phantom in phantoms] == [
-        (0, "second"),
-        (1, "first"),
-    ]
+    assert [phantom["stem"] for phantom in phantoms] == ["second", "first"]
     radiation = run_directory / "first_response.txt"
     counting = run_directory / "second_counting.txt"
     assert radiation.is_symlink()

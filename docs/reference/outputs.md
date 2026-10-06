@@ -1,8 +1,9 @@
 # Output files
 
-`<name>` below is the suffix-free simulation prefix; `N` is a zero-based
-phantom ID. The simulation argument's extension selects the Geant4 output
-backend independently of the output mode and must match the macro's
+`<name>` below is the suffix-free simulation prefix. `<stem>` and `<response>`
+are the names supplied by `/atris/phantom/response`. The simulation argument's
+extension selects the Geant4 output backend independently of the output mode
+and must match the macro's
 `/atris/outputFormat` value. Without an extension, the macro value selects the
 backend.
 
@@ -15,16 +16,18 @@ backend.
 | `_h2_h2.pos.csv` / `h2.pos` | Global azimuth, rad; cos(polar angle) | One per primary source position. |
 | `_h2_h2.ion.csv` / `h2.ion` | Primary energy, MeV; detector ID | Total deposit minus non-ionizing deposit, MeV, for steps in non-terminating sensitive layers. |
 | `_h2_h2.edep.csv` / `h2.edep` | Primary energy, MeV; detector ID | Total local energy deposit, MeV, for the same steps and layers as `h2.ion`. |
-| `_h2_h2.dosN.csv` / `h2.dosN` | Primary energy, MeV; interface ID | Radiation response coefficient × crossing kinetic energy in eV. |
-| `_h2_h2.equiN.csv` / `h2.equiN` | Primary energy, MeV; interface ID | The same energy response multiplied by the implemented radiation weight. |
-| `_h2_h2.ratesN.csv` / `h2.ratesN` | Primary energy, MeV; interface ID | Counting response coefficient. |
+| `_h2_h2.<stem>.<response>.csv` / `h2.<stem>.<response>` | Primary energy, MeV; interface ID | The weight selected by the response's accumulation mode. |
 
 All three modes write these histograms. CSV output writes one file per
 histogram; ROOT output stores them as objects in `<name>.root`. There are
-$5 + 3N_{\mathrm{phantom}}$ histogram products, where
-$N_{\mathrm{phantom}}$ is the phantom count. Despite the histogram titles, raw
-phantom values have not yet been divided by primary counts, masses, or interface
-areas.
+$5 + N_{\mathrm{response}}$ histogram products, where
+$N_{\mathrm{response}}$ is the number of declared phantom responses. Despite
+the histogram titles, raw phantom values have not yet been divided by primary
+counts, masses, or interface areas.
+
+The standard generated macros declare `dos`, `equi`, and `rates` responses.
+Other response names are valid raw histograms; `atris-postprocess` only assigns
+its established mass/area scaling to those three standard names.
 
 By default, source-position and direction histograms have 120 azimuth bins from
 0 to $2\pi$ and 60 $\cos\theta$ bins from -1 to 1. Their separate dimensions
@@ -38,8 +41,9 @@ rows. Axes are described by `#axis edges ...` or `#axis fixed N low high`.
 AtRIS adds native Geant4 `#annotation` records identifying the histogram,
 quantity, accumulated weight, simulation input prefix, physics list, output
 mode, phantom count, software version, and random seed pair. Phantom-response
-histograms also record the phantom ID. A gathered histogram records the number
-of represented chunks and all known seed pairs. Other provenance values that
+histograms also record their phantom stem, response name, source file, and
+accumulation mode. A gathered histogram records the number of represented
+chunks and all known seed pairs. Other provenance values that
 differ between compatible chunks are retained with ` | ` separators; they do
 not by themselves prevent gathering.
 
@@ -93,9 +97,9 @@ The recorded angle is rounded to the nearest whole degree, so a stored value of
 | --- | --- |
 | `.ioni` | Ionizing energy deposition per cm³ per primary in the corresponding energy bin, in MeV cm⁻³ primary⁻¹. It is not yet an ion-pair production rate. |
 | `.edep` | Total local energy deposition per cm³ per primary in the corresponding energy bin, in MeV cm⁻³ primary⁻¹. It is not yet a heating rate. |
-| `.doseN` | Phantom energy response per mass per primary, using the table's radiation coefficients and eV energy factor. |
-| `.equiN` | The same response with the code's radiation weighting applied. |
-| `.ratesN` | Counting response per primary, after area scaling. It is not counts per second. |
+| `.<stem>.dose` | Phantom energy response per mass per primary, using the table's radiation coefficients and eV energy factor. |
+| `.<stem>.equi` | The same response with the code's radiation weighting applied. |
+| `.<stem>.rates` | Counting response per primary, after area scaling. It is not counts per second. |
 
 Each row contains:
 
@@ -110,17 +114,17 @@ formats respectively; response values use scientific notation with five
 places after the decimal. The first and last physical layer rows are omitted.
 
 Let $P_b$ be the primary H1 `entries` in energy bin $b$, $V_d$ the layer volume
-in cm³, $S_d$ the interface area in cm², and $A_N$, $M_N$ the phantom area and
-mass from `phantoms.txt`. With raw ionizing and total-deposition sums $I$ and
-$T$, and phantom sums $D$, $E$, and $C$:
+in cm³, $S_d$ the interface area in cm², and $A_s$, $M_s$ the area and mass for
+phantom stem $s$ from `phantoms.txt`. With raw ionizing and total-deposition
+sums $I$ and $T$, and phantom sums $D$, $E$, and $C$:
 
 $$
 \begin{aligned}
 \mathrm{ioni}_{d,b} &= \frac{I_{d,b}}{P_b V_d},\\
 \mathrm{edep}_{d,b} &= \frac{T_{d,b}}{P_b V_d},\\
-\mathrm{dose}_{N,d,b} &= \frac{D_{d,b} A_N}{P_b M_N S_d},\\
-\mathrm{equi}_{N,d,b} &= \frac{E_{d,b} A_N}{P_b M_N S_d},\\
-\mathrm{rates}_{N,d,b} &= \frac{C_{d,b} A_N}{P_b S_d}.
+\mathrm{dose}_{s,d,b} &= \frac{D_{d,b} A_s}{P_b M_s S_d},\\
+\mathrm{equi}_{s,d,b} &= \frac{E_{d,b} A_s}{P_b M_s S_d},\\
+\mathrm{rates}_{s,d,b} &= \frac{C_{d,b} A_s}{P_b S_d}.
 \end{aligned}
 $$
 
@@ -131,7 +135,7 @@ an assumption about how much deposited energy thermalizes as heat.
 
 The code does not convert eV/g to Gy or apply a source flux or an ion-pair
 creation energy. If the supplied radiation coefficients are dimensionless
-energy fractions, `.doseN` has units eV g⁻¹ primary⁻¹; the conversion to
+energy fractions, `.<stem>.dose` has units eV g⁻¹ primary⁻¹; the conversion to
 Gy primary⁻¹ would multiply by `1.602176634e-16`. The equivalent response has
 the corresponding radiation-weighted units. Coefficient normalization and the
 phantom's associated mass/area must be checked against that table's provenance;
@@ -214,7 +218,7 @@ represented chunk in a gathered ROOT file:
 | `input_prefix` | Species input prefix used for geometry, macro, and bins. |
 | `physics_list` | Geant4 reference physics list. |
 | `output_mode` | Numeric AtRIS output mode. |
-| `phantom_count` | Number of loaded phantom pairs. |
+| `phantom_count` | Number of distinct phantom stems with loaded responses. |
 | `seeds_explicit` | `1` when the output prefix supplied explicit chunk seeds. |
 | `random_seed_1`, `random_seed_2` | The two explicit seeds, or zero for runtime defaults. |
 

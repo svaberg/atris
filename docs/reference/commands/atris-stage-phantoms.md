@@ -19,7 +19,7 @@ overwritten. Obsolete numbered symlinks from older AtRIS versions are removed.
 
 `--accept-missing-counting` creates a local all-ones counting table only when
 a real counting table cannot be found. Per-phantom staging errors are logged
-and processing continues with other IDs; a successful command exit alone does
+and processing continues with other stems; a successful command exit alone does
 not certify that every requested phantom was staged. A missing metadata file
 selects no phantoms. See [phantom formats](../inputs.md#phantom-selection).
 
@@ -57,11 +57,11 @@ options:
                         progress.
   --version             Show the AtRIS and atris-tools versions and exit.
 
-Each phantoms.txt row must contain file stem, mass, and area; row order
-defines zero-based phantom IDs. The command does not create radiation-response
-tables or change phantoms.txt. Symbolic links are updated to match the current
-selection, while regular destination files are not overwritten. An error in
-one row does not prevent other rows from being staged.
+Each phantoms.txt row must contain file stem, mass, and area; the stem
+identifies the phantom. The command does not create response tables or change
+phantoms.txt. Symbolic links are updated to match the current selection, while
+regular destination files are not overwritten. An error in one row does not
+prevent other rows from being staged.
 ```
 
 Implementation: `atris_tools/phantoms.py`.

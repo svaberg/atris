@@ -1,5 +1,6 @@
 #include "UserActionInitialization.hh"
 
+#include "PhantomResponses.hh"
 #include "PrimaryGeneratorAction.hh"
 #include "RunAction.hh"
 #include "RunSettings.hh"
@@ -8,8 +9,12 @@
 
 namespace atris {
 
-UserActionInitialization::UserActionInitialization(const RunSettings& settings)
-  : fSettings(settings)
+UserActionInitialization::UserActionInitialization(
+  const RunSettings& settings,
+  const PhantomResponses& phantomResponses
+)
+  : fSettings(settings),
+    fPhantomResponses(phantomResponses)
 {
 }
 
@@ -21,14 +26,14 @@ UserActionInitialization::~UserActionInitialization()
 
 void UserActionInitialization::BuildForMaster() const
 {
-  auto* const runAction = new RunAction(true, fSettings);
+  auto* const runAction = new RunAction(true, fSettings, fPhantomResponses);
   SetUserAction(runAction);
 }
 
 void UserActionInitialization::Build() const
 {
   G4cout << "Starting build of UserActionInitialization for workers" << G4endl;
-  auto* const runAction = new RunAction(false, fSettings);
+  auto* const runAction = new RunAction(false, fSettings, fPhantomResponses);
   SetUserAction(runAction);
 
  

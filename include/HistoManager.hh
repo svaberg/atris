@@ -7,12 +7,16 @@
 
 namespace atris {
 
+class PhantomResponses;
 struct RunSettings;
 
 class HistoManager
 {
   public:
-    explicit HistoManager(const RunSettings& settings);
+    HistoManager(
+      const RunSettings& settings,
+      const PhantomResponses& phantomResponses
+    );
     ~HistoManager();
     void FillMetadata() const;
 
@@ -20,6 +24,7 @@ class HistoManager
     void Book() const;
 
     const RunSettings& fSettings;
+    const PhantomResponses& fPhantomResponses;
 };
 
 }  // namespace atris

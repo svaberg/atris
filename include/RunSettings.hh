@@ -20,7 +20,6 @@ struct RunSettings
   G4String physicsListName;
   G4int outputMode = kResponseOutputMode;
   G4int detectorCount = 0;
-  G4int phantomCount = 0;
   G4bool hasExplicitSeeds = false;
   std::array<G4long, 2> explicitSeeds = {0, 0};
   std::vector<G4double> energyBins;

@@ -4,6 +4,7 @@
 #include "NtupleSchema.hh"
 #include "OutputMode.hh"
 #include "PhantomResponseSchema.hh"
+#include "PhantomResponses.hh"
 #include "RunSettings.hh"
 
 #include "G4AnalysisManager.hh"
@@ -39,7 +40,8 @@ void AnnotateHistogram(
 	const G4String& name,
 	const G4String& quantity,
 	const G4String& accumulatedWeight,
-	const atris::RunSettings& settings
+	const atris::RunSettings& settings,
+	const G4int phantomCount
 )
 {
 	if (histogram == nullptr) return;
@@ -54,7 +56,7 @@ void AnnotateHistogram(
 	histogram->add_annotation("atris.input_prefix", settings.simulationInputPrefix);
 	histogram->add_annotation("atris.physics_list", settings.physicsListName);
 	histogram->add_annotation("atris.output_mode", std::to_string(settings.outputMode));
-	histogram->add_annotation("atris.phantom_count", std::to_string(settings.phantomCount));
+	histogram->add_annotation("atris.phantom_count", std::to_string(phantomCount));
 	if (settings.hasExplicitSeeds) {
 		histogram->add_annotation(
 			"atris.random_seed_pairs",
@@ -66,12 +68,42 @@ void AnnotateHistogram(
 	}
 }
 
+G4String AccumulationName(const atris::ResponseAccumulation accumulation)
+{
+	switch (accumulation) {
+		case atris::ResponseAccumulation::kCoefficient:
+			return "coefficient";
+		case atris::ResponseAccumulation::kEnergy:
+			return "energy";
+		case atris::ResponseAccumulation::kRadiationWeightedEnergy:
+			return "radiation-weighted-energy";
+	}
+	return "unknown";
+}
+
+G4String AccumulatedWeight(const atris::ResponseAccumulation accumulation)
+{
+	switch (accumulation) {
+		case atris::ResponseAccumulation::kCoefficient:
+			return "response coefficient";
+		case atris::ResponseAccumulation::kEnergy:
+			return "response coefficient times crossing kinetic energy [eV]";
+		case atris::ResponseAccumulation::kRadiationWeightedEnergy:
+			return "response coefficient times crossing kinetic energy and radiation weight [eV]";
+	}
+	return "unknown response weight";
+}
+
 }  // namespace
 
 namespace atris {
 
-HistoManager::HistoManager(const RunSettings& settings)
-	: fSettings(settings)
+HistoManager::HistoManager(
+	const RunSettings& settings,
+	const PhantomResponses& phantomResponses
+)
+	: fSettings(settings),
+	fPhantomResponses(phantomResponses)
 {
 	Book();
 }
@@ -84,6 +116,8 @@ HistoManager::~HistoManager()
 void HistoManager::Book() const
 {
 	G4AnalysisManager* const analysis = G4AnalysisManager::Instance();
+	const G4int phantomCount = fPhantomResponses.GetPhantomCount();
+	const auto& responses = fPhantomResponses.GetAll();
 	// This code replaces the HistoManager.cc
 	G4cout << "### AtRIS: configuring analysis histograms. " << G4endl;
 	analysis->SetVerboseLevel(0);
@@ -97,7 +131,8 @@ void HistoManager::Book() const
 		"h1.1",
 		"primary kinetic energy distribution",
 		"primary kinetic energy [MeV]",
-		fSettings
+		fSettings,
+		phantomCount
 	);
 	analysis->SetH1XAxisTitle(id, "Primary kinetic energy [MeV]");
 	analysis->SetH1YAxisTitle(id, "Accumulated primary kinetic energy [MeV]");
@@ -111,7 +146,8 @@ void HistoManager::Book() const
 		"h2.dir",
 		"primary source direction",
 		"primary count",
-		fSettings
+		fSettings,
+		phantomCount
 	);
 	analysis->SetH2XAxisTitle(id, "Global azimuth phi [rad]");
 	analysis->SetH2YAxisTitle(id, "Cosine of global polar angle");
@@ -126,13 +162,13 @@ void HistoManager::Book() const
 		"h2.pos",
 		"primary source position",
 		"primary count",
-		fSettings
+		fSettings,
+		phantomCount
 	);
 	analysis->SetH2XAxisTitle(id, "Global azimuth phi [rad]");
 	analysis->SetH2YAxisTitle(id, "Cosine of global polar angle");
 	analysis->SetH2ZAxisTitle(id, "Primary count");
 	analysis->SetH2Activation(id,true);
-	// Now we activate the phantom histograms, 3 per phantom
 	// This is the new ionization energy histogram, it gets the ID 2
 	id = analysis->CreateH2(
 		"h2.ion", "Ionizing energy deposition", fSettings.energyBins,
@@ -144,7 +180,8 @@ void HistoManager::Book() const
 		"h2.ion",
 		"ionizing energy deposition",
 		"total energy deposit minus non-ionizing energy deposit [MeV]",
-		fSettings
+		fSettings,
+		phantomCount
 	);
 	analysis->SetH2XAxisTitle(id, "Primary kinetic energy [MeV]");
 	analysis->SetH2YAxisTitle(id, "Sensitive detector ID");
@@ -162,80 +199,52 @@ void HistoManager::Book() const
 		"h2.edep",
 		"total energy deposition",
 		"total energy deposit [MeV]",
-		fSettings
+		fSettings,
+		phantomCount
 	);
 	analysis->SetH2XAxisTitle(id, "Primary kinetic energy [MeV]");
 	analysis->SetH2YAxisTitle(id, "Sensitive detector ID");
 	analysis->SetH2ZAxisTitle(id, "Total energy deposited [MeV]");
 	analysis->SetH2Activation(id,true);
-	for (G4int phantomIndex = 0; phantomIndex < fSettings.phantomCount; ++phantomIndex){
-		G4cout << "### AtRIS: Initializing higher order histograms for "
-		       << fSettings.phantomCount
-		       << " phantoms, with a total number of histograms "
-		       << "equal to "
-		       << fSettings.phantomCount*kPhantomHistogramsPerPhantom
-		          + kBaseHistogramCount << G4endl;
-		// Post-processing removes the extra detector boundary from interface data.
-		const G4String suffix = std::to_string(phantomIndex);
+	G4cout << "### AtRIS: initializing " << responses.size()
+	       << " response histograms for " << phantomCount
+	       << " phantoms; " << responses.size() + kBaseHistogramCount
+	       << " histograms in total" << G4endl;
+	for (const PhantomResponse& response : responses) {
+		const G4String histogramName =
+			"h2." + response.phantomStem + "." + response.name;
+		const G4String accumulatedWeight = AccumulatedWeight(
+			response.accumulation
+		);
 		id = analysis->CreateH2(
-			"h2.dos" + suffix, "Phantom energy response", fSettings.energyBins,
+			histogramName,
+			response.name + " response for " + response.phantomStem,
+			fSettings.energyBins,
 			fSettings.detectorBins,
 			"MeV", "none", "none", "none"
 		);
-		auto* const dose = analysis->GetH2(id);
+		auto* const histogram = analysis->GetH2(id);
 		AnnotateHistogram(
-			dose,
-			"h2.dos" + suffix,
-			"phantom energy response",
-			"response coefficient times crossing kinetic energy [eV]",
-			fSettings
+			histogram,
+			histogramName,
+			"phantom response " + response.name,
+			accumulatedWeight,
+			fSettings,
+			phantomCount
 		);
-		if (dose != nullptr) dose->add_annotation("atris.phantom_id", suffix);
-		analysis->SetH2XAxisTitle(id, "Primary kinetic energy [MeV]");
-		analysis->SetH2YAxisTitle(id, "Interface ID");
-		analysis->SetH2ZAxisTitle(id, "Phantom energy-response weight [eV]");
-		analysis->SetH2Activation(id,true);
-		// same as above, but only for the equivalent dose rate
-		id = analysis->CreateH2(
-			"h2.equi" + suffix, "Radiation-weighted phantom energy response",
-			fSettings.energyBins, fSettings.detectorBins,
-			"MeV", "none", "none", "none"
-		);
-		auto* const equivalentDose = analysis->GetH2(id);
-		AnnotateHistogram(
-			equivalentDose,
-			"h2.equi" + suffix,
-			"radiation-weighted phantom energy response",
-			"response coefficient times crossing kinetic energy and radiation weight [eV]",
-			fSettings
-		);
-		if (equivalentDose != nullptr) {
-			equivalentDose->add_annotation("atris.phantom_id", suffix);
+		if (histogram != nullptr) {
+			histogram->add_annotation("atris.phantom_stem", response.phantomStem);
+			histogram->add_annotation("atris.response_name", response.name);
+			histogram->add_annotation("atris.response_file", response.fileName);
+			histogram->add_annotation(
+				"atris.response_accumulation",
+				AccumulationName(response.accumulation)
+			);
 		}
 		analysis->SetH2XAxisTitle(id, "Primary kinetic energy [MeV]");
 		analysis->SetH2YAxisTitle(id, "Interface ID");
-		analysis->SetH2ZAxisTitle(id, "Radiation-weighted phantom energy-response weight [eV]");
+		analysis->SetH2ZAxisTitle(id, accumulatedWeight);
 		analysis->SetH2Activation(id,true);
-		// a histogram to hold the count rates if the first phantom
-		id = analysis->CreateH2(
-			"h2.rates" + suffix, "Phantom counting response", fSettings.energyBins,
-			fSettings.detectorBins,
-			"MeV", "none", "none", "none"
-		);
-		auto* const countRate = analysis->GetH2(id);
-		AnnotateHistogram(
-			countRate,
-			"h2.rates" + suffix,
-			"phantom counting response",
-			"counting response coefficient",
-			fSettings
-		);
-		if (countRate != nullptr) countRate->add_annotation("atris.phantom_id", suffix);
-		analysis->SetH2XAxisTitle(id, "Primary kinetic energy [MeV]");
-		analysis->SetH2YAxisTitle(id, "Interface ID");
-		analysis->SetH2ZAxisTitle(id, "Counting-response weight");
-		analysis->SetH2Activation(id,true);
-
 	}
 
 	if (!WritesInterfaceNtuple(fSettings.outputMode)) return;
@@ -313,7 +322,9 @@ void HistoManager::FillMetadata() const
 		kMetadataNtupleId, kMetadataOutputMode, fSettings.outputMode
 	);
 	analysis->FillNtupleIColumn(
-		kMetadataNtupleId, kMetadataPhantomCount, fSettings.phantomCount
+		kMetadataNtupleId,
+		kMetadataPhantomCount,
+		fPhantomResponses.GetPhantomCount()
 	);
 	analysis->FillNtupleIColumn(
 		kMetadataNtupleId, kMetadataSeedsExplicit, fSettings.hasExplicitSeeds

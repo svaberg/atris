@@ -66,6 +66,26 @@ G4double RadiationWeight(const G4int pdg, const G4double kineticEnergy)
 	);
 }
 
+G4double AccumulatedResponse(
+	const PhantomResponse& response,
+	const G4int responseIndex,
+	const G4int particlePDG,
+	const G4double kineticEnergy
+)
+{
+	const G4double coefficient = (*response.values)[responseIndex];
+	switch (response.accumulation) {
+		case ResponseAccumulation::kCoefficient:
+			return coefficient;
+		case ResponseAccumulation::kEnergy:
+			return coefficient*kineticEnergy/eV;
+		case ResponseAccumulation::kRadiationWeightedEnergy:
+			return coefficient*kineticEnergy/eV
+				*RadiationWeight(particlePDG, kineticEnergy);
+	}
+	return 0.;
+}
+
 }  // namespace
 
 G4Allocator<SDHit>* SDHit::fgAllocator = nullptr;
@@ -234,31 +254,23 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*){
 		const G4int particleIndex =
 			fPhantomResponses.FindParticleIndex(particlePDG);
 		if (particleIndex >= 0) {
-			const G4int responseIndex =
+			const G4int tableIndex =
 				particleIndex*kPhantomResponseEnergyBins + responseEnergyBin;
-			const G4double radiationWeight =
-				RadiationWeight(particlePDG, kineticEnergy);
-			for (G4int phantomIndex = 0;
-			     phantomIndex < fPhantomResponses.GetCount();
-			     ++phantomIndex) {
-				const G4int offset = kFirstPhantomHistogramId
-					+ kPhantomHistogramsPerPhantom*phantomIndex;
-				const G4double response =
-					fPhantomResponses.GetRadiation(phantomIndex, responseIndex);
+			const auto& responses = fPhantomResponses.GetAll();
+			for (std::size_t responseIndex = 0;
+			     responseIndex < responses.size();
+			     ++responseIndex) {
+				const PhantomResponse& response = responses[responseIndex];
 				analysis->FillH2(
-					offset + kPhantomDoseHistogramOffset,
+					kFirstResponseHistogramId
+						+ static_cast<G4int>(responseIndex),
 					primaryEnergy, interfaceId,
-					response*kineticEnergy/eV
-				);
-				analysis->FillH2(
-					offset + kPhantomEquivalentDoseHistogramOffset,
-					primaryEnergy, interfaceId,
-					response*kineticEnergy/eV*radiationWeight
-				);
-				analysis->FillH2(
-					offset + kPhantomCountingHistogramOffset,
-					primaryEnergy, interfaceId,
-					fPhantomResponses.GetCounting(phantomIndex, responseIndex)
+					AccumulatedResponse(
+						response,
+						tableIndex,
+						particlePDG,
+						kineticEnergy
+					)
 				);
 			}
 		}

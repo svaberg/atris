@@ -63,10 +63,10 @@ def prepare_processed_run(run_directory, phantom_count, gdml_text):
     for phantom_id in range(phantom_count):
         stem = "phantom_" + str(phantom_id)
         phantom_rows.append("%s  1.0  2.0\n" % stem)
-        (run_directory / ("protons_h2_h2.dos%i.csv" % phantom_id)).touch()
+        (run_directory / ("protons_h2_h2.%s.dos.csv" % stem)).touch()
         for extension in ("dose", "equi", "rates"):
             np.savetxt(
-                run_directory / ("protons.%s%i" % (extension, phantom_id)),
+                run_directory / ("protons.%s.%s" % (stem, extension)),
                 response,
             )
     if phantom_rows:
@@ -214,7 +214,7 @@ def test_recent_power_law_fit_recovers_recent_trend():
     np.testing.assert_allclose(fitted, expected)
 
 
-def test_plot_run_uses_numbered_name_without_phantom_metadata(
+def test_plot_run_uses_histogram_stem_without_phantom_metadata(
     tmp_path, monkeypatch, gdml_text
 ):
     prepare_processed_run(tmp_path, 1, gdml_text)
@@ -223,7 +223,7 @@ def test_plot_run_uses_numbered_name_without_phantom_metadata(
 
     filenames, errors = plotting.plot_run("protons")
 
-    assert sorted(filenames) == ["protons.phantom-0.png", "protons.png"]
+    assert sorted(filenames) == ["protons.phantom_0.png", "protons.png"]
     assert errors == []
 
 
@@ -231,13 +231,13 @@ def test_plot_run_reports_missing_quantity_and_plots_the_rest(
     tmp_path, monkeypatch, gdml_text
 ):
     prepare_processed_run(tmp_path, 1, gdml_text)
-    (tmp_path / "protons.equi0").unlink()
+    (tmp_path / "protons.phantom_0.equi").unlink()
     monkeypatch.chdir(tmp_path)
 
     filenames, errors = plotting.plot_run("protons")
 
     assert sorted(filenames) == ["protons.phantom_0.png", "protons.png"]
-    assert errors == ["protons results: missing protons.equi0"]
+    assert errors == ["protons results: missing protons.phantom_0.equi"]
 
 
 def test_plot_run_warns_when_current_bins_do_not_match_output(

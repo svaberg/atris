@@ -29,7 +29,6 @@ from .input_plotting import (
     shell_coordinates,
 )
 from .interface_plotting import plot_interface_output
-from .phantoms import read_phantoms
 from .postprocess import warn_if_inputs_do_not_match_output
 from .response_histograms import (
     PRIMARY_HISTOGRAM,
@@ -511,13 +510,13 @@ def plot_convergence(simname):
     return filename
 
 
-def _get_processed_phantom_ids(simname):
+def _get_processed_phantom_stems(simname):
     pattern = re.compile(
-        "^" + re.escape(simname) + r"\.(?:dose|equi|rates)(\d+)$"
+        "^" + re.escape(simname) + r"\.(.+)\.(?:dose|equi|rates)$"
     )
     return sorted(
         {
-            int(match.group(1))
+            match.group(1)
             for filename in os.listdir(".")
             if (match := pattern.match(filename)) is not None
         }
@@ -526,7 +525,9 @@ def _get_processed_phantom_ids(simname):
 
 def _has_processed_output(simname):
     pattern = re.compile(
-        "^" + re.escape(simname) + r"\.(?:ioni|dose\d+|equi\d+|rates\d+)$"
+        "^"
+        + re.escape(simname)
+        + r"\.(?:ioni|edep|.+\.(?:dose|equi|rates))$"
     )
     return any(
         pattern.match(filename) is not None
@@ -588,23 +589,18 @@ def plot_run(simname):
         except Exception as error:
             errors.append("%s general results: %s" % (simname, error))
 
-    try:
-        phantom_names = {
-            phantom["id"]: phantom["stem"]
-            for phantom in read_phantoms(Path.cwd())
-        }
-    except Exception as error:
-        phantom_names = {}
-        errors.append("phantom metadata: " + str(error))
-
     quantities = ("dose", "equi", "rates")
     titles = ("absorbed dose", "dose equivalent", "count rate")
-    for phantom_id in _get_processed_phantom_ids(simname):
+    for phantom_stem in _get_processed_phantom_stems(simname):
         responses = []
         response_titles = []
         detector_ids = None
         for quantity, title in zip(quantities, titles):
-            response_file = "%s.%s%i" % (simname, quantity, phantom_id)
+            response_file = "%s.%s.%s" % (
+                simname,
+                phantom_stem,
+                quantity,
+            )
             if not Path(response_file).is_file():
                 errors.append("%s results: missing %s" % (simname, response_file))
                 continue
@@ -623,13 +619,12 @@ def plot_run(simname):
 
         if not responses:
             continue
-        phantom_name = phantom_names.get(phantom_id, "phantom-%i" % phantom_id)
-        filename = "%s.%s.png" % (simname, phantom_name)
+        filename = "%s.%s.png" % (simname, phantom_stem)
         try:
             _save_phantom_plot(
                 responses,
                 [
-                    "%s %s, %s" % (species, title, phantom_name)
+                    "%s %s, %s" % (species, title, phantom_stem)
                     for title in response_titles
                 ],
                 energy_edges,
