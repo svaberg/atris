@@ -33,6 +33,7 @@
 #include <sstream>
 
 G4String outputFileName;
+G4String outputFileFormat;
 G4String simulationInputPrefix;
 G4String physicsListName;
 G4int    mode = atris::kResponseOutputMode;
@@ -81,14 +82,12 @@ class RunConfiguration {
     RunConfiguration(
       G4RunManager* runManager,
       const G4String& physicsList,
-      const G4int outputMode,
-      const G4bool selectOutputExtension
+      const G4int outputMode
     )
       : fRunManager(runManager),
         fPhysicsList(physicsList),
         fOutputMode(outputMode),
         fHasCommandLineSettings(!physicsList.empty()),
-        fSelectOutputExtension(selectOutputExtension),
         fMessenger(this, "/atris/", "AtRIS run configuration.")
     {
       auto& physicsListCommand = fMessenger.DeclareMethod(
@@ -107,6 +106,14 @@ class RunConfiguration {
       outputModeCommand.SetCandidates("response profile shower");
       outputModeCommand.SetStates(G4State_PreInit);
       fOutputModeCommand = outputModeCommand.command;
+
+      auto& outputFormatCommand = fMessenger.DeclareMethod(
+        "outputFormat",
+        &RunConfiguration::SetOutputFormat,
+        "Set the Geant4 analysis output format."
+      );
+      outputFormatCommand.SetStates(G4State_PreInit);
+      fOutputFormatCommand = outputFormatCommand.command;
 
       DeclareHistogramBinsCommand(
         "directionBins",
@@ -181,6 +188,7 @@ class RunConfiguration {
         fHasUserActions
         || fPhysicsList.empty()
         || !hasConfiguredOutputMode
+        || (!fHasCommandLineSettings && !fHasConfiguredOutputFormat)
       ) return;
       fRunManager->SetUserInitialization(new atris::UserActionInitialization());
       fHasUserActions = true;
@@ -245,23 +253,39 @@ class RunConfiguration {
       fOutputMode = requestedValue;
       mode = requestedValue;
       hasConfiguredOutputMode = true;
-      if (fSelectOutputExtension && atris::WritesInterfaceNtuple(mode)) {
-        outputFileName += ".root";
-      }
       InstallUserActionsIfConfigured();
       ReportOutputMode();
+    }
+
+    void SetOutputFormat(G4String requestedOutputFormat)
+    {
+      if (
+        !outputFileFormat.empty()
+        && requestedOutputFormat != outputFileFormat
+      ) {
+        G4ExceptionDescription message;
+        message << "AtRIS output-format conflict: the run already selects '"
+                << outputFileFormat << "' but the macro later requests '"
+                << requestedOutputFormat << "'.";
+        fOutputFormatCommand->CommandFailed(message);
+        return;
+      }
+
+      outputFileFormat = requestedOutputFormat;
+      fHasConfiguredOutputFormat = true;
+      InstallUserActionsIfConfigured();
     }
 
     void ReportOutputMode() const
     {
       if (fOutputMode == atris::kInterfaceOutputMode) {
-        G4cout << "### AtRIS: mode 0 writes histograms and interface ntuples to "
-               << outputFileName << G4endl;
+        G4cout << "### AtRIS: mode 0 writes histograms and interface ntuples"
+               << G4endl;
       }
       if (fOutputMode == atris::kStepOutputMode) {
         G4cout << "### AtRIS: mode 1 writes histograms, interface, and "
-                  "transport-step ntuples to "
-               << outputFileName << "; output may be very large" << G4endl;
+                  "transport-step ntuples; output may be very large"
+               << G4endl;
       }
     }
 
@@ -279,12 +303,13 @@ class RunConfiguration {
     G4String fPhysicsList;
     G4int fOutputMode;
     const G4bool fHasCommandLineSettings;
-    const G4bool fSelectOutputExtension;
+    G4bool fHasConfiguredOutputFormat = false;
     G4bool fIsValid = true;
     G4bool fHasUserActions = false;
     G4GenericMessenger fMessenger;
     G4UIcommand* fPhysicsListCommand = nullptr;
     G4UIcommand* fOutputModeCommand = nullptr;
+    G4UIcommand* fOutputFormatCommand = nullptr;
 };
 
 }  // namespace
@@ -295,9 +320,9 @@ void DetermineNumberOfDetectors(const G4String& fileName);
 
 struct SimulationRun {
 	G4String inputPrefix;
+	G4String outputFormat;
 	std::array<G4long, 3> seeds = {0, 0, 0}; // CLHEP expects two seeds followed by a zero terminator.
 	G4bool hasSeeds = false;
-	G4bool hasOutputExtension = false;
 };
 
 SimulationRun ParseSimulationRun(const G4String& argument) {
@@ -309,7 +334,7 @@ SimulationRun ParseSimulationRun(const G4String& argument) {
 		extensionSeparator != std::string::npos
 		&& (pathSeparator == std::string::npos || extensionSeparator > pathSeparator)
 	) {
-		run.hasOutputExtension = true;
+		run.outputFormat = path.substr(extensionSeparator + 1);
 		path.erase(extensionSeparator);
 	}
 	run.inputPrefix = path;
@@ -447,6 +472,7 @@ int main(int argc,char** argv){
 	if (!LoadPhantoms(numberOfPhantoms)) return 1;
 	const SimulationRun simulation = ParseSimulationRun(simulationArgument);
 	outputFileName = simulationArgument;
+	outputFileFormat = simulation.outputFormat;
 	simulationInputPrefix = simulation.inputPrefix;
 	hasExplicitSeeds = simulation.hasSeeds;
 	if (simulation.hasSeeds) {
@@ -488,8 +514,7 @@ int main(int argc,char** argv){
 	RunConfiguration runConfiguration(
 		runManager,
 		commandLinePhysicsList,
-		mode,
-		!hasCommandLineSettings && !simulation.hasOutputExtension
+		mode
 	);
 	if (!runConfiguration.IsValid()) return -1;
 

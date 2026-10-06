@@ -103,6 +103,7 @@ def prepend_run_configuration(
     *,
     physics_list="FTFP_BERT_HP",
     output_mode="response",
+    output_format="csv",
     direction_bins=(120, 60),
     position_bins=(120, 60),
     macro_name="protons.mac",
@@ -111,11 +112,13 @@ def prepend_run_configuration(
     macro.write_text(
         "/atris/physicsList %s\n"
         "/atris/outputMode %s\n"
+        "/atris/outputFormat %s\n"
         "/atris/directionBins %i %i\n"
         "/atris/positionBins %i %i\n"
         % (
             physics_list,
             output_mode,
+            output_format,
             *direction_bins,
             *position_bins,
         )
@@ -442,6 +445,7 @@ def test_chunk_runner_uses_configuration_from_chunk_macro(
     prepend_run_configuration(
         tmp_path,
         output_mode="profile",
+        output_format="root",
         macro_name="protons.chunk.mac",
     )
     shutil.copyfile(FIXTURE / "phantoms.txt", tmp_path / "phantoms.txt")
@@ -547,11 +551,18 @@ def test_short_form_reads_complete_run_configuration_from_macro(
 
 
 @pytest.mark.regression
-def test_short_form_selects_root_output_for_profile_mode(tmp_path, atris_command):
+@pytest.mark.parametrize("simulation", ["protons", "protons.root"])
+def test_short_form_uses_macro_output_format(
+    tmp_path, atris_command, simulation
+):
     prepare_run(tmp_path)
-    prepend_run_configuration(tmp_path, output_mode="profile")
+    prepend_run_configuration(
+        tmp_path,
+        output_mode="profile",
+        output_format="root",
+    )
 
-    result = invoke_atris(atris_command, tmp_path, "protons")
+    result = invoke_atris(atris_command, tmp_path, simulation)
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert (tmp_path / "protons.root").is_file()
@@ -566,11 +577,21 @@ def test_short_form_selects_root_output_for_profile_mode(tmp_path, atris_command
 @pytest.mark.parametrize(
     "configuration",
     [
-        pytest.param("/atris/physicsList FTFP_BERT_HP\n", id="missing-mode"),
-        pytest.param("/atris/outputMode response\n", id="missing-physics-list"),
+        pytest.param(
+            "/atris/physicsList FTFP_BERT_HP\n/atris/outputFormat csv\n",
+            id="missing-mode",
+        ),
+        pytest.param(
+            "/atris/outputMode response\n/atris/outputFormat csv\n",
+            id="missing-physics-list",
+        ),
+        pytest.param(
+            "/atris/physicsList FTFP_BERT_HP\n/atris/outputMode response\n",
+            id="missing-output-format",
+        ),
     ],
 )
-def test_short_form_requires_physics_list_and_output_mode(
+def test_short_form_requires_complete_run_configuration(
     tmp_path, atris_command, configuration
 ):
     prepare_run(tmp_path)
@@ -580,6 +601,21 @@ def test_short_form_requires_physics_list_and_output_mode(
     result = invoke_atris(atris_command, tmp_path, "protons")
 
     assert result.returncode != 0
+    assert not list(tmp_path.glob("protons_*.csv"))
+    assert not (tmp_path / "protons.root").exists()
+
+
+@pytest.mark.regression
+def test_short_form_requires_filename_and_macro_formats_to_match(
+    tmp_path, atris_command
+):
+    prepare_run(tmp_path)
+    prepend_run_configuration(tmp_path, output_format="root")
+
+    result = invoke_atris(atris_command, tmp_path, "protons.csv")
+
+    assert result.returncode != 0
+    assert "output-format conflict" in result.stdout + result.stderr
     assert not list(tmp_path.glob("protons_*.csv"))
     assert not (tmp_path / "protons.root").exists()
 
