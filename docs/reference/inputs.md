@@ -11,12 +11,12 @@ your source settings. NRLMSIS tables are one optional source for creating a PSF.
 | --- | --- | --- |
 | `simulation.psf` | Macro generation, GDML conversion, post-processing | Layer geometry and material properties. |
 | `simulation.gdml` | Macro generation | Geometry copied to the species-specific GDML files. |
-| `<prefix>.gdml` | AtRIS | Geant4 geometry and sensitive-detector IDs. |
-| `<prefix>.mac` | AtRIS | Geant4 initialization, source settings, seeds, and event count. |
-| `<prefix>.bins` | AtRIS | Primary kinetic-energy bin edges, in MeV. |
+| `<species>.gdml` | AtRIS | Geant4 geometry and sensitive-detector IDs; the macro names the file explicitly. |
+| `<species>.mac` | AtRIS | File selection, Geant4 initialization, source settings, seeds, and event count. |
+| `<species>.bins` | AtRIS | Primary kinetic-energy bin edges, in MeV; the macro names the file explicitly. |
 | `phantoms.txt` | Staging, chunk runner, post-processing, plotting | Selection of named phantom tables, masses, and areas. |
-| `radiation_phantomN.txt` | AtRIS | Energy-response table for phantom `N`. |
-| `counting_phantomN.txt` | AtRIS | Counting-response table for phantom `N`. |
+| `<stem>_response.txt` | AtRIS | Energy-response table named by an `/atris/phantom/radiationFile` command. |
+| `<stem>_counting.txt` | AtRIS | Counting-response table named by an `/atris/phantom/countingFile` command. |
 | `<prefix>.chunk.mac`, `chunks.txt` | Chunk workflow | Shared chunk macro and seed plan; see [Scatter/gather files](chunks.md). |
 
 The Python workflow uses the species names `protons` and `alphas`. The
@@ -174,11 +174,10 @@ AtRIS uses the GDML world and assigns sensitive detectors using auxiliary tags:
 <auxiliary auxtype="SensDet" auxvalue="2"/>
 ```
 
-The numeric value becomes the detector ID. In this implementation, the initial
-detector count comes from counting whitespace tokens equal to `<auxiliary` in
-the GDML text. Keep the generated layout and one such tag per sensitive layer;
-unrelated auxiliary tags or reformatted tags can change this count. The
-histogram and terminating-layer logic assume contiguous IDs.
+The numeric value becomes the detector ID. AtRIS asks the Geant4 GDML parser
+for the auxiliary map and counts entries whose type is `SensDet`. Keep one such
+tag per sensitive layer. The histogram and terminating-layer logic assume
+contiguous IDs.
 
 ## Energy bins and macros
 
@@ -191,20 +190,20 @@ protons, and four times that grid for alphas. Alpha energies in the actual
 `.bins`, `.mac`, and output histograms are total particle energies, not energies
 per nucleon.
 
-Generated macros first record the Geant4 reference physics list with
-`/atris/physicsList`, the named output mode with `/atris/outputMode`, and the
-Geant4 analysis format with `/atris/outputFormat`. They record the two source
+Generated macros name their GDML, energy-bin, output, and phantom files with
+`/atris/geometryFile`, `/atris/energyBinsFile`, `/atris/outputFile`, and the
+`/atris/phantom/*File` commands. They record the Geant4 reference physics list
+with `/atris/physicsList`, the named output mode with `/atris/outputMode`, and
+the Geant4 analysis format with `/atris/outputFormat`. They record the two source
 histogram dimensions with `/atris/directionBins` and `/atris/positionBins`.
 Each histogram command takes its azimuth-bin count followed by its cosine-bin
 count; both counts must be positive. The macro then initializes the run,
 selects a proton or alpha GPS source, uses `User` energy histograms, emits one
 primary per event from a spherical surface, uses a cosine angular distribution
-over 0–90 degrees, sets a 100 m production cut, sets two random seeds, and
+over 0–90 degrees, sets a 100 m production cut, sets two random seeds with
+`/atris/randomSeeds`, and
 issues one `/run/beamOn` command. Histogram point weights are zero for the first
-edge and one for the remaining edges. During the compatibility period in which
-the executable also receives the physics list and output mode on its command
-line, the macro and command-line values must match. An output extension on the
-simulation name must match `/atris/outputFormat`.
+edge and one for the remaining edges.
 
 Despite its option name, `--particles-per-bin` is multiplied by the number of
 **energy points**, not the number of intervals:
@@ -240,11 +239,11 @@ calibration. The parser accepts numeric mass and area values without checking
 that they are positive; post-processing requires physically valid values.
 
 For each stem, staging locates `<stem>_response.txt` and `<stem>_counting.txt`
-in the run directory first, then the archive. It creates numbered relative
-symbolic links. Absolute stems are supported. `--copy` first copies the named
-tables into the run directory. A missing `phantoms.txt` means an empty selection
-in the Python tools. The executable does not read `phantoms.txt`; it discovers
-the staged `radiation_phantomN.txt` and `counting_phantomN.txt` pairs directly.
+in the run directory first, then the archive. It creates relative symbolic links
+under those descriptive names, or local files when `--copy` is used. Absolute
+stems are supported. A missing `phantoms.txt` means an empty selection in the
+Python tools. The executable does not read `phantoms.txt`; generated species
+macros name each staged response and counting table explicitly.
 
 ## Phantom response matrices
 
@@ -253,7 +252,7 @@ PDG particle codes. Every subsequent particle row contains 650 coefficients,
 in the same particle order as the header. All loaded radiation and counting
 tables must have identical PDG headers. The executable expects
 `650 × number_of_PDG_codes` numeric values per table; a wrong count is reported
-but does not reliably stop execution.
+and stops execution.
 
 The fixed energy edges are `10**linspace(-6, 7, 651)` MeV: 1 eV to 10 TeV,
 with 0.02 spacing in log10 energy. The lookup uses
@@ -267,4 +266,5 @@ table created with `--accept-missing-counting` contains ones and represents
 unit counting response, not a measured efficiency.
 
 Implementation: `atris_tools/psf.py`, `nrlmsis2psf.py`, `psf2gdml.py`,
-`atrismacrogen.py`, `phantoms.py`, and `src/main.cc`.
+`atrismacrogen.py`, `phantoms.py`, `src/RunConfiguration.cc`, and
+`src/PhantomResponses.cc`.

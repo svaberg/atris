@@ -13,7 +13,6 @@ exist, and its parent must exist. Selected files are `simulation.psf`,
 ```text
 *.gdml  *.mac  *.bins  *.spec
 *_response.txt  *_counting.txt
-radiation_phantom*.txt  counting_phantom*.txt
 ```
 
 Internal symlinks are rebased to the new directory; external targets remain

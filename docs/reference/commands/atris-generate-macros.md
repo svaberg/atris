@@ -2,7 +2,8 @@
 
 Generate proton and alpha simulation inputs in a prepared run directory.
 
-**Inputs:** `simulation.psf` and `simulation.gdml`.
+**Inputs:** `simulation.psf`, `simulation.gdml`, and any phantom tables selected
+by `phantoms.txt`.
 **Outputs:** `protons.mac`, `protons.bins`, `protons.gdml`, and the corresponding
 three `alphas` files. If any destination already exists, generation is refused.
 
@@ -19,6 +20,10 @@ point count. The generated source-direction and source-position histograms each
 use 120 azimuth bins and 60 cosine bins. See
 [energy bins and macros](../inputs.md#energy-bins-and-macros) for the exact
 event-count convention. This command does not read `.spec` files.
+Each generated macro explicitly names its geometry, energy bins, output,
+phantom tables, and random seeds.
+The generated header and section labels use Geant4's `#` comment syntax;
+comment lines do not execute commands.
 
 ## Arguments and options
 

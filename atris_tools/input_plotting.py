@@ -196,6 +196,34 @@ def read_macro(filename):
     return settings, np.asarray(energy_points)
 
 
+def read_macro_phantoms(filename):
+    phantoms = {}
+    commands = {
+        "/atris/phantom/radiationFile": "response",
+        "/atris/phantom/countingFile": "counting",
+    }
+    with Path(filename).open() as macro:
+        for line_number, line in enumerate(macro, start=1):
+            fields = line.split()
+            if not fields or fields[0].startswith("#") or fields[0] not in commands:
+                continue
+            if len(fields) != 3:
+                raise ValueError(
+                    "Invalid phantom file command at %s:%i"
+                    % (filename, line_number)
+                )
+            phantom_id = int(fields[1])
+            file_type = commands[fields[0]]
+            configured = phantoms.setdefault(phantom_id, {})
+            if file_type in configured:
+                raise ValueError(
+                    "Duplicate phantom %s file command at %s:%i"
+                    % (file_type, filename, line_number)
+                )
+            configured[file_type] = Path(fields[2])
+    return phantoms
+
+
 def read_layers(filename):
     """Read every sensitive spherical layer from a GDML geometry."""
     root = ElementTree.parse(filename).getroot()
@@ -396,7 +424,7 @@ def _source_summary(settings, layers, energy_count):
             "Threads in macro: " + _setting(settings, "/run/numberOfThreads"),
             "Secondary production range cut: "
             + _setting(settings, "/run/setCut"),
-            "Random seeds: " + _setting(settings, "/random/setSeeds"),
+            "Random seeds: " + _setting(settings, "/atris/randomSeeds"),
         )
     )
     return "\n".join(lines)
@@ -544,8 +572,13 @@ def plot_psf_inputs(filename="simulation.psf"):
 
 def plot_species_inputs(simname):
     settings, energy_points = read_macro(simname + ".mac")
-    energy_bins = np.atleast_1d(np.loadtxt(simname + ".bins"))
-    geometry_layers = read_layers(simname + ".gdml")
+    try:
+        energy_bins_file = settings["/atris/energyBinsFile"]
+        geometry_file = settings["/atris/geometryFile"]
+    except KeyError as error:
+        raise ValueError("Missing explicit AtRIS file command: " + error.args[0])
+    energy_bins = np.atleast_1d(np.loadtxt(energy_bins_file))
+    geometry_layers = read_layers(geometry_file)
 
     figure, (settings_axis, energy_axis) = plt.subplots(
         ncols=2,
@@ -601,13 +634,14 @@ def read_phantom_table(filename):
     return particle_codes, response
 
 
-def plot_phantom_inputs(phantom_id, phantom_name):
-    radiation_codes, radiation = read_phantom_table(
-        "radiation_phantom%i.txt" % phantom_id
-    )
-    counting_codes, counting = read_phantom_table(
-        "counting_phantom%i.txt" % phantom_id
-    )
+def plot_phantom_inputs(
+    phantom_id,
+    phantom_name,
+    radiation_file,
+    counting_file,
+):
+    radiation_codes, radiation = read_phantom_table(radiation_file)
+    counting_codes, counting = read_phantom_table(counting_file)
     if not np.array_equal(radiation_codes, counting_codes):
         raise ValueError(
             "Radiation and counting particle codes differ for phantom %i"
@@ -682,33 +716,17 @@ def plot_phantom_inputs(phantom_id, phantom_name):
     return filename
 
 
-def _input_phantom_ids():
-    pattern = re.compile(r"^radiation_phantom(\d+)\.txt$")
-    return sorted(
-        int(match.group(1))
-        for path in Path.cwd().iterdir()
-        if (match := pattern.match(path.name)) is not None
-    )
-
-
 def plot_inputs():
     filenames = []
     errors = []
+    configured_phantoms = {}
     for simname in ("protons", "alphas"):
-        inputs = [
-            Path(simname + extension)
-            for extension in (".gdml", ".mac", ".bins")
-        ]
-        present = [path.is_file() for path in inputs]
-        if any(present) and not all(present):
-            missing = [str(path) for path, exists in zip(inputs, present) if not exists]
-            errors.append(
-                "%s inputs: missing %s" % (simname, ", ".join(missing))
-            )
-            continue
-        if all(present):
+        macro = Path(simname + ".mac")
+        if macro.is_file():
             try:
                 filenames.append(plot_species_inputs(simname))
+                if not configured_phantoms:
+                    configured_phantoms = read_macro_phantoms(macro)
             except Exception as error:
                 errors.append("%s inputs: %s" % (simname, error))
 
@@ -727,14 +745,35 @@ def plot_inputs():
     except Exception as error:
         metadata = {}
         errors.append("phantom metadata: " + str(error))
-    for phantom_id in _input_phantom_ids():
-        counting = Path("counting_phantom%i.txt" % phantom_id)
-        if not counting.is_file():
-            errors.append("phantom %i inputs: missing %s" % (phantom_id, counting))
+    for phantom_id, configured in sorted(configured_phantoms.items()):
+        missing = {"response", "counting"} - configured.keys()
+        if missing:
+            errors.append(
+                "phantom %i inputs: missing %s file command"
+                % (phantom_id, " and ".join(sorted(missing)))
+            )
+            continue
+        missing_files = [
+            str(configured[file_type])
+            for file_type in ("response", "counting")
+            if not configured[file_type].is_file()
+        ]
+        if missing_files:
+            errors.append(
+                "phantom %i inputs: missing %s"
+                % (phantom_id, ", ".join(missing_files))
+            )
             continue
         phantom_name = metadata.get(phantom_id)
         try:
-            filenames.append(plot_phantom_inputs(phantom_id, phantom_name))
+            filenames.append(
+                plot_phantom_inputs(
+                    phantom_id,
+                    phantom_name,
+                    configured["response"],
+                    configured["counting"],
+                )
+            )
         except Exception as error:
             errors.append("phantom %i inputs: %s" % (phantom_id, error))
     return filenames, errors

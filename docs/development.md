@@ -37,8 +37,9 @@ The remaining goals are:
 
 The repository now has one `phantoms/` library. Its named response and counting
 tables are source data. Run preparation selects entries from that library and
-stages them under the numbered filenames required by the AtRIS executable; the
-run's `phantoms.txt` records the mapping back to the source names.
+stages them under their descriptive filenames; the run's `phantoms.txt` records
+the selected IDs, stems, masses, and areas. Generated species macros name the
+response and counting files explicitly.
 
 The same directory still contains old response tables, variance tables, plots,
 and other historical data. Their provenance and continuing role should be
@@ -63,25 +64,30 @@ prepares its inputs and manages the surrounding workflow.
 
 ## Simulation preparation interface
 
-Physics-list, output-mode, and output-format choices are written into each
-species macro during input generation. AtRIS reads them before Geant4
-initialization, while `atris-run` only supplies the seeded chunk name. Thread
-counts, worker assignments, deadlines, and scheduler limits remain execution
-settings.
+Each species macro is currently a self-contained run entry point. It names the
+GDML geometry, energy-bin file, output destination, and every phantom response
+file, as well as the physics list, output mode, output format, histogram
+dimensions, and random seeds. The executable takes one explicitly selected
+macro-file argument; it does not infer files from a prefix.
+Thread counts, worker assignments, deadlines, and scheduler limits remain
+execution settings.
 
-The longer-term goal is to represent the complete persistent run configuration
-as a tree of `.mac` files. Separate macros should hold shared AtRIS settings,
-particle-specific settings, and chunk-specific settings, with Geant4 macro
-execution composing them into one run. Phantom declarations and other settings
-that are currently discovered or supplied through special paths should move
-into this hierarchy where practical.
+For chunks, `atris-scatter` derives a shared species chunk macro whose output
+and seed commands use aliases. `atris-run` supplies those aliases in a temporary
+wrapper macro for each plan entry. This keeps chunk scheduling outside the C++
+executable while preserving a complete macro command stream for every run.
+
+The longer-term goal is to allow the complete persistent run configuration to
+be composed as a tree of `.mac` files. A future shared top-level macro could
+hold campaign-wide settings and execute particle-specific or chunk-specific
+macros. That orchestration is not part of the current first stage: `protons.mac`
+and `alphas.mac` remain the direct entry points.
 
 A complete simulation may be written as one macro or composed from other macros
 with Geant4's `/control/execute` command. AtRIS should not require particular
-macro filenames or a fixed include hierarchy. The Python tools should generate
-and document a recommended structure in which a top-level AtRIS macro executes
-a particle macro, which in turn executes the chunk-specific macro, while
-leaving users free to organize equivalent macros differently.
+macro filenames or a fixed include hierarchy. If a shared top-level structure
+is introduced later, the Python tools should generate it while leaving users
+free to organize equivalent macros differently.
 
 The division into files is therefore user configuration, not part of the C++
 runtime model. `atris_tools` is responsible for creating, splitting, updating,
@@ -96,14 +102,11 @@ section. It is a generated record, not the canonical file to edit, and it
 remains dependent on referenced scientific data files such as GDML and
 response tables.
 
-For parallel execution, `atris-scatter` may partition the chunk leaves and
-write worker-specific top-level macros such as `atris_worker_001.mac`. Each
-generated macro contains only the chunk executions assigned to that worker,
-so AtRIS does not need worker-count, worker-index, or modulo-dispatch logic.
-These worker macros are generated execution artifacts; the unsplit
-`atris.mac` remains the authoritative campaign configuration. A deployment
-using exactly one AtRIS process per compute node may call them node macros,
-but the general concept is a worker rather than a physical node.
+For parallel execution, a future scatter implementation may write
+worker-specific top-level macros. Each generated macro would contain only the
+chunk executions assigned to that worker, so AtRIS would not need worker-count,
+worker-index, or modulo-dispatch logic. Such worker macros would be generated
+execution artifacts rather than the authoritative species configuration.
 
 Phantom configuration should expose the properties of each indexed phantom
 individually rather than packing them into one opaque command. Conceptually,
@@ -138,16 +141,15 @@ numbered filename. Macros should refer directly to the named response files.
 Run preparation may copy those files or create ordinary symbolic links that
 retain their names, and users may equivalently stage them with `ln -s`.
 Numbered aliases such as `radiation_phantom0.txt` and
-`counting_phantom0.txt` should disappear with the executable's filename
+`counting_phantom0.txt` have been removed with the executable's filename
 discovery logic.
 
-Phantom definitions are shared by proton and alpha simulations, so the
-recommended hierarchy should place them in the shared AtRIS-level macro rather
-than copy them into each particle macro. The Python phantom-staging tool should
-write these entries after staging the referenced files. Once the macro
-configuration is authoritative, mass, area, name, and response paths should
-also be retained in output metadata so that downstream tools do not have to
-reconstruct the run configuration from filenames.
+Phantom definitions are usually shared by proton and alpha simulations. The
+current generator writes the explicit file commands into both species macros.
+A future shared macro may hold them once. Once the macro configuration is
+authoritative, mass, area, name, and response paths should also be retained in
+output metadata so that downstream tools do not have to reconstruct the run
+configuration from filenames.
 
 The Python preparation tools should create and update these macro files. They
 should not become a second runtime configuration system: after preparation,

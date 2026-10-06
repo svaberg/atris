@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 from atris_tools.clone_run import clone_run
@@ -19,8 +17,6 @@ def test_clone_run_copies_inputs_but_not_results(tmp_path):
         "custom_counting.txt",
     ):
         (source / filename).write_text(filename + "\n")
-    (source / "radiation_phantom0.txt").symlink_to("custom_response.txt")
-    (source / "counting_phantom0.txt").symlink_to("custom_counting.txt")
     for filename in (
         "protons_h1_h1.1.csv",
         "protons.ioni",
@@ -35,14 +31,12 @@ def test_clone_run_copies_inputs_but_not_results(tmp_path):
 
     assert copied == sorted(
         (
-            "counting_phantom0.txt",
             "custom_counting.txt",
             "custom_response.txt",
             "phantoms.txt",
             "protons.bins",
             "protons.gdml",
             "protons.mac",
-            "radiation_phantom0.txt",
             "simulation.gdml",
             "simulation.psf",
         )
@@ -53,10 +47,9 @@ def test_clone_run_copies_inputs_but_not_results(tmp_path):
     assert not (destination / "protons.log").exists()
     assert not (destination / "chunks.txt").exists()
 
-    radiation = destination / "radiation_phantom0.txt"
-    assert radiation.is_symlink()
-    assert not os.path.isabs(os.readlink(radiation))
-    assert radiation.resolve() == destination / "custom_response.txt"
+    assert (destination / "custom_response.txt").read_text() == (
+        "custom_response.txt\n"
+    )
 
 
 def test_clone_run_refuses_existing_destination(tmp_path):

@@ -4,6 +4,7 @@ import argparse
 import logging
 from pathlib import Path
 import subprocess
+import tempfile
 import time
 
 from .cli import (
@@ -13,10 +14,30 @@ from .cli import (
     configure_logging,
 )
 from .gather import chunk_name, read_chunk_plan
-from .phantoms import read_phantoms
+from .phantoms import configured_phantom_files, read_phantoms
 
 
 logger = logging.getLogger(__name__)
+
+
+def chunk_wrapper(run_directory, species, run_name, first_seed, second_seed):
+    """Write a temporary macro that supplies one chunk's execution settings."""
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        dir=run_directory,
+        prefix=".atris-chunk-",
+        suffix=".mac",
+        delete=False,
+    ) as wrapper:
+        wrapper.write(
+            "/control/alias ATRIS_OUTPUT_FILE chunks/%s\n"
+            "/control/alias ATRIS_SEED_1 %s\n"
+            "/control/alias ATRIS_SEED_2 %s\n"
+            "/control/execute %s.chunk.mac\n"
+            % (run_name, first_seed, second_seed, species)
+        )
+    return Path(wrapper.name)
+
 
 def format_estimated_time(minutes):
     """Format an estimated remaining time in minutes or hours."""
@@ -105,14 +126,13 @@ def run_chunks(
     logger.info("%sRun directory: %s", prefix, run_directory)
     logger.info("%sChunk plan: %s", prefix, run_directory / "chunks.txt")
     for phantom_number, phantom in enumerate(phantoms, start=1):
-        phantom_id = phantom["id"]
         phantom_label = "Phantom %i/%i" % (phantom_number, phantom_count)
-        response_path = (
-            run_directory / ("radiation_phantom%i.txt" % phantom_id)
-        ).resolve()
-        counting_path = (
-            run_directory / ("counting_phantom%i.txt" % phantom_id)
-        ).resolve()
+        response_path, counting_path = configured_phantom_files(
+            run_directory,
+            phantom,
+        )
+        response_path = response_path.resolve()
+        counting_path = counting_path.resolve()
         logger.info("%s%s: %s", prefix, phantom_label, phantom["stem"])
         logger.debug(
             "%s%s counting file: %s",
@@ -182,14 +202,25 @@ def run_chunks(
             chunk_stem,
         )
         started = timer()
-        with log_path.open("w") as log:
-            subprocess.run(
-                ["AtRIS", chunk_stem],
-                cwd=run_directory,
-                stdout=log,
-                stderr=subprocess.STDOUT,
-                check=True,
-            )
+        species, first_seed, second_seed = plan_entry
+        wrapper = chunk_wrapper(
+            run_directory,
+            species,
+            run_name,
+            first_seed,
+            second_seed,
+        )
+        try:
+            with log_path.open("w") as log:
+                subprocess.run(
+                    ["AtRIS", wrapper.name],
+                    cwd=run_directory,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    check=True,
+                )
+        finally:
+            wrapper.unlink(missing_ok=True)
         complete.touch()
         completed += 1
         chunk_minutes = (timer() - started) / 60

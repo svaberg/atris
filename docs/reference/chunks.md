@@ -27,8 +27,9 @@ run/
         protons_123456_654321.COMPLETE
 ```
 
-Numbered phantom files must also be staged at the run root. A `chunks.txt` row
-has exactly three whitespace-separated fields, without a header or comments:
+The descriptive phantom files named in each species macro must also be staged
+at the run root. A `chunks.txt` row has exactly three whitespace-separated
+fields, without a header or comments:
 
 ```text
 protons 123456 654321
@@ -37,8 +38,8 @@ alphas 234567 765432
 
 The generated plan uses six-digit seeds in the range 31–999999. Each row's
 output basename is `<species>_<seed1>_<seed2>`. Plan line numbers are one-based.
-Do not hand-edit seed formatting: AtRIS recognizes seeded names only when both
-fields have exactly six digits.
+The seed fields are data read by `atris-run`; the executable does not infer
+seeds from the output basename.
 
 ## Creation and extension
 
@@ -53,10 +54,12 @@ $$
 Here $N$ is the requested chunk count per species and
 $n_{\mathrm{requested}}$ is the ordinary macro's event count.
 
-The ordinary macro must contain exactly one positive `/run/beamOn` command.
-The chunk macro changes that event count and removes `/random/setSeeds` lines;
-ordinary macros remain unchanged. The actual total exceeds the requested total
-by fewer than `N` events when rounding is necessary.
+The ordinary macro must contain exactly one positive `/run/beamOn` command,
+one `/atris/outputFile` command, and one `/atris/randomSeeds` command. The chunk
+macro changes the event count and replaces the output and seed values with
+Geant4 aliases; the ordinary macro remains unchanged. `atris-run` defines those
+aliases in a temporary wrapper for each plan entry. The actual total exceeds
+the requested total by fewer than `N` events when rounding is necessary.
 
 Creation refuses an existing plan, an existing chunk macro, or a nonempty
 `chunks/`. It permits an already existing empty `chunks/` directory.

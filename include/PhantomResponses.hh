@@ -4,6 +4,7 @@
 #include "globals.hh"
 
 #include <map>
+#include <string>
 #include <vector>
 
 namespace atris {
@@ -11,7 +12,11 @@ namespace atris {
 class PhantomResponses
 {
   public:
-    G4bool Load();
+    G4bool Add(
+      G4int phantomIndex,
+      const G4String& radiationFile,
+      const G4String& countingFile
+    );
 
     G4int GetCount() const { return static_cast<G4int>(fRadiation.size()); }
     G4int FindParticleIndex(G4int pdg) const;
@@ -25,6 +30,14 @@ class PhantomResponses
     }
 
   private:
+    void ConfigureParticleLookup(
+      const std::vector<G4int>& particleCodes,
+      const G4String& fileName
+    );
+
+    std::vector<G4int> fParticleCodes;
+    G4String fParticleHeaderFile;
+    G4int fExpectedValueCount = 0;
     std::vector<G4int> fLightParticleIndices;
     std::map<G4int, G4int> fIonIndices;
     std::vector<std::vector<G4double>> fRadiation;

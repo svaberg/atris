@@ -63,11 +63,27 @@ def chunk_macro(source, chunks):
         events_per_chunk,
         newline,
     )
-    contents = "".join(
-        line
-        for line in lines
-        if not line.lstrip().startswith("/random/setSeeds ")
-    )
+    output_lines = [
+        index
+        for index, line in enumerate(lines)
+        if line.lstrip().startswith("/atris/outputFile ")
+    ]
+    seed_lines = [
+        index
+        for index, line in enumerate(lines)
+        if line.lstrip().startswith("/atris/randomSeeds ")
+    ]
+    if len(output_lines) != 1:
+        raise ValueError(
+            "%s must contain exactly one /atris/outputFile command" % source
+        )
+    if len(seed_lines) != 1:
+        raise ValueError(
+            "%s must contain exactly one /atris/randomSeeds command" % source
+        )
+    lines[output_lines[0]] = "/atris/outputFile {ATRIS_OUTPUT_FILE}\n"
+    lines[seed_lines[0]] = "/atris/randomSeeds {ATRIS_SEED_1} {ATRIS_SEED_2}\n"
+    contents = "".join(lines)
     return contents, total_events, events_per_chunk
 
 

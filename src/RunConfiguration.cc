@@ -1,16 +1,24 @@
 #include "RunConfiguration.hh"
 
+#include "DetectorConstruction.hh"
 #include "OutputMode.hh"
+#include "PhantomResponses.hh"
 #include "RunSettings.hh"
 #include "UserActionInitialization.hh"
 
 #include "G4ApplicationState.hh"
 #include "G4Exception.hh"
+#include "G4GDMLParser.hh"
 #include "G4PhysListFactory.hh"
 #include "G4RunManager.hh"
 #include "G4StepLimiterPhysics.hh"
 #include "G4UIcommand.hh"
+#include "Randomize.hh"
 
+#include <array>
+#include <filesystem>
+#include <fstream>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -26,12 +34,17 @@ G4int OutputModeValue(const G4String& name)
   return kInvalidOutputMode;
 }
 
-G4String OutputModeName(const G4int value)
+G4int CountSensitiveDetectors(const G4GDMLParser& parser)
 {
-  if (value == atris::kResponseOutputMode) return "response";
-  if (value == atris::kInterfaceOutputMode) return "profile";
-  if (value == atris::kStepOutputMode) return "shower";
-  return "invalid";
+  G4int detectorCount = 0;
+  const G4GDMLAuxMapType* const auxiliaryMap = parser.GetAuxMap();
+  for (const auto& [volume, auxiliaries] : *auxiliaryMap) {
+    static_cast<void>(volume);
+    for (const auto& auxiliary : auxiliaries) {
+      if (auxiliary.type == "SensDet") ++detectorCount;
+    }
+  }
+  return detectorCount;
 }
 
 }  // namespace
@@ -41,14 +54,75 @@ namespace atris {
 RunConfiguration::RunConfiguration(
   G4RunManager* runManager,
   RunSettings& settings,
-  const G4String& physicsList
+  ::G4GDMLParser& parser,
+  PhantomResponses& phantomResponses
 )
   : fRunManager(runManager),
     fSettings(settings),
-    fHasCommandLineSettings(!physicsList.empty()),
-    fHasConfiguredOutputMode(fHasCommandLineSettings),
-    fMessenger(this, "/atris/", "AtRIS run configuration.")
+    fParser(parser),
+    fPhantomResponses(phantomResponses),
+    fMessenger(this, "/atris/", "AtRIS run configuration."),
+    fPhantomMessenger(
+      this,
+      "/atris/phantom/",
+      "AtRIS phantom response files."
+    )
 {
+  auto& geometryFileCommand = fMessenger.DeclareMethod(
+    "geometryFile",
+    &RunConfiguration::SetGeometryFile,
+    "Read the run geometry from a GDML file."
+  );
+  geometryFileCommand.SetStates(G4State_PreInit);
+  fGeometryFileCommand = geometryFileCommand.command;
+
+  auto& energyBinsFileCommand = fMessenger.DeclareMethod(
+    "energyBinsFile",
+    &RunConfiguration::SetEnergyBinsFile,
+    "Read the primary-energy histogram edges from a file."
+  );
+  energyBinsFileCommand.SetStates(G4State_PreInit);
+  fEnergyBinsFileCommand = energyBinsFileCommand.command;
+
+  auto& outputFileCommand = fMessenger.DeclareMethod(
+    "outputFile",
+    &RunConfiguration::SetOutputFile,
+    "Set the analysis output filename."
+  );
+  outputFileCommand.SetStates(G4State_PreInit);
+  fOutputFileCommand = outputFileCommand.command;
+
+  auto& randomSeedsCommand = fMessenger.DeclareMethod(
+    "randomSeeds",
+    &RunConfiguration::SetRandomSeeds,
+    "Set the two random seeds for this run."
+  );
+  randomSeedsCommand.SetParameterName(G4int{0}, "firstSeed", false);
+  randomSeedsCommand.SetParameterName(G4int{1}, "secondSeed", false);
+  randomSeedsCommand.SetRange("firstSeed>0 && secondSeed>0");
+  randomSeedsCommand.SetStates(G4State_PreInit);
+  fRandomSeedsCommand = randomSeedsCommand.command;
+
+  auto& phantomRadiationFileCommand = fPhantomMessenger.DeclareMethod(
+    "radiationFile",
+    &RunConfiguration::SetPhantomRadiationFile,
+    "Set one phantom's radiation response file."
+  );
+  phantomRadiationFileCommand.SetParameterName(G4int{0}, "id", false);
+  phantomRadiationFileCommand.SetParameterName(G4int{1}, "fileName", false);
+  phantomRadiationFileCommand.SetStates(G4State_PreInit);
+  fPhantomRadiationFileCommand = phantomRadiationFileCommand.command;
+
+  auto& phantomCountingFileCommand = fPhantomMessenger.DeclareMethod(
+    "countingFile",
+    &RunConfiguration::SetPhantomCountingFile,
+    "Set one phantom's counting response file."
+  );
+  phantomCountingFileCommand.SetParameterName(G4int{0}, "id", false);
+  phantomCountingFileCommand.SetParameterName(G4int{1}, "fileName", false);
+  phantomCountingFileCommand.SetStates(G4State_PreInit);
+  fPhantomCountingFileCommand = phantomCountingFileCommand.command;
+
   auto& physicsListCommand = fMessenger.DeclareMethod(
     "physicsList",
     &RunConfiguration::SetPhysicsList,
@@ -85,14 +159,6 @@ RunConfiguration::RunConfiguration(
     "Set the azimuth and cosine bin counts for the source-position histogram."
   );
 
-  if (fHasCommandLineSettings) {
-    if (!InstallPhysicsList(physicsList)) {
-      fIsValid = false;
-    } else {
-      InstallUserActionsIfConfigured();
-      ReportOutputMode();
-    }
-  }
 }
 
 void RunConfiguration::DeclareHistogramBinsCommand(
@@ -144,12 +210,199 @@ void RunConfiguration::InstallUserActionsIfConfigured()
 {
   if (
     fHasUserActions
+    || !fHasConfiguredGeometry
+    || !fHasConfiguredEnergyBins
+    || !fHasConfiguredOutputFile
     || fSettings.physicsListName.empty()
     || !fHasConfiguredOutputMode
-    || (!fHasCommandLineSettings && !fHasConfiguredOutputFormat)
+    || !fHasConfiguredOutputFormat
   ) return;
   fRunManager->SetUserInitialization(new UserActionInitialization(fSettings));
   fHasUserActions = true;
+}
+
+void RunConfiguration::SetGeometryFile(G4String requestedFile)
+{
+  if (fHasConfiguredGeometry) {
+    if (requestedFile == fSettings.geometryFileName) return;
+    G4ExceptionDescription message;
+    message << "AtRIS geometry-file conflict: the run already selects '"
+            << fSettings.geometryFileName << "' but the macro later requests '"
+            << requestedFile << "'.";
+    fGeometryFileCommand->CommandFailed(message);
+    return;
+  }
+
+  std::ifstream geometry(requestedFile);
+  if (!geometry.good()) {
+    G4ExceptionDescription message;
+    message << "Cannot open AtRIS geometry file '" << requestedFile << "'.";
+    fGeometryFileCommand->CommandFailed(message);
+    return;
+  }
+  geometry.close();
+
+  fParser.Read(requestedFile);
+  fSettings.geometryFileName = requestedFile;
+  std::filesystem::path inputPath(requestedFile.c_str());
+  inputPath.replace_extension();
+  fSettings.simulationInputPrefix = inputPath.string();
+  fSettings.detectorCount = CountSensitiveDetectors(fParser);
+  fSettings.detectorBins.clear();
+  fSettings.detectorBins.reserve(fSettings.detectorCount + 1);
+  constexpr G4double detectorBinHalfWidth = 0.5;
+  for (G4int index = 0; index <= fSettings.detectorCount; ++index) {
+    fSettings.detectorBins.push_back(index - detectorBinHalfWidth);
+  }
+  G4cout << "### AtRIS: geometry contains " << fSettings.detectorCount
+         << " sensitive detectors" << G4endl;
+
+  fRunManager->SetUserInitialization(
+    new DetectorConstruction(fParser, fSettings, fPhantomResponses)
+  );
+  fHasConfiguredGeometry = true;
+  InstallUserActionsIfConfigured();
+}
+
+void RunConfiguration::SetEnergyBinsFile(G4String requestedFile)
+{
+  if (fHasConfiguredEnergyBins) {
+    if (requestedFile == fSettings.energyBinsFileName) return;
+    G4ExceptionDescription message;
+    message << "AtRIS energy-bins-file conflict: the run already selects '"
+            << fSettings.energyBinsFileName << "' but the macro later requests '"
+            << requestedFile << "'.";
+    fEnergyBinsFileCommand->CommandFailed(message);
+    return;
+  }
+
+  std::ifstream input(requestedFile);
+  std::vector<G4double> edges;
+  G4double edge;
+  while (input >> edge) edges.push_back(edge);
+  if (!input.eof() || edges.size() < 2) {
+    G4ExceptionDescription message;
+    message << "AtRIS energy-bin file '" << requestedFile
+            << "' must contain at least two numeric edges.";
+    fEnergyBinsFileCommand->CommandFailed(message);
+    return;
+  }
+
+  fSettings.energyBinsFileName = requestedFile;
+  fSettings.energyBins = std::move(edges);
+  fHasConfiguredEnergyBins = true;
+  G4cout << "### AtRIS: read " << fSettings.energyBins.size()
+         << " energy-bin edges from " << requestedFile << G4endl;
+  InstallUserActionsIfConfigured();
+}
+
+void RunConfiguration::SetOutputFile(G4String requestedFile)
+{
+  if (fHasConfiguredOutputFile) {
+    if (requestedFile == fSettings.outputFileName) return;
+    G4ExceptionDescription message;
+    message << "AtRIS output-file conflict: the run already selects '"
+            << fSettings.outputFileName << "' but the macro later requests '"
+            << requestedFile << "'.";
+    fOutputFileCommand->CommandFailed(message);
+    return;
+  }
+  if (requestedFile.empty()) {
+    G4ExceptionDescription message;
+    message << "AtRIS output filename cannot be empty.";
+    fOutputFileCommand->CommandFailed(message);
+    return;
+  }
+
+  fSettings.outputFileName = requestedFile;
+  fHasConfiguredOutputFile = true;
+  InstallUserActionsIfConfigured();
+}
+
+void RunConfiguration::SetRandomSeeds(
+  const G4long firstSeed,
+  const G4long secondSeed
+)
+{
+  if (fHasConfiguredSeeds) {
+    if (
+      firstSeed == fSettings.explicitSeeds[0]
+      && secondSeed == fSettings.explicitSeeds[1]
+    ) return;
+    G4ExceptionDescription message;
+    message << "AtRIS random seeds are configured more than once with "
+               "different values.";
+    fRandomSeedsCommand->CommandFailed(message);
+    return;
+  }
+
+  // CLHEP expects two seeds followed by a zero terminator.
+  const std::array<G4long, 3> seeds = {firstSeed, secondSeed, 0};
+  G4Random::setTheSeeds(seeds.data());
+  fSettings.explicitSeeds = {firstSeed, secondSeed};
+  fSettings.hasExplicitSeeds = true;
+  fHasConfiguredSeeds = true;
+  G4cout << "### AtRIS: using random seeds " << firstSeed << " and "
+         << secondSeed << G4endl;
+}
+
+void RunConfiguration::SetPhantomRadiationFile(
+  const G4int phantomIndex,
+  G4String fileName
+)
+{
+  SetPhantomFile(phantomIndex, fileName, true);
+}
+
+void RunConfiguration::SetPhantomCountingFile(
+  const G4int phantomIndex,
+  G4String fileName
+)
+{
+  SetPhantomFile(phantomIndex, fileName, false);
+}
+
+void RunConfiguration::SetPhantomFile(
+  const G4int phantomIndex,
+  G4String fileName,
+  const G4bool radiation
+)
+{
+  G4UIcommand* const command = radiation
+    ? fPhantomRadiationFileCommand
+    : fPhantomCountingFileCommand;
+  if (phantomIndex < 0 || fileName.empty()) {
+    G4ExceptionDescription message;
+    message << "Phantom ID must be nonnegative and its filename cannot be empty.";
+    command->CommandFailed(message);
+    return;
+  }
+
+  PhantomFiles& files = fPhantomFiles[phantomIndex];
+  G4String& selectedFile = radiation ? files.radiation : files.counting;
+  if (!selectedFile.empty()) {
+    if (selectedFile == fileName) return;
+    G4ExceptionDescription message;
+    message << "Phantom " << phantomIndex << " "
+            << (radiation ? "radiation" : "counting")
+            << " file is configured more than once with different values.";
+    command->CommandFailed(message);
+    return;
+  }
+  selectedFile = std::move(fileName);
+
+  if (files.radiation.empty() || files.counting.empty()) return;
+  if (!fPhantomResponses.Add(
+        phantomIndex,
+        files.radiation,
+        files.counting
+      )) {
+    G4ExceptionDescription message;
+    message << "Could not configure phantom " << phantomIndex << ".";
+    command->CommandFailed(message);
+    return;
+  }
+  fSettings.phantomCount = fPhantomResponses.GetCount();
 }
 
 void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)
@@ -158,13 +411,8 @@ void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)
     if (requestedPhysicsList == fSettings.physicsListName) return;
 
     G4ExceptionDescription message;
-    message << "AtRIS physics-list conflict: ";
-    if (fHasCommandLineSettings) {
-      message << "the command line selects '";
-    } else {
-      message << "the run already selects '";
-    }
-    message << fSettings.physicsListName << "' but the macro requests '"
+    message << "AtRIS physics-list conflict: the run already selects '"
+            << fSettings.physicsListName << "' but the macro requests '"
             << requestedPhysicsList << "'.";
     fPhysicsListCommand->CommandFailed(message);
     return;
@@ -183,28 +431,12 @@ void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)
 void RunConfiguration::SetOutputMode(G4String requestedOutputMode)
 {
   const G4int requestedValue = OutputModeValue(requestedOutputMode);
-  if (fHasCommandLineSettings) {
-    if (requestedValue == fSettings.outputMode) return;
-
-    G4ExceptionDescription message;
-    message << "AtRIS output-mode conflict: the command line selects '"
-            << OutputModeName(fSettings.outputMode) << "' ("
-            << fSettings.outputMode
-            << ") but the macro requests '" << requestedOutputMode
-            << "' (" << requestedValue << ").";
-    fOutputModeCommand->CommandFailed(message);
-    return;
-  }
-
   if (fHasConfiguredOutputMode) {
     if (requestedValue == fSettings.outputMode) return;
 
     G4ExceptionDescription message;
-    message << "AtRIS output-mode conflict: the run already selects '"
-            << OutputModeName(fSettings.outputMode) << "' ("
-            << fSettings.outputMode
-            << ") but the macro later requests '" << requestedOutputMode
-            << "' (" << requestedValue << ").";
+    message << "AtRIS output mode is configured more than once with "
+               "different values.";
     fOutputModeCommand->CommandFailed(message);
     return;
   }

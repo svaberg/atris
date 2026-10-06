@@ -27,8 +27,6 @@ INPUT_PATTERNS = (
     "*.spec",
     "*_response.txt",
     "*_counting.txt",
-    "radiation_phantom*.txt",
-    "counting_phantom*.txt",
 )
 logger = logging.getLogger(__name__)
 

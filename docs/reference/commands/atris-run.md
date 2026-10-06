@@ -8,15 +8,16 @@ atris-run . --entry 17
 atris-run . --check-complete
 ```
 
-**Inputs:** `chunks.txt`, prepared species inputs, staged numbered phantoms,
-and optional `phantoms.txt` metadata for progress logging. **Outputs:**
+**Inputs:** `chunks.txt`, the species `.chunk.mac` files and every file they
+name, plus optional `phantoms.txt` metadata for progress logging. **Outputs:**
 per-chunk histograms, optional ROOT particle ntuples, logs, and completion
 markers under `chunks/`.
 
 Defaults are the current directory and one worker with index zero. Supply
 `--worker-index` and `--worker-count` together. `--entry` uses a one-based plan
 line; worker indices are zero-based. Each species macro supplies the physics
-list and output mode to AtRIS.
+list, output mode, input paths, and phantom paths to AtRIS. For each chunk, the
+runner supplies its output name and seed pair through a temporary wrapper macro.
 
 The runner finds `AtRIS` on `PATH`. It skips completed entries and stops the
 worker on a failed subprocess. `--deadline` is an absolute Unix timestamp;

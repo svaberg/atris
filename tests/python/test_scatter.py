@@ -7,8 +7,11 @@ import pytest
 from atris_tools.scatter import chunk_plan, extend_plan, scatter
 
 
-ORDINARY_MACRO = """/run/initialize
-  /random/setSeeds 123456 654321
+ORDINARY_MACRO = """/atris/geometryFile {species}.gdml
+/atris/energyBinsFile {species}.bins
+/atris/outputFile {species}
+/atris/randomSeeds 123456 654321
+/run/initialize
 /gps/particle {particle}
 /run/beamOn 7
 """
@@ -17,7 +20,7 @@ ORDINARY_MACRO = """/run/initialize
 def write_ordinary_macros(run_directory):
     contents = {}
     for species, particle in (("protons", "proton"), ("alphas", "alpha")):
-        text = ORDINARY_MACRO.format(particle=particle)
+        text = ORDINARY_MACRO.format(species=species, particle=particle)
         (run_directory / f"{species}.mac").write_text(text)
         contents[species] = text
     return contents
@@ -70,7 +73,10 @@ def test_scatter_preserves_ordinary_macros_and_rounds_chunk_event_count(
     for species in ("protons", "alphas"):
         assert (tmp_path / f"{species}.mac").read_text() == originals[species]
         chunk = (tmp_path / f"{species}.chunk.mac").read_text()
-        assert "/random/setSeeds" not in chunk
+        assert "/atris/outputFile {ATRIS_OUTPUT_FILE}" in chunk
+        assert "/atris/randomSeeds {ATRIS_SEED_1} {ATRIS_SEED_2}" in chunk
+        assert "/atris/outputFile %s" % species not in chunk
+        assert "/atris/randomSeeds 123456 654321" not in chunk
         assert "/run/beamOn 4" in chunk
 
     assert caplog.messages == [

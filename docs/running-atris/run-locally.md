@@ -40,8 +40,9 @@ atris-run .
 
 The runner skips completed chunks and executes the remaining entries sequentially
 in the foreground. It reports progress and uses `phantoms.txt`, when present,
-to label the staged phantoms in its initial log. AtRIS discovers the numbered
-phantom pairs directly. Continue gathering and inspecting as more chunks finish.
+to label the staged phantoms in its initial log. Each species macro names the
+phantom tables used by AtRIS. Continue gathering and inspecting as more chunks
+finish.
 
 To resume after an interruption, wait until the previous runner and its AtRIS
 child have exited, then repeat the same `atris-run` command. Completed

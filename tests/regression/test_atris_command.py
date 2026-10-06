@@ -1,8 +1,4 @@
-"""Characterize the observable AtRIS command-line contract.
-
-Tests whose names contain ``currently`` record permissive behavior in the
-existing executable; they do not imply that the behavior is desirable.
-"""
+"""Regression tests for the explicit AtRIS macro interface."""
 
 import os
 from pathlib import Path
@@ -14,17 +10,20 @@ import numpy as np
 import pytest
 import uproot
 
-from atris_tools.interface_output import read_root
+from atris_tools.atrismacrogen import macroGenManager
 from atris_tools.gather import gather_simulation
+from atris_tools.interface_output import read_root
 from atris_tools.response_histograms import ResponseHistogramReader
 from atris_tools.root_output import has_ntuple, read_ntuple
 from atris_tools.run_chunks import run_chunks
+from atris_tools.scatter import chunk_macro
 from atris_tools.step_output import STEP_FIELDS, process_name
 
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 FIXTURE = REPOSITORY_ROOT / "tests" / "fixtures" / "minimal"
 PHANTOMS = REPOSITORY_ROOT / "phantoms"
+RESPONSE_STEM = "ramona_zero_0.060MeV_detA"
 EXPECTED_HISTOGRAM_SUFFIXES = {
     "_h1_h1.1.csv",
     "_h2_h2.dir.csv",
@@ -63,6 +62,11 @@ EXPECTED_ROOT_METADATA = {
     "random_seed_1",
     "random_seed_2",
 }
+OUTPUT_MODE_VALUES = {
+    "response": -1,
+    "profile": 0,
+    "shower": 1,
+}
 
 
 @pytest.fixture(scope="session")
@@ -76,54 +80,125 @@ def atris_command():
     return command
 
 
-def prepare_run(run_directory, *, chunked=False):
-    shutil.copyfile(FIXTURE / "simulation.gdml", run_directory / "protons.gdml")
-    shutil.copyfile(FIXTURE / "simulation.bins", run_directory / "protons.bins")
-    shutil.copyfile(FIXTURE / "ordinary.mac", run_directory / "protons.mac")
-    shutil.copyfile(
-        PHANTOMS / "ramona_zero_0.060MeV_detA_response.txt",
-        run_directory / "radiation_phantom0.txt",
-    )
-    shutil.copyfile(
-        PHANTOMS / "ramona_zero_0.060MeV_detA_counting.txt",
-        run_directory / "counting_phantom0.txt",
-    )
-    if chunked:
-        shutil.copyfile(FIXTURE / "chunk.mac", run_directory / "protons.chunk.mac")
-        (run_directory / "chunks").mkdir()
-
-def prepare_interface_run(run_directory):
-    prepare_run(run_directory)
-    shutil.copyfile(FIXTURE / "interface.gdml", run_directory / "protons.gdml")
-    shutil.copyfile(FIXTURE / "interface.mac", run_directory / "protons.mac")
+def source_macro(interface=False, events=2):
+    fixture = "interface.mac" if interface else "ordinary.mac"
+    lines = [
+        line
+        for line in (FIXTURE / fixture).read_text().splitlines()
+        if not line.startswith("/random/setSeeds ")
+        and not line.startswith("/run/beamOn ")
+    ]
+    lines.append("/run/beamOn %i" % events)
+    return "\n".join(lines) + "\n"
 
 
-def prepend_run_configuration(
+def write_macro(
     run_directory,
     *,
+    macro_name="protons.mac",
+    geometry_file="planet.gdml",
+    energy_bins_file="primary-energy.bins",
+    output_file="protons",
     physics_list="FTFP_BERT_HP",
     output_mode="response",
     output_format="csv",
+    phantom_files=None,
     direction_bins=(120, 60),
     position_bins=(120, 60),
-    macro_name="protons.mac",
+    body=None,
 ):
-    macro = run_directory / macro_name
-    macro.write_text(
-        "/atris/physicsList %s\n"
-        "/atris/outputMode %s\n"
-        "/atris/outputFormat %s\n"
-        "/atris/directionBins %i %i\n"
-        "/atris/positionBins %i %i\n"
-        % (
-            physics_list,
-            output_mode,
-            output_format,
-            *direction_bins,
-            *position_bins,
+    if phantom_files is None:
+        phantom_files = [
+            (
+                RESPONSE_STEM + "_response.txt",
+                RESPONSE_STEM + "_counting.txt",
+            )
+        ]
+    lines = [
+        "/atris/geometryFile " + geometry_file,
+        "/atris/energyBinsFile " + energy_bins_file,
+        "/atris/outputFile " + output_file,
+    ]
+    for phantom_id, (response_file, counting_file) in enumerate(phantom_files):
+        lines.extend(
+            (
+                "/atris/phantom/radiationFile %i %s"
+                % (phantom_id, response_file),
+                "/atris/phantom/countingFile %i %s"
+                % (phantom_id, counting_file),
+            )
         )
-        + macro.read_text()
+    lines.extend(
+        (
+            "/atris/physicsList " + physics_list,
+            "/atris/outputMode " + output_mode,
+            "/atris/outputFormat " + output_format,
+            "/atris/directionBins %i %i" % direction_bins,
+            "/atris/positionBins %i %i" % position_bins,
+            "/atris/randomSeeds 123456 654321",
+        )
     )
+    macro = run_directory / macro_name
+    macro.write_text("\n".join(lines) + "\n" + (body or source_macro()))
+    return macro
+
+
+def prepare_run(
+    run_directory,
+    *,
+    interface=False,
+    output_file="protons",
+    output_mode="response",
+    output_format="csv",
+    phantom_count=1,
+    events=2,
+):
+    geometry_fixture = "interface.gdml" if interface else "simulation.gdml"
+    shutil.copyfile(FIXTURE / geometry_fixture, run_directory / "planet.gdml")
+    shutil.copyfile(
+        FIXTURE / "simulation.bins",
+        run_directory / "primary-energy.bins",
+    )
+
+    phantom_files = []
+    phantom_rows = []
+    for phantom_id in range(phantom_count):
+        stem = RESPONSE_STEM if phantom_id == 0 else "phantom-%i" % phantom_id
+        response_file = stem + "_response.txt"
+        counting_file = stem + "_counting.txt"
+        shutil.copyfile(
+            PHANTOMS / (RESPONSE_STEM + "_response.txt"),
+            run_directory / response_file,
+        )
+        shutil.copyfile(
+            PHANTOMS / (RESPONSE_STEM + "_counting.txt"),
+            run_directory / counting_file,
+        )
+        phantom_files.append((response_file, counting_file))
+        phantom_rows.append("%i %s 1.0 1.0\n" % (phantom_id, stem))
+    if phantom_rows:
+        (run_directory / "phantoms.txt").write_text("".join(phantom_rows))
+
+    return write_macro(
+        run_directory,
+        output_file=output_file,
+        output_mode=output_mode,
+        output_format=output_format,
+        phantom_files=phantom_files,
+        body=source_macro(interface=interface, events=events),
+    )
+
+
+def replace_command(macro, command, replacement=None):
+    lines = macro.read_text().splitlines()
+    matching = [index for index, line in enumerate(lines) if line.startswith(command)]
+    if len(matching) != 1:
+        raise AssertionError("Expected one %s command" % command)
+    if replacement is None:
+        del lines[matching[0]]
+    else:
+        lines[matching[0]] = replacement
+    macro.write_text("\n".join(lines) + "\n")
 
 
 def invoke_atris(command, run_directory, *arguments, threads="1"):
@@ -140,23 +215,11 @@ def invoke_atris(command, run_directory, *arguments, threads="1"):
     )
 
 
-def run_atris(
-    command,
-    run_directory,
-    simulation,
-    *,
-    physics="FTFP_BERT_HP",
-    mode="-1",
-    phantom_count="1",
-    threads="1",
-):
+def run_atris(command, run_directory, macro_name="protons.mac", threads="1"):
     return invoke_atris(
         command,
         run_directory,
-        physics,
-        simulation,
-        str(mode),
-        str(phantom_count),
+        macro_name,
         threads=threads,
     )
 
@@ -202,22 +265,30 @@ def assert_timing_output(output, worker_threads):
 
 @pytest.mark.regression
 @pytest.mark.parametrize(
-    ("simulation", "mode", "creates_root", "creates_steps"),
+    ("output_mode", "output_format", "creates_root", "creates_steps"),
     [
-        pytest.param("protons", "-1", False, False, id="default-csv-response"),
-        pytest.param("protons.csv", "-1", False, False, id="explicit-csv-response"),
-        pytest.param("protons.csv", "0", False, False, id="csv-interface"),
-        pytest.param("protons.root", "-1", True, False, id="root-response"),
-        pytest.param("protons.root", "0", True, False, id="root-interface"),
-        pytest.param("protons.root", "1", True, True, id="root-shower"),
+        pytest.param("response", "csv", False, False, id="csv-response"),
+        pytest.param("profile", "csv", False, False, id="csv-profile"),
+        pytest.param("response", "root", True, False, id="root-response"),
+        pytest.param("profile", "root", True, False, id="root-profile"),
+        pytest.param("shower", "root", True, True, id="root-shower"),
     ],
 )
-def test_ordinary_prefix_runs_one_worker_and_writes_expected_histograms(
-    tmp_path, atris_command, simulation, mode, creates_root, creates_steps
+def test_macro_runs_one_worker_and_writes_expected_histograms(
+    tmp_path,
+    atris_command,
+    output_mode,
+    output_format,
+    creates_root,
+    creates_steps,
 ):
-    prepare_run(tmp_path)
+    prepare_run(
+        tmp_path,
+        output_mode=output_mode,
+        output_format=output_format,
+    )
 
-    result = run_atris(atris_command, tmp_path, simulation, mode=mode)
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "### AtRIS: executing macro protons.mac" in result.stdout
@@ -233,23 +304,25 @@ def test_ordinary_prefix_runs_one_worker_and_writes_expected_histograms(
         with uproot.open(root_path) as root_file:
             object_names = set(root_file.keys(cycle=False))
             expected_objects = set(EXPECTED_ROOT_HISTOGRAMS)
-            if mode in ("0", "1"):
+            if output_mode in ("profile", "shower"):
                 expected_objects.update(("metadata", "interfaces"))
             if creates_steps:
                 expected_objects.add("steps")
             assert object_names == expected_objects
             assert int(root_file["h1.1"].member("fEntries")) == 2
-            if mode in ("0", "1"):
+            if output_mode in ("profile", "shower"):
                 metadata = root_file["metadata"]
                 assert set(metadata.keys()) == EXPECTED_ROOT_METADATA
                 assert metadata.num_entries == 1
                 assert metadata["output_mode"].array(library="np").tolist() == [
-                    int(mode)
+                    OUTPUT_MODE_VALUES[output_mode]
                 ]
-                assert metadata["phantom_count"].array(library="np").tolist() == [1]
+                assert metadata["phantom_count"].array(library="np").tolist() == [
+                    1
+                ]
     else:
         written_suffixes = {
-            path.name[len("protons"):]
+            path.name[len("protons") :]
             for path in tmp_path.glob("protons_h*.csv")
         }
         assert written_suffixes == EXPECTED_HISTOGRAM_SUFFIXES
@@ -257,10 +330,12 @@ def test_ordinary_prefix_runs_one_worker_and_writes_expected_histograms(
         for path in tmp_path.glob("protons_h*.csv"):
             annotations = histogram_annotations(path)
             assert annotations["atris.csv_schema"] == "1"
-            assert annotations["atris.input_prefix"] == "protons"
+            assert annotations["atris.input_prefix"] == "planet"
             assert annotations["atris.physics_list"] == "FTFP_BERT_HP"
-            assert annotations["atris.output_mode"] == mode
-            assert annotations["atris.random_seed_pairs"] == "runtime-default"
+            assert annotations["atris.output_mode"] == str(
+                OUTPUT_MODE_VALUES[output_mode]
+            )
+            assert annotations["atris.random_seed_pairs"] == "123456:654321"
             assert annotations["atris.quantity"]
 
     with ResponseHistogramReader(tmp_path / "protons") as histograms:
@@ -277,13 +352,40 @@ def test_ordinary_prefix_runs_one_worker_and_writes_expected_histograms(
 
 
 @pytest.mark.regression
+def test_macro_paths_do_not_have_to_share_a_prefix(tmp_path, atris_command):
+    prepare_run(tmp_path, output_file="named-result")
+    (tmp_path / "protons.mac").rename(tmp_path / "study.mac")
+
+    result = run_atris(atris_command, tmp_path, "study.mac")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (tmp_path / "named-result_h1_h1.1.csv").is_file()
+
+
+@pytest.mark.regression
+def test_generated_macro_runs_directly(tmp_path, atris_command):
+    shutil.copyfile(FIXTURE / "simulation.psf", tmp_path / "simulation.psf")
+    shutil.copyfile(FIXTURE / "simulation.gdml", tmp_path / "simulation.gdml")
+    macroGenManager(
+        1,
+        output_dir=tmp_path,
+        random_seed=12345,
+        energy_points=2,
+    )
+
+    result = run_atris(atris_command, tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (tmp_path / "protons_h1_h1.1.csv").is_file()
+
+
+@pytest.mark.regression
 def test_spherical_source_populates_both_angular_hemispheres(
-    tmp_path, atris_command
+    tmp_path,
+    atris_command,
 ):
-    # MixMax u in (0, 1] makes GPS cos(theta) = 1 - 2u span [-1, 1),
-    # exactly matching the histogram's inclusive-lower/exclusive-upper range.
     prepare_run(tmp_path)
-    (tmp_path / "protons.mac").write_text(
+    body = (
         "/run/initialize\n"
         "/gps/particle proton\n"
         "/gps/ene/mono 10 MeV\n"
@@ -294,11 +396,11 @@ def test_spherical_source_populates_both_angular_hemispheres(
         "/gps/ang/type cos\n"
         "/gps/ang/mintheta 0 deg\n"
         "/gps/ang/maxtheta 90 deg\n"
-        "/random/setSeeds 123456 654321\n"
         "/run/beamOn 100\n"
     )
+    write_macro(tmp_path, body=body)
 
-    result = run_atris(atris_command, tmp_path, "protons")
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
     with ResponseHistogramReader(tmp_path / "protons") as histograms:
@@ -311,27 +413,29 @@ def test_spherical_source_populates_both_angular_hemispheres(
 
 
 @pytest.mark.regression
-def test_unsupported_output_extension_fails_cleanly(tmp_path, atris_command):
-    prepare_run(tmp_path)
+def test_unsupported_output_format_fails_cleanly(tmp_path, atris_command):
+    prepare_run(tmp_path, output_format="unsupported")
 
-    result = run_atris(atris_command, tmp_path, "protons.unsupported")
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode != 0
-    output = result.stdout + result.stderr
-    assert "Cannot open analysis output 'protons.unsupported'" in output
+    assert not list(tmp_path.glob("protons_*.csv"))
+    assert not (tmp_path / "protons.root").exists()
 
 
 @pytest.mark.regression
-def test_mode_zero_writes_merged_root_interface_ntuple(tmp_path, atris_command):
-    prepare_interface_run(tmp_path)
-
-    result = run_atris(
-        atris_command,
+def test_profile_mode_writes_merged_root_interface_ntuple(
+    tmp_path,
+    atris_command,
+):
+    prepare_run(
         tmp_path,
-        "protons.root",
-        mode="0",
-        threads="2",
+        interface=True,
+        output_mode="profile",
+        output_format="root",
     )
+
+    result = run_atris(atris_command, tmp_path, threads="2")
 
     assert result.returncode == 0, result.stdout + result.stderr
     root_path = tmp_path / "protons.root"
@@ -343,18 +447,13 @@ def test_mode_zero_writes_merged_root_interface_ntuple(tmp_path, atris_command):
 
 
 @pytest.mark.regression
-def test_mode_one_writes_root_step_ntuple_with_track_genealogy(
-    tmp_path, atris_command
+def test_shower_mode_writes_root_steps_with_track_genealogy(
+    tmp_path,
+    atris_command,
 ):
-    prepare_run(tmp_path)
+    prepare_run(tmp_path, output_mode="shower", output_format="root")
 
-    result = run_atris(
-        atris_command,
-        tmp_path,
-        "protons.root",
-        mode="1",
-        threads="2",
-    )
+    result = run_atris(atris_command, tmp_path, threads="2")
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "### AtRIS: simulation used 2 worker thread(s)" in result.stdout
@@ -370,85 +469,50 @@ def test_mode_one_writes_root_step_ntuple_with_track_genealogy(
 
 
 @pytest.mark.regression
-def test_mode_one_contains_mode_zero_interface_records(tmp_path, atris_command):
-    mode_zero = tmp_path / "mode-zero"
-    mode_one = tmp_path / "mode-one"
-    mode_zero.mkdir()
-    mode_one.mkdir()
-    prepare_interface_run(mode_zero)
-    prepare_interface_run(mode_one)
+def test_shower_mode_contains_profile_interface_records(tmp_path, atris_command):
+    profile = tmp_path / "profile"
+    shower = tmp_path / "shower"
+    profile.mkdir()
+    shower.mkdir()
+    prepare_run(
+        profile,
+        interface=True,
+        output_mode="profile",
+        output_format="root",
+    )
+    prepare_run(
+        shower,
+        interface=True,
+        output_mode="shower",
+        output_format="root",
+    )
 
-    zero_result = run_atris(atris_command, mode_zero, "protons.root", mode="0")
-    one_result = run_atris(atris_command, mode_one, "protons.root", mode="1")
+    profile_result = run_atris(atris_command, profile)
+    shower_result = run_atris(atris_command, shower)
 
-    assert zero_result.returncode == 0, zero_result.stdout + zero_result.stderr
-    assert one_result.returncode == 0, one_result.stdout + one_result.stderr
+    assert profile_result.returncode == 0, profile_result.stdout + profile_result.stderr
+    assert shower_result.returncode == 0, shower_result.stdout + shower_result.stderr
     np.testing.assert_array_equal(
-        read_root(mode_zero / "protons.root"),
-        read_root(mode_one / "protons.root"),
+        read_root(profile / "protons.root"),
+        read_root(shower / "protons.root"),
     )
 
 
 @pytest.mark.regression
-def test_seeded_prefix_uses_shared_chunk_inputs_and_seeded_output_prefix(
-    tmp_path, atris_command
+def test_chunk_runner_supplies_output_and_seeds_to_shared_macro(
+    tmp_path,
+    atris_command,
+    monkeypatch,
 ):
-    prepare_run(tmp_path, chunked=True)
-    simulation = "chunks/protons_123456_654321"
-
-    result = run_atris(atris_command, tmp_path, simulation)
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "### AtRIS: using random seeds 123456 and 654321" in result.stdout
-    assert "### AtRIS: executing macro protons.chunk.mac" in result.stdout
-
-    prefix = "protons_123456_654321"
-    written_suffixes = {
-        path.name[len(prefix):]
-        for path in (tmp_path / "chunks").glob(prefix + "_*.csv")
-    }
-    assert written_suffixes == EXPECTED_HISTOGRAM_SUFFIXES
-    assert histogram_entries(tmp_path / "chunks" / f"{prefix}_h1_h1.1.csv") == 1
-    annotations = histogram_annotations(
-        tmp_path / "chunks" / f"{prefix}_h1_h1.1.csv"
-    )
-    assert annotations["atris.random_seed_pairs"] == "123456:654321"
-    assert not (tmp_path / "protons_h1_h1.1.csv").exists()
-
-
-@pytest.mark.regression
-def test_seeded_mode_one_writes_root_file_inside_chunks(tmp_path, atris_command):
-    prepare_run(tmp_path, chunked=True)
-    simulation = "chunks/protons_123456_654321"
-
-    result = run_atris(
-        atris_command,
-        tmp_path,
-        simulation + ".root",
-        mode="1",
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    root_path = tmp_path / (simulation + ".root")
-    assert root_path.is_file()
-    assert len(read_ntuple(root_path, "steps", STEP_FIELDS)) == 1
-    assert not list((tmp_path / "chunks").glob("*.csv"))
-    with uproot.open(root_path) as root_file:
-        assert "h1.1" in root_file
-
-
-@pytest.mark.regression
-def test_chunk_runner_uses_configuration_from_chunk_macro(
-    tmp_path, atris_command, monkeypatch
-):
-    prepare_run(tmp_path, chunked=True)
-    prepend_run_configuration(
+    macro = prepare_run(
         tmp_path,
         output_mode="profile",
         output_format="root",
-        macro_name="protons.chunk.mac",
+        events=1,
     )
-    shutil.copyfile(FIXTURE / "phantoms.txt", tmp_path / "phantoms.txt")
+    contents, _, _ = chunk_macro(macro, chunks=1)
+    (tmp_path / "protons.chunk.mac").write_text(contents)
+    (tmp_path / "chunks").mkdir()
     (tmp_path / "chunks.txt").write_text("protons 123456 654321\n")
     monkeypatch.setenv("G4FORCENUMBEROFTHREADS", "1")
 
@@ -458,69 +522,57 @@ def test_chunk_runner_uses_configuration_from_chunk_macro(
     assert output.is_file()
     assert (tmp_path / "chunks" / "protons_123456_654321.COMPLETE").is_file()
     with uproot.open(output) as root_file:
-        assert root_file["metadata"]["output_mode"].array(library="np").tolist() == [
-            0
-        ]
+        metadata = root_file["metadata"]
+        assert metadata["output_mode"].array(library="np").tolist() == [0]
+        assert metadata["random_seed_1"].array(library="np").tolist() == [123456]
+        assert metadata["random_seed_2"].array(library="np").tolist() == [654321]
 
 
 @pytest.mark.regression
 def test_csv_and_root_response_histograms_gather_equivalently(
-    tmp_path, atris_command
+    tmp_path,
+    atris_command,
 ):
     outputs = {}
     entry = ("protons", "123456", "654321")
-    simulation = "chunks/protons_123456_654321"
-    for mode, directory_name in (("-1", "csv"), ("0", "root")):
-        run_directory = tmp_path / directory_name
+    run_name = "protons_123456_654321"
+    for output_format in ("csv", "root"):
+        run_directory = tmp_path / output_format
         run_directory.mkdir()
-        prepare_run(run_directory, chunked=True)
-        shutil.copyfile(
-            FIXTURE / "simulation.psf",
-            run_directory / "simulation.psf",
-        )
-        shutil.copyfile(
-            FIXTURE / "phantoms.txt",
-            run_directory / "phantoms.txt",
+        (run_directory / "chunks").mkdir()
+        shutil.copyfile(FIXTURE / "simulation.psf", run_directory / "simulation.psf")
+        prepare_run(
+            run_directory,
+            output_file="chunks/" + run_name,
+            output_format=output_format,
+            events=1,
         )
 
-        result = run_atris(
-            atris_command,
-            run_directory,
-            simulation + (".root" if mode == "0" else ""),
-            mode=mode,
-        )
+        result = run_atris(atris_command, run_directory)
         assert result.returncode == 0, result.stdout + result.stderr
-        (run_directory / "chunks" / (simulation.split("/")[1] + ".COMPLETE")).touch()
+        (run_directory / "chunks" / (run_name + ".COMPLETE")).touch()
         gather_simulation(run_directory, [entry], "protons")
 
-        if mode == "0":
-            with uproot.open(run_directory / "protons.root") as root_file:
-                metadata = root_file["metadata"]
-                assert metadata.num_entries == 1
-                assert metadata["random_seed_1"].array(
-                    library="np"
-                ).tolist() == [123456]
-                assert metadata["random_seed_2"].array(
-                    library="np"
-                ).tolist() == [654321]
-
         with ResponseHistogramReader(run_directory / "protons") as histograms:
-            outputs[mode] = {
+            outputs[output_format] = {
                 name: (histograms.axes(name), histograms.values(name))
                 for name in histograms.names()
             }
 
-    assert outputs["-1"].keys() == outputs["0"].keys()
-    for name in outputs["-1"]:
-        csv_axes, csv_data = outputs["-1"][name]
-        root_axes, root_data = outputs["0"][name]
+    assert outputs["csv"].keys() == outputs["root"].keys()
+    for name in outputs["csv"]:
+        csv_axes, csv_data = outputs["csv"][name]
+        root_axes, root_data = outputs["root"][name]
         for csv_axis, root_axis in zip(csv_axes, root_axes):
             np.testing.assert_allclose(csv_axis, root_axis, rtol=1e-6)
         np.testing.assert_allclose(csv_data, root_data)
 
 
 @pytest.mark.regression
-def test_version_form_reports_version_without_simulation_inputs(tmp_path, atris_command):
+def test_version_form_reports_version_without_simulation_inputs(
+    tmp_path,
+    atris_command,
+):
     result = invoke_atris(atris_command, tmp_path, "--version")
 
     assert result.returncode == 0
@@ -529,153 +581,31 @@ def test_version_form_reports_version_without_simulation_inputs(tmp_path, atris_
 
 
 @pytest.mark.regression
-def test_short_form_reads_complete_run_configuration_from_macro(
-    tmp_path, atris_command
-):
-    prepare_run(tmp_path)
-    prepend_run_configuration(
-        tmp_path,
-        direction_bins=(12, 6),
-        position_bins=(10, 5),
-    )
-
-    result = invoke_atris(atris_command, tmp_path, "protons")
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    with ResponseHistogramReader(tmp_path / "protons") as histograms:
-        assert [len(axis) - 1 for axis in histograms.axes("h2.dir")] == [12, 6]
-        assert [len(axis) - 1 for axis in histograms.axes("h2.pos")] == [10, 5]
-    annotations = histogram_annotations(tmp_path / "protons_h1_h1.1.csv")
-    assert annotations["atris.physics_list"] == "FTFP_BERT_HP"
-    assert annotations["atris.output_mode"] == "-1"
-
-
-@pytest.mark.regression
-@pytest.mark.parametrize("simulation", ["protons", "protons.root"])
-def test_short_form_uses_macro_output_format(
-    tmp_path, atris_command, simulation
-):
-    prepare_run(tmp_path)
-    prepend_run_configuration(
-        tmp_path,
-        output_mode="profile",
-        output_format="root",
-    )
-
-    result = invoke_atris(atris_command, tmp_path, simulation)
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert (tmp_path / "protons.root").is_file()
-    assert not list(tmp_path.glob("protons_*.csv"))
-    with uproot.open(tmp_path / "protons.root") as root_file:
-        assert root_file["metadata"]["output_mode"].array(library="np").tolist() == [
-            0
-        ]
-
-
-@pytest.mark.regression
-@pytest.mark.parametrize(
-    "configuration",
-    [
-        pytest.param(
-            "/atris/physicsList FTFP_BERT_HP\n/atris/outputFormat csv\n",
-            id="missing-mode",
-        ),
-        pytest.param(
-            "/atris/outputMode response\n/atris/outputFormat csv\n",
-            id="missing-physics-list",
-        ),
-        pytest.param(
-            "/atris/physicsList FTFP_BERT_HP\n/atris/outputMode response\n",
-            id="missing-output-format",
-        ),
-    ],
-)
-def test_short_form_requires_complete_run_configuration(
-    tmp_path, atris_command, configuration
-):
-    prepare_run(tmp_path)
-    macro = tmp_path / "protons.mac"
-    macro.write_text(configuration + macro.read_text())
-
-    result = invoke_atris(atris_command, tmp_path, "protons")
-
-    assert result.returncode != 0
-    assert not list(tmp_path.glob("protons_*.csv"))
-    assert not (tmp_path / "protons.root").exists()
-
-
-@pytest.mark.regression
-def test_short_form_requires_filename_and_macro_formats_to_match(
-    tmp_path, atris_command
-):
-    prepare_run(tmp_path)
-    prepend_run_configuration(tmp_path, output_format="root")
-
-    result = invoke_atris(atris_command, tmp_path, "protons.csv")
-
-    assert result.returncode != 0
-    assert "output-format conflict" in result.stdout + result.stderr
-    assert not list(tmp_path.glob("protons_*.csv"))
-    assert not (tmp_path / "protons.root").exists()
-
-
-@pytest.mark.regression
 @pytest.mark.parametrize(
     "arguments",
     [
         pytest.param((), id="no-arguments"),
-        pytest.param(("FTFP_BERT_HP", "protons"), id="incomplete-legacy-form"),
-        pytest.param(
-            ("FTFP_BERT_HP", "protons", "-1", "1", "extra"),
-            id="too-many-arguments",
-        ),
+        pytest.param(("protons.mac", "extra"), id="too-many-arguments"),
     ],
 )
-def test_wrong_argument_count_prints_usage_and_currently_returns_success(
-    tmp_path, atris_command, arguments
-):
+def test_wrong_argument_count_returns_failure(tmp_path, atris_command, arguments):
     result = invoke_atris(atris_command, tmp_path, *arguments)
 
-    assert result.returncode == 0
-    assert "Usage:" in result.stdout
-    assert "<simulation-name>" in result.stdout
-    assert "<physics-list> <simulation-name> <mode> [phantom-count]" in result.stdout
-
-
-@pytest.mark.regression
-@pytest.mark.parametrize(
-    ("mode", "phantom_count"),
-    [
-        pytest.param("not-an-integer", "1", id="nonnumeric-mode"),
-        pytest.param("-1", "not-an-integer", id="nonnumeric-phantom-count"),
-    ],
-)
-def test_nonnumeric_integer_arguments_exit_nonzero(
-    tmp_path, atris_command, mode, phantom_count
-):
-    result = run_atris(
-        atris_command,
-        tmp_path,
-        "protons",
-        mode=mode,
-        phantom_count=phantom_count,
-    )
-
     assert result.returncode != 0
-    assert not list(tmp_path.glob("*.csv"))
+    assert "Usage:" in result.stderr
+    assert "<macro-file>" in result.stderr
 
 
 @pytest.mark.regression
 def test_unsupported_physics_list_exits_nonzero(tmp_path, atris_command):
     prepare_run(tmp_path)
-
-    result = run_atris(
-        atris_command,
-        tmp_path,
-        "protons",
-        physics="NOT_A_GEANT4_PHYSICS_LIST",
+    replace_command(
+        tmp_path / "protons.mac",
+        "/atris/physicsList ",
+        "/atris/physicsList NOT_A_GEANT4_PHYSICS_LIST",
     )
+
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode != 0
     assert "NOT_A_GEANT4_PHYSICS_LIST is not valid" in result.stdout
@@ -684,72 +614,38 @@ def test_unsupported_physics_list_exits_nonzero(tmp_path, atris_command):
 
 
 @pytest.mark.regression
-def test_macro_physics_list_can_confirm_command_line(tmp_path, atris_command):
-    prepare_run(tmp_path)
-    macro = tmp_path / "protons.mac"
+def test_conflicting_repeated_configuration_exits_nonzero(tmp_path, atris_command):
+    macro = prepare_run(tmp_path)
     macro.write_text(
-        "/atris/physicsList FTFP_BERT_HP\n" + macro.read_text()
+        macro.read_text().replace(
+            "/atris/physicsList FTFP_BERT_HP\n",
+            "/atris/physicsList FTFP_BERT_HP\n"
+            "/atris/physicsList QGSP_BERT\n",
+        )
     )
 
-    result = run_atris(atris_command, tmp_path, "protons")
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert histogram_entries(tmp_path / "protons_h1_h1.1.csv") == 2
-
-
-@pytest.mark.regression
-def test_macro_physics_list_must_match_command_line(tmp_path, atris_command):
-    prepare_run(tmp_path)
-    macro = tmp_path / "protons.mac"
-    macro.write_text("/atris/physicsList QGSP_BERT\n" + macro.read_text())
-
-    result = run_atris(atris_command, tmp_path, "protons")
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode != 0
-    assert "AtRIS physics-list conflict" in result.stdout
-    assert "command line selects 'FTFP_BERT_HP'" in result.stdout
-    assert "macro requests 'QGSP_BERT'" in result.stdout
-    assert not list(tmp_path.glob("protons_*.csv"))
-
-
-@pytest.mark.regression
-def test_macro_output_mode_can_confirm_command_line(tmp_path, atris_command):
-    prepare_run(tmp_path)
-    macro = tmp_path / "protons.mac"
-    macro.write_text("/atris/outputMode response\n" + macro.read_text())
-
-    result = run_atris(atris_command, tmp_path, "protons")
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert histogram_entries(tmp_path / "protons_h1_h1.1.csv") == 2
-
-
-@pytest.mark.regression
-def test_macro_output_mode_must_match_command_line(tmp_path, atris_command):
-    prepare_run(tmp_path)
-    macro = tmp_path / "protons.mac"
-    macro.write_text("/atris/outputMode profile\n" + macro.read_text())
-
-    result = run_atris(atris_command, tmp_path, "protons")
-
-    assert result.returncode != 0
-    assert "AtRIS output-mode conflict" in result.stdout
-    assert "command line selects 'response' (-1)" in result.stdout
-    assert "macro requests 'profile' (0)" in result.stdout
+    assert "AtRIS physics-list conflict" in result.stdout + result.stderr
     assert not list(tmp_path.glob("protons_*.csv"))
 
 
 @pytest.mark.regression
 def test_macro_configures_source_histogram_bins(tmp_path, atris_command):
     prepare_run(tmp_path)
-    macro = tmp_path / "protons.mac"
-    macro.write_text(
-        "/atris/directionBins 12 6\n"
-        "/atris/positionBins 10 5\n"
-        + macro.read_text()
+    replace_command(
+        tmp_path / "protons.mac",
+        "/atris/directionBins ",
+        "/atris/directionBins 12 6",
+    )
+    replace_command(
+        tmp_path / "protons.mac",
+        "/atris/positionBins ",
+        "/atris/positionBins 10 5",
     )
 
-    result = run_atris(atris_command, tmp_path, "protons")
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
     with ResponseHistogramReader(tmp_path / "protons") as histograms:
@@ -758,12 +654,18 @@ def test_macro_configures_source_histogram_bins(tmp_path, atris_command):
 
 
 @pytest.mark.regression
-def test_macro_rejects_nonpositive_source_histogram_bins(tmp_path, atris_command):
+def test_macro_rejects_nonpositive_source_histogram_bins(
+    tmp_path,
+    atris_command,
+):
     prepare_run(tmp_path)
-    macro = tmp_path / "protons.mac"
-    macro.write_text("/atris/directionBins 0 6\n" + macro.read_text())
+    replace_command(
+        tmp_path / "protons.mac",
+        "/atris/directionBins ",
+        "/atris/directionBins 0 6",
+    )
 
-    result = run_atris(atris_command, tmp_path, "protons")
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode != 0
     assert not list(tmp_path.glob("protons_*.csv"))
@@ -778,7 +680,9 @@ def test_macro_rejects_nonpositive_source_histogram_bins(tmp_path, atris_command
     ],
 )
 def test_missing_or_invalid_macro_exits_nonzero(
-    tmp_path, atris_command, macro_contents
+    tmp_path,
+    atris_command,
+    macro_contents,
 ):
     prepare_run(tmp_path)
     macro = tmp_path / "protons.mac"
@@ -787,7 +691,7 @@ def test_missing_or_invalid_macro_exits_nonzero(
     else:
         macro.write_text(macro_contents)
 
-    result = run_atris(atris_command, tmp_path, "protons")
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode != 0
     assert "### AtRIS: macro execution failed with Geant4 status" in result.stderr
@@ -795,212 +699,122 @@ def test_missing_or_invalid_macro_exits_nonzero(
 
 
 @pytest.mark.regression
-def test_missing_geometry_exits_nonzero(tmp_path, atris_command):
+@pytest.mark.parametrize(
+    "filename",
+    ["planet.gdml", "primary-energy.bins"],
+)
+def test_missing_explicit_input_file_exits_nonzero(
+    tmp_path,
+    atris_command,
+    filename,
+):
     prepare_run(tmp_path)
-    (tmp_path / "protons.gdml").unlink()
+    (tmp_path / filename).unlink()
 
-    result = run_atris(atris_command, tmp_path, "protons")
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode != 0
-    assert "### AtRIS: the simulation has completed" not in result.stdout
+    assert filename in result.stdout + result.stderr
+    assert not list(tmp_path.glob("protons_*.csv"))
 
 
 @pytest.mark.regression
-def test_missing_energy_bins_currently_runs_with_zero_edges(tmp_path, atris_command):
-    prepare_run(tmp_path)
-    (tmp_path / "protons.bins").unlink()
+def test_zero_phantoms_runs_without_phantom_histograms(tmp_path, atris_command):
+    prepare_run(tmp_path, phantom_count=0)
 
-    result = run_atris(atris_command, tmp_path, "protons")
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "### AtRIS: read 0 binedges." in result.stdout
-    assert "### AtRIS: the simulation has completed" in result.stdout
-    assert {path.name for path in tmp_path.glob("protons_*.csv")} == {
-        "protons_h2_h2.dir.csv",
-        "protons_h2_h2.pos.csv",
-    }
-
-
-@pytest.mark.regression
-def test_zero_phantom_count_runs_without_phantom_histograms(tmp_path, atris_command):
-    prepare_run(tmp_path)
-    (tmp_path / "radiation_phantom0.txt").unlink()
-    (tmp_path / "counting_phantom0.txt").unlink()
-
-    result = run_atris(
-        atris_command,
-        tmp_path,
-        "protons",
-        phantom_count="0",
-    )
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
     written_suffixes = {
-        path.name[len("protons"):]
+        path.name[len("protons") :]
         for path in tmp_path.glob("protons_*.csv")
     }
     assert written_suffixes == EXPECTED_HISTOGRAM_SUFFIXES_WITHOUT_PHANTOMS
 
 
 @pytest.mark.regression
-def test_phantom_count_is_discovered_from_staged_pairs(tmp_path, atris_command):
-    prepare_run(tmp_path)
-    shutil.copyfile(
-        tmp_path / "radiation_phantom0.txt",
-        tmp_path / "radiation_phantom1.txt",
-    )
-    shutil.copyfile(
-        tmp_path / "counting_phantom0.txt",
-        tmp_path / "counting_phantom1.txt",
-    )
+def test_macro_loads_each_explicit_phantom_pair(tmp_path, atris_command):
+    prepare_run(tmp_path, phantom_count=2)
 
-    result = invoke_atris(
-        atris_command,
-        tmp_path,
-        "FTFP_BERT_HP",
-        "protons",
-        "-1",
-    )
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "### AtRIS: proceeding to load 2 phantom(s)." in result.stdout
+    assert "loading radiation response matrix for phantom 0" in result.stdout
+    assert "loading radiation response matrix for phantom 1" in result.stdout
     assert (tmp_path / "protons_h2_h2.dos1.csv").is_file()
 
 
 @pytest.mark.regression
-@pytest.mark.parametrize(
-    ("missing_file", "expected_partner"),
-    [
-        ("radiation_phantom0.txt", "radiation_phantom0.txt"),
-        ("counting_phantom0.txt", "counting_phantom0.txt"),
-    ],
-)
-def test_incomplete_staged_phantom_pair_exits_nonzero(
-    tmp_path, atris_command, missing_file, expected_partner
+@pytest.mark.parametrize("suffix", ["response", "counting"])
+def test_missing_explicit_phantom_file_exits_nonzero(
+    tmp_path,
+    atris_command,
+    suffix,
 ):
     prepare_run(tmp_path)
-    (tmp_path / missing_file).unlink()
+    filename = RESPONSE_STEM + "_" + suffix + ".txt"
+    (tmp_path / filename).unlink()
 
-    result = invoke_atris(
-        atris_command,
-        tmp_path,
-        "FTFP_BERT_HP",
-        "protons",
-        "-1",
-    )
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode != 0
-    assert f"staged phantom 0 is missing {expected_partner}" in result.stderr
+    assert filename in result.stdout + result.stderr
+    assert not list(tmp_path.glob("protons_*.csv"))
 
 
 @pytest.mark.regression
-def test_staged_phantom_id_gap_exits_nonzero(tmp_path, atris_command):
-    prepare_run(tmp_path)
-    shutil.copyfile(
-        tmp_path / "radiation_phantom0.txt",
-        tmp_path / "radiation_phantom2.txt",
-    )
-    shutil.copyfile(
-        tmp_path / "counting_phantom0.txt",
-        tmp_path / "counting_phantom2.txt",
+def test_phantom_ids_must_be_contiguous_in_macro(tmp_path, atris_command):
+    macro = prepare_run(tmp_path, phantom_count=2)
+    macro.write_text(
+        macro.read_text()
+        .replace("/atris/phantom/radiationFile 1 ", "/atris/phantom/radiationFile 2 ")
+        .replace("/atris/phantom/countingFile 1 ", "/atris/phantom/countingFile 2 ")
     )
 
-    result = invoke_atris(
-        atris_command,
-        tmp_path,
-        "FTFP_BERT_HP",
-        "protons",
-        "-1",
-    )
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode != 0
-    assert "staged phantom IDs must be contiguous from 0" in result.stderr
+    assert "phantom IDs must be contiguous from 0" in result.stderr
     assert "expected 1 but found 2" in result.stderr
 
 
 @pytest.mark.regression
-@pytest.mark.parametrize(
-    "mismatched_file",
-    ["radiation_phantom1.txt", "counting_phantom1.txt"],
-)
+@pytest.mark.parametrize("file_type", ["response", "counting"])
 def test_mismatched_phantom_pdg_headers_exit_nonzero(
-    tmp_path, atris_command, mismatched_file
+    tmp_path,
+    atris_command,
+    file_type,
 ):
-    prepare_run(tmp_path)
-    shutil.copyfile(
-        tmp_path / "radiation_phantom0.txt",
-        tmp_path / "radiation_phantom1.txt",
-    )
-    shutil.copyfile(
-        tmp_path / "counting_phantom0.txt",
-        tmp_path / "counting_phantom1.txt",
-    )
-
-    path = tmp_path / mismatched_file
+    prepare_run(tmp_path, phantom_count=2)
+    path = tmp_path / ("phantom-1_" + file_type + ".txt")
     lines = path.read_text().splitlines()
     lines[0] = " ".join(lines[0].split()[:-1])
     path.write_text("\n".join(lines) + "\n")
 
-    result = run_atris(atris_command, tmp_path, "protons", phantom_count="2")
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode != 0
     assert "### AtRIS: PDG header mismatch:" in result.stderr
-    assert mismatched_file in result.stderr
-    assert "radiation_phantom0.txt" in result.stderr
+    assert path.name in result.stderr
+    assert RESPONSE_STEM + "_response.txt" in result.stderr
     assert not list(tmp_path.glob("protons_*.csv"))
 
 
 @pytest.mark.regression
-@pytest.mark.parametrize(
-    "short_file",
-    ["radiation_phantom0.txt", "counting_phantom0.txt"],
-)
+@pytest.mark.parametrize("file_type", ["response", "counting"])
 def test_incomplete_phantom_response_table_exits_nonzero(
-    tmp_path, atris_command, short_file
+    tmp_path,
+    atris_command,
+    file_type,
 ):
     prepare_run(tmp_path)
-    path = tmp_path / short_file
+    path = tmp_path / (RESPONSE_STEM + "_" + file_type + ".txt")
     lines = path.read_text().splitlines()
-    fields = lines[-1].split()
-    lines[-1] = " ".join(fields[:-1])
+    lines[-1] = " ".join(lines[-1].split()[:-1])
     path.write_text("\n".join(lines) + "\n")
 
-    result = run_atris(atris_command, tmp_path, "protons")
+    result = run_atris(atris_command, tmp_path)
 
     assert result.returncode != 0
-    assert f"response value count mismatch in {short_file}" in result.stderr
+    assert "response value count mismatch in " + path.name in result.stderr
     assert not list(tmp_path.glob("protons_*.csv"))
-
-
-@pytest.mark.regression
-@pytest.mark.parametrize("mode", ["-2", "2", "999"])
-def test_undocumented_integer_modes_currently_follow_csv_path(
-    tmp_path, atris_command, mode
-):
-    prepare_run(tmp_path)
-
-    result = run_atris(atris_command, tmp_path, "protons", mode=mode)
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert (tmp_path / "protons_h1_h1.1.csv").is_file()
-    assert not (tmp_path / "protons.root").exists()
-
-
-@pytest.mark.regression
-@pytest.mark.parametrize("phantom_count", ["-1", "0", "2"])
-def test_explicit_phantom_count_mismatch_exits_nonzero(
-    tmp_path, atris_command, phantom_count
-):
-    prepare_run(tmp_path)
-
-    result = run_atris(
-        atris_command,
-        tmp_path,
-        "protons",
-        phantom_count=phantom_count,
-    )
-
-    assert result.returncode != 0
-    assert "phantom-count mismatch" in result.stderr
-    assert f"command line specifies {phantom_count}" in result.stderr
-    assert "found 1 staged phantom pair(s)" in result.stderr

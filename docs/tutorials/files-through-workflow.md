@@ -141,7 +141,7 @@ atris-stage-phantoms . --copy
 
 | Reads | Creates |
 | --- | --- |
-| `phantoms.txt`, selected named tables in `$ATRIS_ROOT/phantoms` | Local named response/counting table copies and four numbered symlinks |
+| `phantoms.txt`, selected named tables in `$ATRIS_ROOT/phantoms` | Local named response/counting table copies |
 
 `phantoms.txt` selects phantom IDs `0` and `1`, their table filename stems,
 masses, and areas. It contains metadata, not the response matrices themselves.
@@ -154,20 +154,9 @@ icru_zero_0.000MeV_detAB_response.txt
 icru_zero_0.000MeV_detAB_counting.txt
 ```
 
-The executable expects numbered filenames rather than those descriptive
-names. Staging connects the two:
-
-```text
-radiation_phantom0.txt -> ramona_zero_0.060MeV_detA_response.txt
-counting_phantom0.txt  -> ramona_zero_0.060MeV_detA_counting.txt
-radiation_phantom1.txt -> icru_zero_0.000MeV_detAB_response.txt
-counting_phantom1.txt  -> icru_zero_0.000MeV_detAB_counting.txt
-```
-
-A symlink is a filesystem reference to its target file. `--copy` makes the
-targets local, so these links remain usable when the whole run directory is
-moved. Without `--copy`, the numbered links may point back to the shared library.
-`ls -l radiation_phantom*.txt counting_phantom*.txt` shows their targets.
+`--copy` makes these files independent of the shared phantom library. Without
+that option, staging creates relative symbolic links under the same descriptive
+names. The generated species macros name the selected files explicitly.
 
 The response tables describe how crossing particles contribute to phantom
 responses. They are not additional physical volumes added to the GDML.
@@ -204,8 +193,8 @@ energy edges span 1–1,000,000 MeV for protons and 4–4,000,000 MeV for alphas
 name, the generator multiplies `--particles-per-bin` by the number of **energy
 points**, not intervals; see [the exact convention](../reference/inputs.md#energy-bins-and-macros).
 
-The leading names `protons` and `alphas` tie each set together. Later, passing
-`protons` to AtRIS makes it read all three `protons.*` inputs.
+The generated `protons.mac` and `alphas.mac` files explicitly name their GDML,
+energy-bin, output, and phantom files. AtRIS runs a species macro directly.
 
 ## 6. Plan and run chunks
 
@@ -222,8 +211,9 @@ atris-scatter . --chunks 3000 --random-seed 12345
 
 Ordinary macros remain unchanged. Each species has 3000 chunks: 121 proton
 events per chunk and 80 alpha events per chunk. The chunk macros contain these
-per-chunk counts and no embedded seed command; `chunks.txt` supplies independent
-seed pairs. No events have been simulated in this directory yet.
+per-chunk counts and aliases for the output name and seeds; `chunks.txt`
+supplies the value for each chunk. No events have been simulated in this
+directory yet.
 
 These small chunks let us try the full model without running the entire plan.
 Runtime still depends on the sampled particles and the machine. For longer
@@ -245,7 +235,7 @@ example setting; choose a count suitable for the machine.
 
 | Reads | Creates |
 | --- | --- |
-| `chunks.txt`, species `.gdml`/`.bins`/`.chunk.mac`, optional `phantoms.txt` and numbered tables | Per-chunk raw histograms, a log, and a completion marker under `chunks/` |
+| `chunks.txt`, species `.chunk.mac`, and the files named by that macro | Per-chunk raw histograms, a log, and a completion marker under `chunks/` |
 
 A chunk's files have names like these; the seed numbers are illustrative:
 
@@ -259,9 +249,9 @@ chunks/protons_123456_654321.COMPLETE
 ```
 
 The marker is created when the subprocess succeeds. A later `atris-run` skips
-marked entries and reruns incomplete ones. AtRIS discovers the staged numbered
-phantom pairs directly; the runner uses `phantoms.txt` to label them in its
-progress log.
+marked entries and reruns incomplete ones. AtRIS reads the phantom paths from
+the species macro; the runner uses `phantoms.txt` to label them in its progress
+log.
 
 ## 7. Gather completed chunks
 

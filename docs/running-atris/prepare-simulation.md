@@ -65,10 +65,10 @@ Once that file is ready, stage its tables:
 atris-stage-phantoms . --copy
 ```
 
-This copies the selected named tables into the run directory and creates the
-numbered links expected by AtRIS. Keeping the targets local lets you transfer
-the whole directory to another machine. The runner reads the selection from
-`phantoms.txt`.
+This copies the selected named tables into the run directory. Keeping them
+local lets you transfer the whole directory to another machine. The generated
+species macros name the tables explicitly; the runner uses `phantoms.txt` for
+their labels and normalization metadata.
 
 The phantom tables define the response accumulated during particle transport.
 Changing them later does not change the response already recorded in the

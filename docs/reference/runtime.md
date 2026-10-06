@@ -38,18 +38,17 @@ it neither starts those processes nor selects their thread counts.
 | --- | --- |
 | `atris-generate-macros --random-seed S` | Seeds Python's generator of the two Geant4 seeds written into each ordinary macro. |
 | `atris-scatter --random-seed S` | Seeds the generator of unique seed pairs in a new plan or extension. |
-| `/random/setSeeds A B` | Sets the Geant4 random engine's seeds when the macro executes. |
-| `<prefix>_AAAAAA_BBBBBB` | Sets seeds parsed from the simulation name before the macro executes. |
+| `/atris/randomSeeds A B` | Sets the Geant4 random engine's seeds and records them in output metadata. |
 
 AtRIS selects CLHEP's `MTwistEngine`. Generated seed values are between 31 and
 999999 inclusive. Chunk plans format each as six digits. Seed pairs are unique
 across both species in a generated plan and its extensions.
 
-A macro seed command can override filename seeds. Generated `.chunk.mac`
-files omit `/random/setSeeds`, so plan seeds remain effective. Omitting a
-Python `--random-seed` uses a fresh generator state. Reproducibility also
-requires retaining the physics configuration, inputs, software versions, and
-run settings; a seed by itself is not a complete run specification.
+Generated `.chunk.mac` files use seed aliases. `atris-run` fills those aliases
+from `chunks.txt` before executing the shared macro. Omitting a Python
+`--random-seed` uses a fresh generator state. Reproducibility also requires
+retaining the physics configuration, inputs, software versions, and run
+settings; a seed by itself is not a complete run specification.
 
 ## Logging and version reporting
 

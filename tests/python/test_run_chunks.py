@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 import subprocess
 
 import pytest
@@ -27,6 +28,9 @@ def prepare_run(tmp_path, plan=None):
         "0 first 1.0 2.0\n"
         "1 second 3.0 4.0\n"
     )
+    for stem in ("first", "second"):
+        (tmp_path / (stem + "_response.txt")).touch()
+        (tmp_path / (stem + "_counting.txt")).touch()
 
 
 def test_run_chunks_executes_plan_and_marks_success(tmp_path, monkeypatch):
@@ -34,27 +38,39 @@ def test_run_chunks_executes_plan_and_marks_success(tmp_path, monkeypatch):
     calls = []
 
     def fake_run(command, cwd, stdout, stderr, check):
-        calls.append((command, cwd, stdout.name, stderr, check))
+        wrapper = cwd / command[1]
+        calls.append(
+            (command[0], wrapper.read_text(), cwd, stdout.name, stderr, check)
+        )
 
     monkeypatch.setattr("atris_tools.run_chunks.subprocess.run", fake_run)
 
     assert run_chunks(tmp_path) == 2
     assert calls == [
         (
-            ["AtRIS", "chunks/protons_111111_222222"],
+            "AtRIS",
+            "/control/alias ATRIS_OUTPUT_FILE chunks/protons_111111_222222\n"
+            "/control/alias ATRIS_SEED_1 111111\n"
+            "/control/alias ATRIS_SEED_2 222222\n"
+            "/control/execute protons.chunk.mac\n",
             tmp_path.resolve(),
             str(tmp_path / "chunks/protons_111111_222222.log"),
             subprocess.STDOUT,
             True,
         ),
         (
-            ["AtRIS", "chunks/alphas_333333_444444"],
+            "AtRIS",
+            "/control/alias ATRIS_OUTPUT_FILE chunks/alphas_333333_444444\n"
+            "/control/alias ATRIS_SEED_1 333333\n"
+            "/control/alias ATRIS_SEED_2 444444\n"
+            "/control/execute alphas.chunk.mac\n",
             tmp_path.resolve(),
             str(tmp_path / "chunks/alphas_333333_444444.log"),
             subprocess.STDOUT,
             True,
         ),
     ]
+    assert not list(tmp_path.glob(".atris-chunk-*.mac"))
     assert (tmp_path / "chunks/protons_111111_222222.COMPLETE").is_file()
     assert (tmp_path / "chunks/alphas_333333_444444.COMPLETE").is_file()
 
@@ -63,15 +79,16 @@ def test_run_chunks_skips_complete_entries(tmp_path, monkeypatch, caplog):
     prepare_run(tmp_path)
     (tmp_path / "chunks/protons_111111_222222.COMPLETE").touch()
     calls = []
-    monkeypatch.setattr(
-        "atris_tools.run_chunks.subprocess.run",
-        lambda command, **kwargs: calls.append(command),
-    )
+    def fake_run(command, cwd, **kwargs):
+        calls.append((Path(cwd) / command[1]).read_text())
+
+    monkeypatch.setattr("atris_tools.run_chunks.subprocess.run", fake_run)
 
     with caplog.at_level(logging.DEBUG, logger="atris_tools.run_chunks"):
         assert run_chunks(tmp_path) == 1
 
-    assert calls == [["AtRIS", "chunks/alphas_333333_444444"]]
+    assert len(calls) == 1
+    assert "/control/execute alphas.chunk.mac" in calls[0]
     assert "Chunk 1/2 complete: chunks/protons_111111_222222" in caplog.text
     assert "Chunk 2/2 starting: chunks/alphas_333333_444444" in caplog.text
     assert "Chunk 2/2 complete" in caplog.text
@@ -90,13 +107,14 @@ def test_run_chunks_skips_complete_entries(tmp_path, monkeypatch, caplog):
 def test_run_chunks_can_select_one_plan_entry(tmp_path, monkeypatch):
     prepare_run(tmp_path)
     calls = []
-    monkeypatch.setattr(
-        "atris_tools.run_chunks.subprocess.run",
-        lambda command, **kwargs: calls.append(command),
-    )
+    def fake_run(command, cwd, **kwargs):
+        calls.append((Path(cwd) / command[1]).read_text())
+
+    monkeypatch.setattr("atris_tools.run_chunks.subprocess.run", fake_run)
 
     assert run_chunks(tmp_path, entry=2) == 1
-    assert calls == [["AtRIS", "chunks/alphas_333333_444444"]]
+    assert len(calls) == 1
+    assert "/control/execute alphas.chunk.mac" in calls[0]
     assert not (tmp_path / "chunks/protons_111111_222222.COMPLETE").exists()
 
 
@@ -112,6 +130,7 @@ def test_run_chunks_does_not_mark_failed_entry(tmp_path, monkeypatch):
         run_chunks(tmp_path, entry=1)
 
     assert not (tmp_path / "chunks/protons_111111_222222.COMPLETE").exists()
+    assert not list(tmp_path.glob(".atris-chunk-*.mac"))
 
 
 def test_select_entries_assigns_disjoint_round_robin_worker_shards():
@@ -157,16 +176,17 @@ def test_run_chunks_executes_only_the_workers_shard(tmp_path, monkeypatch):
     ]
     prepare_run(tmp_path, plan)
     calls = []
-    monkeypatch.setattr(
-        "atris_tools.run_chunks.subprocess.run",
-        lambda command, **kwargs: calls.append(command),
-    )
+    def fake_run(command, cwd, **kwargs):
+        calls.append((Path(cwd) / command[1]).read_text())
+
+    monkeypatch.setattr("atris_tools.run_chunks.subprocess.run", fake_run)
 
     assert run_chunks(tmp_path, worker_index=1, worker_count=2) == 2
-    assert calls == [
-        ["AtRIS", "chunks/protons_333333_444444"],
-        ["AtRIS", "chunks/alphas_777777_888888"],
-    ]
+    assert len(calls) == 2
+    assert "chunks/protons_333333_444444" in calls[0]
+    assert "/control/execute protons.chunk.mac" in calls[0]
+    assert "chunks/alphas_777777_888888" in calls[1]
+    assert "/control/execute alphas.chunk.mac" in calls[1]
 
 
 def test_run_chunks_logs_timed_progress_for_each_chunk(tmp_path, monkeypatch, caplog):
@@ -207,10 +227,10 @@ def test_run_chunks_logs_timed_progress_for_each_chunk(tmp_path, monkeypatch, ca
         if record.name == "atris_tools.run_chunks" and record.levelno == logging.DEBUG
     ]
     assert debug_messages == [
-        "Phantom 1/2 counting file: %s" % (tmp_path / "counting_phantom0.txt"),
-        "Phantom 1/2 response file: %s" % (tmp_path / "radiation_phantom0.txt"),
-        "Phantom 2/2 counting file: %s" % (tmp_path / "counting_phantom1.txt"),
-        "Phantom 2/2 response file: %s" % (tmp_path / "radiation_phantom1.txt"),
+        "Phantom 1/2 counting file: %s" % (tmp_path / "first_counting.txt"),
+        "Phantom 1/2 response file: %s" % (tmp_path / "first_response.txt"),
+        "Phantom 2/2 counting file: %s" % (tmp_path / "second_counting.txt"),
+        "Phantom 2/2 response file: %s" % (tmp_path / "second_response.txt"),
         "Chunk 1/2 starting: chunks/protons_111111_222222",
         "Chunk 2/2 starting: chunks/alphas_333333_444444",
     ]
@@ -224,8 +244,10 @@ def test_run_chunks_logs_resolved_phantom_paths(tmp_path, monkeypatch, caplog):
     counting = archive / "first_counting.txt"
     response.touch()
     counting.touch()
-    (tmp_path / "radiation_phantom0.txt").symlink_to(response)
-    (tmp_path / "counting_phantom0.txt").symlink_to(counting)
+    (tmp_path / "first_response.txt").unlink()
+    (tmp_path / "first_counting.txt").unlink()
+    (tmp_path / "first_response.txt").symlink_to(response)
+    (tmp_path / "first_counting.txt").symlink_to(counting)
     monkeypatch.setattr(
         "atris_tools.run_chunks.subprocess.run",
         lambda *args, **kwargs: None,

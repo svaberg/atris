@@ -61,6 +61,26 @@ def read_phantoms(run_directory):
     return phantoms
 
 
+def configured_phantom_files(run_directory, phantom):
+    run_directory = Path(run_directory)
+    stem_path = Path(phantom["stem"])
+    stem = stem_path.name if stem_path.is_absolute() else str(stem_path)
+    response = run_directory / (stem + "_response.txt")
+    counting = run_directory / (stem + "_counting.txt")
+    dummy_counting = run_directory / (stem + "_dummy_counting.txt")
+    if not response.is_file():
+        raise FileNotFoundError(
+            "Phantom response file does not exist: " + str(response)
+        )
+    if counting.is_file():
+        return response, counting
+    if dummy_counting.is_file():
+        return response, dummy_counting
+    raise FileNotFoundError(
+        "Phantom counting file does not exist: " + str(counting)
+    )
+
+
 def find_phantom_file(filename, run_directory, archive):
     path = Path(filename)
     candidates = [path] if path.is_absolute() else [run_directory / path]
@@ -72,12 +92,13 @@ def find_phantom_file(filename, run_directory, archive):
     raise FileNotFoundError("Phantom file does not exist: " + filename)
 
 
-def _remove_staged_links(run_directory, phantom_id):
+def _remove_numbered_links(run_directory):
     for prefix in ("radiation_phantom", "counting_phantom"):
-        path = run_directory / (prefix + str(phantom_id) + ".txt")
-        if path.is_symlink():
-            path.unlink()
-            logger.debug("Removed symbolic link %s", path)
+        for path in run_directory.glob(prefix + "*.txt"):
+            id_text = path.name[len(prefix) : -len(".txt")]
+            if path.is_symlink() and id_text.isdigit():
+                path.unlink()
+                logger.debug("Removed obsolete symbolic link %s", path)
 
 
 def _dummy_counting_contents(response_file):
@@ -94,6 +115,31 @@ def _dummy_counting_contents(response_file):
     return header + "\n" + row * len(particle_codes)
 
 
+def _stage_file(source, destination, copy):
+    if os.path.lexists(destination):
+        if not destination.is_symlink():
+            return False, None
+        if not copy and destination.resolve() == source:
+            return False, None
+
+    previous_target = os.readlink(destination) if destination.is_symlink() else None
+    if previous_target is not None:
+        destination.unlink()
+
+    try:
+        if copy:
+            shutil.copy2(source, destination)
+            logger.debug("Copied %s to %s", source, destination)
+        else:
+            destination.symlink_to(os.path.relpath(source, destination.parent))
+            logger.debug("Linked %s to %s", destination, source)
+    except Exception:
+        if previous_target is not None and not os.path.lexists(destination):
+            destination.symlink_to(previous_target)
+        raise
+    return True, previous_target
+
+
 def _stage_phantom(
     phantom,
     run_directory,
@@ -101,11 +147,12 @@ def _stage_phantom(
     copy,
     accept_missing_counting,
 ):
-    phantom_id = phantom["id"]
-    stem = phantom["stem"]
-    response_filename = stem + "_response.txt"
+    source_stem = phantom["stem"]
+    source_stem_path = Path(source_stem)
+    staged_stem = source_stem_path.name if source_stem_path.is_absolute() else source_stem
+    response_filename = source_stem + "_response.txt"
     response_source = find_phantom_file(response_filename, run_directory, archive)
-    counting_filename = stem + "_counting.txt"
+    counting_filename = source_stem + "_counting.txt"
     dummy = None
     try:
         counting_source = find_phantom_file(
@@ -114,98 +161,58 @@ def _stage_phantom(
     except FileNotFoundError:
         if not accept_missing_counting:
             raise
-        counting_filename = stem + "_dummy_counting.txt"
+        counting_filename = staged_stem + "_dummy_counting.txt"
         counting_source = run_directory / counting_filename
         dummy = (counting_source, _dummy_counting_contents(response_source))
 
-    copy_operations = []
-    link_operations = []
-    for filename, staged_filename, source, copy_source in (
-        (
-            response_filename,
-            "radiation_phantom" + str(phantom_id) + ".txt",
-            response_source,
-            True,
-        ),
-        (
-            counting_filename,
-            "counting_phantom" + str(phantom_id) + ".txt",
-            counting_source,
-            dummy is None,
-        ),
-    ):
-        staged_source = source
-        if copy and copy_source:
-            staged_source = run_directory / Path(filename).name
-            if source != staged_source:
-                copy_operations.append((source, staged_source))
-        link_operations.append((staged_source, run_directory / staged_filename))
-
-    conflicts = []
-    pending_dummy = None
-    if dummy is not None:
-        destination, contents = dummy
-        if not os.path.lexists(destination):
-            pending_dummy = (destination, contents, False)
-        elif destination.is_symlink():
-            pending_dummy = (destination, contents, True)
-        elif not destination.is_file() or destination.read_text() != contents:
-            conflicts.append(str(destination))
-
-    pending_copies = []
-    for source, destination in copy_operations:
-        if not os.path.lexists(destination):
-            pending_copies.append((source, destination, False))
-        elif destination.is_symlink():
-            pending_copies.append((source, destination, True))
-        else:
-            conflicts.append(str(destination))
-
-    pending_links = []
-    for source, destination in link_operations:
-        if not os.path.lexists(destination):
-            pending_links.append((source, destination))
-        else:
-            conflicts.append(str(destination))
-    if conflicts:
-        raise FileExistsError("Refusing to overwrite: " + ", ".join(conflicts))
-
-    created = []
-    replaced_links = []
+    staged_files = []
     try:
-        for source, destination, replace_link in pending_copies:
-            if replace_link:
-                replaced_links.append((destination, os.readlink(destination)))
+        response_destination = run_directory / (staged_stem + "_response.txt")
+        changed, previous_target = _stage_file(
+            response_source,
+            response_destination,
+            copy,
+        )
+        if changed:
+            staged_files.append((response_destination, previous_target))
+
+        if dummy is None:
+            counting_destination = run_directory / (staged_stem + "_counting.txt")
+            changed, previous_target = _stage_file(
+                counting_source,
+                counting_destination,
+                copy,
+            )
+            if changed:
+                staged_files.append((counting_destination, previous_target))
+        else:
+            destination, contents = dummy
+            if not os.path.lexists(destination):
+                destination.write_text(contents)
+                staged_files.append((destination, None))
+                logger.debug("Created dummy counting response %s", destination)
+            elif destination.is_symlink():
+                previous_target = os.readlink(destination)
                 destination.unlink()
-            created.append(destination)
-            shutil.copy2(source, destination)
-            logger.debug("Copied %s to %s", source, destination)
-        if pending_dummy is not None:
-            destination, contents, replace_link = pending_dummy
-            if replace_link:
-                replaced_links.append((destination, os.readlink(destination)))
-                destination.unlink()
-            created.append(destination)
-            destination.write_text(contents)
-            logger.debug("Created dummy counting response %s", destination)
-        for source, destination in pending_links:
-            created.append(destination)
-            destination.symlink_to(os.path.relpath(source, run_directory))
-            logger.debug("Linked %s to %s", destination, source)
+                destination.write_text(contents)
+                staged_files.append((destination, previous_target))
+                logger.debug("Created dummy counting response %s", destination)
+            elif not destination.is_file() or destination.read_text() != contents:
+                raise FileExistsError("Refusing to overwrite: " + str(destination))
     except Exception:
-        for path in reversed(created):
-            path.unlink(missing_ok=True)
-        for path, target in reversed(replaced_links):
-            if not os.path.lexists(path):
-                path.symlink_to(target)
+        for path, previous_target in reversed(staged_files):
+            if os.path.lexists(path):
+                path.unlink()
+            if previous_target is not None:
+                path.symlink_to(previous_target)
         raise
 
     if dummy is not None:
         logger.info(
             "Using dummy counting response with values of one for phantom %i "
             "(%s): %s",
-            phantom_id,
-            stem,
+            phantom["id"],
+            source_stem,
             counting_source,
         )
 
@@ -223,18 +230,10 @@ def stage_phantoms(
         archive = Path(archive).resolve()
 
     phantoms = read_phantoms(run_directory)
-    selected_ids = {phantom["id"] for phantom in phantoms}
-    for prefix in ("radiation_phantom", "counting_phantom"):
-        for path in run_directory.glob(prefix + "*.txt"):
-            id_text = path.name[len(prefix) : -len(".txt")]
-            if path.is_symlink() and id_text.isdigit():
-                if int(id_text) not in selected_ids:
-                    path.unlink()
-                    logger.debug("Removed symbolic link %s", path)
+    _remove_numbered_links(run_directory)
 
     staged = 0
     for phantom in phantoms:
-        _remove_staged_links(run_directory, phantom["id"])
         try:
             _stage_phantom(
                 phantom,
@@ -260,7 +259,7 @@ def main():
         formatter_class=HelpFormatter,
         description=(
             "Stage the phantom response and counting tables selected by "
-            "phantoms.txt under the numbered filenames expected by AtRIS."
+            "phantoms.txt under their descriptive filenames."
         ),
         epilog=(
             "Each phantoms.txt row must contain ID, file stem, mass, and area; "
@@ -290,8 +289,8 @@ def main():
         "--copy",
         action="store_true",
         help=(
-            "Copy the named phantom tables into the run directory, then link "
-            "the numbered AtRIS filenames to those local copies."
+            "Copy the named phantom tables into the run directory instead of "
+            "creating relative symbolic links."
         ),
     )
     parser.add_argument(
@@ -323,11 +322,7 @@ def main():
     if count == 0:
         logger.info("No phantoms staged")
     else:
-        method = (
-            "local copies and relative symbolic links"
-            if args.copy
-            else "relative symbolic links"
-        )
+        method = "local copies" if args.copy else "relative symbolic links"
         logger.info(
             "Staged %i phantom%s using %s",
             count,

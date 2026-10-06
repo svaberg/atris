@@ -12,6 +12,8 @@ namespace atris {
 
 struct RunSettings
 {
+  G4String geometryFileName;
+  G4String energyBinsFileName;
   G4String outputFileName;
   G4String outputFileFormat;
   G4String simulationInputPrefix;
