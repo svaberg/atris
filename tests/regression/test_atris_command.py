@@ -300,6 +300,10 @@ def test_macro_runs_one_worker_and_writes_expected_histograms(
     assert "### AtRIS: simulation used 1 worker thread(s)" in result.stdout
     assert "### AtRIS: the simulation has completed" in result.stdout
     assert_timing_output(result.stdout, 1)
+    if output_mode == "profile":
+        assert "### AtRIS: profile mode writes" in result.stdout
+    if output_mode == "shower":
+        assert "### AtRIS: shower mode writes" in result.stdout
 
     root_path = tmp_path / "protons.root"
     assert root_path.exists() is creates_root

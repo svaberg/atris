@@ -456,11 +456,11 @@ void RunConfiguration::SetOutputFormat(G4String requestedOutputFormat)
 void RunConfiguration::ReportOutputMode() const
 {
   if (fSettings.outputMode == kInterfaceOutputMode) {
-    G4cout << "### AtRIS: mode 0 writes histograms and interface ntuples"
+    G4cout << "### AtRIS: profile mode writes histograms and interface ntuples"
            << G4endl;
   }
   if (fSettings.outputMode == kStepOutputMode) {
-    G4cout << "### AtRIS: mode 1 writes histograms, interface, and "
+    G4cout << "### AtRIS: shower mode writes histograms, interface, and "
               "transport-step ntuples; output may be very large"
            << G4endl;
   }
