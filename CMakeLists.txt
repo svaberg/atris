@@ -29,6 +29,7 @@ set(ATRIS_HEADERS
   include/HistoManager.hh
   include/NtupleSchema.hh
   include/OutputMode.hh
+  include/PhantomResponses.hh
   include/PhantomResponseSchema.hh
   include/PrimaryGeneratorAction.hh
   include/RunAction.hh
@@ -41,6 +42,7 @@ set(ATRIS_SOURCES
   src/main.cc
   src/DetectorConstruction.cc
   src/HistoManager.cc
+  src/PhantomResponses.cc
   src/PrimaryGeneratorAction.cc
   src/RunAction.cc
   src/SensitiveDetector.cc

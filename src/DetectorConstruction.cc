@@ -1,4 +1,5 @@
 #include "DetectorConstruction.hh"
+#include "PhantomResponses.hh"
 #include "SensitiveDetector.hh"
 #include "RunSettings.hh"
 #include "G4GDMLParser.hh"
@@ -25,11 +26,13 @@ namespace atris {
 
 DetectorConstruction::DetectorConstruction(
   const ::G4GDMLParser& parser,
-  const RunSettings& settings
+  const RunSettings& settings,
+  const PhantomResponses& phantomResponses
 )
   : G4VUserDetectorConstruction(),
     fParser(parser),
-    fSettings(settings)
+    fSettings(settings),
+    fPhantomResponses(phantomResponses)
 {
   G4cout << "### AtRIS: Initialized the DetectorConstruction object." << G4endl;
 }
@@ -57,7 +60,11 @@ void DetectorConstruction::ConstructSDandField() {
 				const G4String detectorName = auxiliary->value;
 				const G4int detectorId = std::stoi(detectorName);
 				SensitiveDetector* const sensitiveDetector =
-					new SensitiveDetector(detectorName, fSettings);
+					new SensitiveDetector(
+						detectorName,
+						fSettings,
+						fPhantomResponses
+					);
 				sdManager->AddNewDetector(sensitiveDetector);
 				G4VSensitiveDetector* const detector =
 					sdManager->FindSensitiveDetector(auxiliary->value);

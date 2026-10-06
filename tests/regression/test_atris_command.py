@@ -951,6 +951,28 @@ def test_mismatched_phantom_pdg_headers_exit_nonzero(
 
 
 @pytest.mark.regression
+@pytest.mark.parametrize(
+    "short_file",
+    ["radiation_phantom0.txt", "counting_phantom0.txt"],
+)
+def test_incomplete_phantom_response_table_exits_nonzero(
+    tmp_path, atris_command, short_file
+):
+    prepare_run(tmp_path)
+    path = tmp_path / short_file
+    lines = path.read_text().splitlines()
+    fields = lines[-1].split()
+    lines[-1] = " ".join(fields[:-1])
+    path.write_text("\n".join(lines) + "\n")
+
+    result = run_atris(atris_command, tmp_path, "protons")
+
+    assert result.returncode != 0
+    assert f"response value count mismatch in {short_file}" in result.stderr
+    assert not list(tmp_path.glob("protons_*.csv"))
+
+
+@pytest.mark.regression
 @pytest.mark.parametrize("mode", ["-2", "2", "999"])
 def test_undocumented_integer_modes_currently_follow_csv_path(
     tmp_path, atris_command, mode

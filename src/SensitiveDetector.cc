@@ -20,6 +20,7 @@
 #include "G4PhysicalConstants.hh"
 #include "NtupleSchema.hh"
 #include "OutputMode.hh"
+#include "PhantomResponses.hh"
 #include "PhantomResponseSchema.hh"
 #include "PrimaryGeneratorAction.hh"
 #include "RunSettings.hh"
@@ -27,12 +28,6 @@
 #include "G4VProcess.hh"
 #include <algorithm>
 #include <cmath>
-#include <map>
-#include <vector>
-extern std::vector<G4int> lightParticleResponseIndices;
-extern std::vector<std::vector<G4double>> radiationResponses;
-extern std::vector<std::vector<G4double>> countingResponses;
-extern std::map<G4int, G4int> ionResponseIndices;
 
 namespace atris {
 
@@ -43,6 +38,30 @@ constexpr G4double kProtonPionRadiationWeight = 2.;
 constexpr G4double kHeavyIonRadiationWeight = 20.;
 constexpr G4double kLowNeutronEnergyLimit = 1.*MeV;
 constexpr G4double kHighNeutronEnergyLimit = 50.*MeV;
+
+G4double RadiationWeight(const G4int pdg, const G4double kineticEnergy)
+{
+	const G4int absolutePDG = std::abs(pdg);
+	if (pdg >= kFirstSupportedIonPDG) return kHeavyIonRadiationWeight;
+	if (absolutePDG == kProtonPDG || absolutePDG == kNeutralPionPDG) {
+		return kProtonPionRadiationWeight;
+	}
+	if (absolutePDG != kNeutronPDG) return kDefaultRadiationWeight;
+	// These coefficients are the original AtRIS piecewise neutron formula.
+	if (kineticEnergy <= kLowNeutronEnergyLimit) {
+		return 3.5 + 18.2*std::exp(
+			-std::log(std::pow(kineticEnergy/MeV, 2.0))/6.0
+		);
+	}
+	if (kineticEnergy <= kHighNeutronEnergyLimit) {
+		return 5.0 + 17.0*std::exp(
+			-std::log(std::pow(2*kineticEnergy/MeV, 2.0))/6.0
+		);
+	}
+	return 2.5 + 3.25*std::exp(
+		-std::log(std::pow(0.04*kineticEnergy/MeV, 2.0))/6.0
+	);
+}
 
 }  // namespace
 
@@ -60,11 +79,13 @@ void SDHit::Print() {}
 
 SensitiveDetector::SensitiveDetector(
 	const G4String& name,
-	const RunSettings& settings
+	const RunSettings& settings,
+	const PhantomResponses& phantomResponses
 )
 	: G4VSensitiveDetector(name),
 	fHitsCollection(nullptr),
-	fSettings(settings)
+	fSettings(settings),
+	fPhantomResponses(phantomResponses)
 {
 	collectionName.insert(name);
 }
@@ -201,97 +222,41 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*){
 		// when the particle is moving upward, and above it when moving downward.
 		const G4int interfaceId = detectorId - upward;
 		const G4int particlePDG = track->GetParticleDefinition()->GetPDGEncoding();
-		const G4int absolutePDG = std::abs(particlePDG);
 		const G4int responseEnergyBin = std::max(
 			0,
 			static_cast<G4int>(
 				std::log10(kineticEnergy/eV) / kPhantomResponseLogEnergyStep
 			)
 		);
-		if (absolutePDG < kLightParticlePDGLimit) {
-			const G4int lookupIndex = particlePDG + kLightParticlePDGOffset;
-			// Zero is both the first response-table row and the legacy "not found"
-			// sentinel. Supplied tables place photons first, so include them explicitly.
-			const bool hasResponse =
-				lightParticleResponseIndices[lookupIndex] || particlePDG == kPhotonPDG;
-			if (hasResponse) {
-				const G4int responseIndex =
-					lightParticleResponseIndices[lookupIndex]
-					* kPhantomResponseEnergyBins + responseEnergyBin;
-				// Radiation weighting is 1 by default, 2 for protons and neutral
-				// pions, and 20 for heavy ions. The numerical coefficients below
-				// are the original AtRIS piecewise neutron radiation-weighting formula.
-				G4double radiationWeight = kDefaultRadiationWeight;
-				if (absolutePDG == kProtonPDG || absolutePDG == kNeutralPionPDG) {
-					radiationWeight = kProtonPionRadiationWeight;
-				}
-				if (absolutePDG == kNeutronPDG) {
-					if (kineticEnergy <= kLowNeutronEnergyLimit) {
-						radiationWeight = 3.5 + 18.2*std::exp(-std::log(std::pow(kineticEnergy/MeV,2.0))/6.0) ;
-					} else if (kineticEnergy <= kHighNeutronEnergyLimit) {
-						radiationWeight = 5.0 + 17.0*std::exp(-std::log(std::pow(2*kineticEnergy/MeV,2.0))/6.0) ;
-					} else if (kineticEnergy > kHighNeutronEnergyLimit) {
-						radiationWeight = 2.5 + 3.25*std::exp(-std::log(std::pow(0.04*kineticEnergy/MeV,2.0))/6.0) ;
-					}
-				}
-				for (G4int phantomIndex = 0;
-				     phantomIndex < fSettings.phantomCount;
-				     ++phantomIndex) {
-					const G4int offset = kFirstPhantomHistogramId
-						+ kPhantomHistogramsPerPhantom*phantomIndex;
-					analysis->FillH2(
-						offset + kPhantomDoseHistogramOffset,
-						primaryEnergy, interfaceId,
-						radiationResponses[phantomIndex][responseIndex]
-							* kineticEnergy/eV
-					);
-					analysis->FillH2(
-						offset + kPhantomEquivalentDoseHistogramOffset,
-						primaryEnergy, interfaceId,
-						radiationResponses[phantomIndex][responseIndex]
-							* kineticEnergy/eV * radiationWeight
-					);
-					analysis->FillH2(
-						offset + kPhantomCountingHistogramOffset,
-						primaryEnergy, interfaceId,
-						countingResponses[phantomIndex][responseIndex]
-					);
-				}
-
-
-			}
-		} else if (particlePDG >= kFirstSupportedIonPDG) {
-			// We first check if we are dealing with one of the smaller, relevant isotopes
-			// We then check if we are dealing with one of: H2, H3, He3, He4
-			// If so, we add the contribution to the dose-rate histogram
-			if (ionResponseIndices.find(particlePDG) != ionResponseIndices.end()){
-				const G4int responseIndex =
-					ionResponseIndices[particlePDG] * kPhantomResponseEnergyBins
-					+ responseEnergyBin;
-				const G4double radiationWeight = kHeavyIonRadiationWeight;
-				for (G4int phantomIndex = 0;
-				     phantomIndex < fSettings.phantomCount;
-				     ++phantomIndex) {
-					const G4int offset = kFirstPhantomHistogramId
-						+ kPhantomHistogramsPerPhantom*phantomIndex;
-					analysis->FillH2(
-						offset + kPhantomDoseHistogramOffset,
-						primaryEnergy, interfaceId,
-						radiationResponses[phantomIndex][responseIndex]
-							* kineticEnergy/eV
-					);
-					analysis->FillH2(
-						offset + kPhantomEquivalentDoseHistogramOffset,
-						primaryEnergy, interfaceId,
-						radiationResponses[phantomIndex][responseIndex]
-							* kineticEnergy/eV * radiationWeight
-					);
-					analysis->FillH2(
-						offset + kPhantomCountingHistogramOffset,
-						primaryEnergy, interfaceId,
-						countingResponses[phantomIndex][responseIndex]
-					);
-				}
+		const G4int particleIndex =
+			fPhantomResponses.FindParticleIndex(particlePDG);
+		if (particleIndex >= 0) {
+			const G4int responseIndex =
+				particleIndex*kPhantomResponseEnergyBins + responseEnergyBin;
+			const G4double radiationWeight =
+				RadiationWeight(particlePDG, kineticEnergy);
+			for (G4int phantomIndex = 0;
+			     phantomIndex < fPhantomResponses.GetCount();
+			     ++phantomIndex) {
+				const G4int offset = kFirstPhantomHistogramId
+					+ kPhantomHistogramsPerPhantom*phantomIndex;
+				const G4double response =
+					fPhantomResponses.GetRadiation(phantomIndex, responseIndex);
+				analysis->FillH2(
+					offset + kPhantomDoseHistogramOffset,
+					primaryEnergy, interfaceId,
+					response*kineticEnergy/eV
+				);
+				analysis->FillH2(
+					offset + kPhantomEquivalentDoseHistogramOffset,
+					primaryEnergy, interfaceId,
+					response*kineticEnergy/eV*radiationWeight
+				);
+				analysis->FillH2(
+					offset + kPhantomCountingHistogramOffset,
+					primaryEnergy, interfaceId,
+					fPhantomResponses.GetCounting(phantomIndex, responseIndex)
+				);
 			}
 		}
 
