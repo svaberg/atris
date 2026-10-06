@@ -193,17 +193,18 @@ per nucleon.
 
 Generated macros first record the Geant4 reference physics list with
 `/atris/physicsList`, the named output mode with `/atris/outputMode`, and the
-two source histogram dimensions with `/atris/directionBins` and
-`/atris/positionBins`. Each histogram command takes its azimuth-bin count
-followed by its cosine-bin count; both counts must be positive. The macro then
-initializes the run, selects a proton or alpha GPS source, uses `User` energy
-histograms, emits one primary per event from a spherical surface, uses a cosine
-angular distribution over 0–90 degrees, sets a 100 m production cut, sets two
-random seeds, and issues one `/run/beamOn` command. Histogram point weights are
-zero for the first edge and one for the remaining edges. During the
-compatibility period in which the executable also receives the physics list
-and output mode on its command line, the macro and command-line values must
-match.
+Geant4 analysis format with `/atris/outputFormat`. They record the two source
+histogram dimensions with `/atris/directionBins` and `/atris/positionBins`.
+Each histogram command takes its azimuth-bin count followed by its cosine-bin
+count; both counts must be positive. The macro then initializes the run,
+selects a proton or alpha GPS source, uses `User` energy histograms, emits one
+primary per event from a spherical surface, uses a cosine angular distribution
+over 0–90 degrees, sets a 100 m production cut, sets two random seeds, and
+issues one `/run/beamOn` command. Histogram point weights are zero for the first
+edge and one for the remaining edges. During the compatibility period in which
+the executable also receives the physics list and output mode on its command
+line, the macro and command-line values must match. An output extension on the
+simulation name must match `/atris/outputFormat`.
 
 Despite its option name, `--particles-per-bin` is multiplied by the number of
 **energy points**, not the number of intervals:

@@ -61,10 +61,11 @@ prepares its inputs and manages the surrounding workflow.
 
 ## Simulation preparation interface
 
-Physics-list and output-mode choices are written into each species macro during
-input generation. AtRIS reads them before Geant4 initialization, while
-`atris-run` only supplies the seeded chunk name. Thread counts, worker
-assignments, deadlines, and scheduler limits remain execution settings.
+Physics-list, output-mode, and output-format choices are written into each
+species macro during input generation. AtRIS reads them before Geant4
+initialization, while `atris-run` only supplies the seeded chunk name. Thread
+counts, worker assignments, deadlines, and scheduler limits remain execution
+settings.
 
 The name `atris-generate-macros` also needs reconsideration. The command already
 prepares geometry copies and energy bins as well as macros, and would then

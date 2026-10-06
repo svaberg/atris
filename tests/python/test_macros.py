@@ -36,6 +36,7 @@ def test_macro_generation_is_reproducible_and_preserves_requested_counts(tmp_pat
         energy_points=3,
         physics_list="QGSP_BERT",
         output_mode="profile",
+        output_format="root",
     )
     macroGenManager(output_dir=first, **arguments)
     macroGenManager(output_dir=second, **arguments)
@@ -58,6 +59,7 @@ def test_macro_generation_is_reproducible_and_preserves_requested_counts(tmp_pat
     expected_start = (
         "/atris/physicsList QGSP_BERT\n"
         "/atris/outputMode profile\n"
+        "/atris/outputFormat root\n"
         "/atris/directionBins 120 60\n"
         "/atris/positionBins 120 60\n"
         "/run/initialize\n"

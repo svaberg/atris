@@ -2,7 +2,9 @@
 
 `<name>` below is the suffix-free simulation prefix; `N` is a zero-based
 phantom ID. The simulation argument's extension selects the Geant4 output
-backend independently of the output mode. A missing extension defaults to CSV.
+backend independently of the output mode and must match the macro's
+`/atris/outputFormat` value. Without an extension, the macro value selects the
+backend.
 
 ## Raw histogram files
 

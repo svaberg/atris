@@ -369,11 +369,12 @@ not required before gathering.
 
 ## Where particle records fit
 
-The walkthrough generated the macros with `--output-mode response`, which
-produces histogram CSVs. Generating them with `--output-mode profile` instead
-writes `<prefix>.root` containing the same response histograms and an
-`interfaces` ntuple. `--output-mode shower` adds a `steps` ntuple to that ROOT
-file.
+The walkthrough uses `--output-mode response` and the default
+`--output-format csv`, producing histogram CSVs. To record interface crossings
+in ROOT, generate the inputs with `--output-mode profile --output-format root`;
+the resulting `<prefix>.root` contains the same response histograms and an
+`interfaces` ntuple. `--output-mode shower --output-format root` also adds a
+`steps` ntuple.
 
 The ntuples are parallel outputs of the simulation. They do not replace the
 histograms consumed by `atris-postprocess`. `atris-dump` can stream either

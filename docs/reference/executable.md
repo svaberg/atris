@@ -15,9 +15,9 @@ AtRIS protons
 
 This reads `protons.gdml`, `protons.bins`, and `protons.mac`. The macro must set
 the physics list with `/atris/physicsList` and the named output mode with
-`/atris/outputMode` before `/run/initialize`. AtRIS executes the macro once;
-these commands configure the same Geant4 run that the remainder of the macro
-starts.
+`/atris/outputMode`, and the Geant4 analysis format with `/atris/outputFormat`,
+before `/run/initialize`. AtRIS executes the macro once; these commands
+configure the same Geant4 run that the remainder of the macro starts.
 
 AtRIS also discovers complete `radiation_phantomN.txt` and
 `counting_phantomN.txt` pairs in the current directory. IDs must be contiguous
@@ -38,14 +38,15 @@ AtRIS FTFP_BERT_HP protons -1 2
 | `phantom-count` | Optional compatibility check against the staged phantom pairs discovered by the executable. It does not read `phantoms.txt`. |
 
 Newly generated macros begin with the pre-initialization commands
-`/atris/physicsList NAME`, `/atris/outputMode NAME`,
+`/atris/physicsList NAME`, `/atris/outputMode NAME`, `/atris/outputFormat NAME`,
 `/atris/directionBins NPHI NCOS`, and `/atris/positionBins NPHI NCOS`. They
-record the physics list, output mode, and source histogram dimensions with the
-run inputs. In the legacy form, AtRIS stops before `/run/initialize` if the
-physics list or output mode differs from the command-line argument. A nonpositive
-bin count also stops either form. Older macros without the configuration
-commands remain usable through the legacy interface and use the existing 120
-by 60 source histogram dimensions.
+record the physics list, output mode, output format, and source histogram
+dimensions with the run inputs. In the legacy form, AtRIS stops before
+`/run/initialize` if the physics list or output mode differs from the
+command-line argument. A nonpositive bin count also stops either form. Older
+macros without the configuration commands remain usable through the legacy
+interface and use CSV output and the existing 120 by 60 source histogram
+dimensions when no filename extension is supplied.
 
 The transitional legacy form without the explicit phantom count also remains
 accepted:
@@ -59,19 +60,20 @@ exits with an error if the count differs, either member of a pair is missing,
 or the IDs contain a gap. With no staged phantom files, the discovered count is
 zero.
 
-With no filename extension, the output format defaults to CSV. An explicit
-extension is passed to Geant4, independently of the output mode. In the
-one-argument form, `profile` and `shower` select ROOT when no extension is
-given:
+The macro's `/atris/outputFormat` command selects the output backend
+independently of the output mode. An explicit extension is optional, but it
+must agree with the macro:
 
 ```bash
 AtRIS protons.csv
 AtRIS protons.root
 ```
 
-Both commands use the same `protons.*` input files. Geant4 selects and validates
-the requested backend. AtRIS exits with an error when the extension is unknown
-or the installed Geant4 lacks the requested optional backend.
+Both commands use the same `protons.*` input files. For example, `AtRIS
+protons.root` requires `/atris/outputFormat root` in `protons.mac`. Geant4
+selects and validates the requested backend. AtRIS exits with an error when the
+filename and macro formats conflict, the format is unknown, or the installed
+Geant4 lacks the requested optional backend.
 
 ## Output modes
 

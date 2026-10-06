@@ -5,8 +5,8 @@
 **Next step:** [Process the completed results](running-atris/process-results.md).
 
 Start with a [prepared simulation](running-atris/prepare-simulation.md) and a
-[chunk plan](running-atris/plan-chunks.md). The physics list and output mode
-chosen during preparation are stored in the species macros.
+[chunk plan](running-atris/plan-chunks.md). The physics list, output mode, and
+output format chosen during preparation are stored in the species macros.
 
 This guide runs any prepared AtRIS simulation through a scheduler. The Slurm
 templates in `examples/slurm/` specify resources and worker launches; they do
@@ -125,8 +125,8 @@ receives lines 1, 21, 41, and so on from `chunks.txt`; worker 1 receives lines
 2, 22, 42, and so on. Their assignments do not overlap. Each chunk starts a new
 AtRIS process; `srun` remains active until the workers exit.
 
-AtRIS reads the physics list and output mode from each prepared species macro;
-the scheduler script does not repeat those settings.
+AtRIS reads the physics list, output mode, and output format from each prepared
+species macro; the scheduler script does not repeat those settings.
 
 ### Wall time and completion
 

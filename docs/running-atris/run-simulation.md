@@ -40,8 +40,8 @@ use your environment's instructions to launch the remaining plan:
 [locally](run-locally.md#continue-and-monitor),
 [on a server](run-on-server.md#keep-a-chunked-run-running-after-logout), or
 [through Slurm](../hpc.md#submit-a-prepared-simulation-with-slurm).
-Keep the same inputs, plan, physics list, and output mode. Completed chunks
-are skipped and remain available for the next gather.
+Keep the same inputs, plan, physics list, output mode, and output format.
+Completed chunks are skipped and remain available for the next gather.
 
 If the first results suggest changes, revise the setup before continuing.
 [Review which existing outputs still apply](process-results.md#decide-whether-to-continue)

@@ -88,6 +88,7 @@ GENERATED_INPUTS = (
 )
 DEFAULT_PHYSICS_LIST = "FTFP_BERT_HP"
 DEFAULT_OUTPUT_MODE = "response"
+DEFAULT_OUTPUT_FORMAT = "csv"
 DIRECTION_HISTOGRAM_BINS = (120, 60)
 POSITION_HISTOGRAM_BINS = (120, 60)
 OUTPUT_MODES = ("response", "profile", "shower")
@@ -118,10 +119,12 @@ def genMacro(
     output_dir="./atris/simulation",
     physics_list=DEFAULT_PHYSICS_LIST,
     output_mode=DEFAULT_OUTPUT_MODE,
+    output_format=DEFAULT_OUTPUT_FORMAT,
 ):
     lines =  ""
     lines += "/atris/physicsList %s\n" % physics_list
     lines += "/atris/outputMode %s\n" % output_mode
+    lines += "/atris/outputFormat %s\n" % output_format
     lines += "/atris/directionBins %i %i\n" % DIRECTION_HISTOGRAM_BINS
     lines += "/atris/positionBins %i %i\n" % POSITION_HISTOGRAM_BINS
     lines += "/run/initialize\n"
@@ -159,6 +162,7 @@ def macroSetup(
     rng=None,
     physics_list=DEFAULT_PHYSICS_LIST,
     output_mode=DEFAULT_OUTPUT_MODE,
+    output_format=DEFAULT_OUTPUT_FORMAT,
 ):
     if base_bins is None:
         base_bins = 10**np.linspace(0,6,121)
@@ -185,6 +189,7 @@ def macroSetup(
         output_dir,
         physics_list,
         output_mode,
+        output_format,
     )
     filehandle = open(os.path.join(output_dir, name + '.mac'), 'w')
     filehandle.writelines(lines)
@@ -201,6 +206,7 @@ def macroGenManager(
     energy_points=121,
     physics_list=DEFAULT_PHYSICS_LIST,
     output_mode=DEFAULT_OUTPUT_MODE,
+    output_format=DEFAULT_OUTPUT_FORMAT,
 ):
     if energy_points < 2:
         raise ValueError("energy_points must be at least 2")
@@ -212,11 +218,11 @@ def macroGenManager(
     base_bins = 10**np.linspace(energy_min_power,energy_max_power,energy_points)
     macroSetup(
         'protons', "/gps/particle proton\n", 1, partspb, output_dir,
-        base_bins, rng, physics_list, output_mode,
+        base_bins, rng, physics_list, output_mode, output_format,
     )
     macroSetup(
         'alphas', "/gps/particle alpha\n", 4, int(partspb*alphafactor),
-        output_dir, base_bins, rng, physics_list, output_mode,
+        output_dir, base_bins, rng, physics_list, output_mode, output_format,
     )
 
 
@@ -313,6 +319,15 @@ def main():
         default=DEFAULT_OUTPUT_MODE,
         help="AtRIS output mode recorded in both macros (default: %(default)s).",
     )
+    parser.add_argument(
+        "--output-format",
+        default=DEFAULT_OUTPUT_FORMAT,
+        metavar="FORMAT",
+        help=(
+            "Geant4 analysis output format recorded in both macros "
+            "(default: %(default)s)."
+        ),
+    )
     add_logging_arguments(parser)
     add_version_argument(parser)
     args = parser.parse_args()
@@ -334,6 +349,7 @@ def main():
         args.energy_points,
         args.physics_list,
         args.output_mode,
+        args.output_format,
     )
     logger.info(
         "Generated proton and alpha input files in %s",

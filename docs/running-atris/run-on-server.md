@@ -16,9 +16,9 @@ whole prepared directory if it was created elsewhere, including the targets of
 any phantom links. Preparation with `atris-stage-phantoms --copy` keeps those
 targets local.
 
-AtRIS reads the physics list and output mode chosen during preparation from
-each species macro. Check current load and the machine's resource policy before
-choosing a thread count.
+AtRIS reads the physics list, output mode, and output format chosen during
+preparation from each species macro. Check current load and the machine's
+resource policy before choosing a thread count.
 
 ## Use the prepared chunk plan
 

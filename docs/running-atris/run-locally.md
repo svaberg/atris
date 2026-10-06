@@ -6,8 +6,8 @@
 
 Start in the run directory containing the [prepared chunk plan](plan-chunks.md),
 with AtRIS and Geant4 available. The runner preserves completed outputs.
-AtRIS reads the physics list and output mode chosen during preparation from
-each species macro.
+AtRIS reads the physics list, output mode, and output format chosen during
+preparation from each species macro.
 
 
 ## Run a few chunks first

@@ -91,6 +91,7 @@ atris-generate-macros . \
   --alpha-factor 0.66 \
   --physics-list FTFP_BERT_HP \
   --output-mode response \
+  --output-format csv \
   --random-seed 12345
 ```
 
@@ -114,13 +115,14 @@ responses, source distribution, and histogram bins agree. Combine their raw
 histograms and [normalize by the combined primary counts](../background/normalization-and-uncertainty.md#gather-raw-sums-before-normalization).
 For more sampling with the existing macros, use [chunk extension](plan-chunks.md#extend-a-run).
 
-## Record physics and output choices
+## Record run and output choices
 
 Choose a [Geant4 physics list](../background/physics-lists.md) and an
-[output mode](../reference/executable.md#output-modes) when generating the
-macros. The launch guides use `FTFP_BERT_HP` and `response`. These choices
-belong to the physical calculation, remain in the generated macro files, and
-are read by AtRIS when each species runs.
+[output mode](../reference/executable.md#output-modes), and select an output
+format when generating the macros. The example above uses `FTFP_BERT_HP`,
+`response`, and `csv`. The physics list and mode define the calculation; the
+format controls how Geant4 stores its products. All three choices remain in the
+generated macro files and are read by AtRIS when each species runs.
 
 ## Check the prepared inputs
 

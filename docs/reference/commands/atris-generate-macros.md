@@ -11,12 +11,12 @@ atris-generate-macros . --particles-per-bin 100 --energy-points 10 --random-seed
 ```
 
 The directory defaults to `.`. Default settings are physics list
-`FTFP_BERT_HP`, output mode `response`, 3000 proton histories per energy point,
-alpha factor 0.66, and 121 logarithmic points from 1 to 1e6 MeV for protons.
-Alpha energies are four times those values. The alpha histories per point are
-truncated to an integer before multiplication by the point count. The generated
-source-direction and source-position histograms each use 120 azimuth bins and
-60 cosine bins. See
+`FTFP_BERT_HP`, output mode `response`, output format `csv`, 3000 proton
+histories per energy point, alpha factor 0.66, and 121 logarithmic points from
+1 to 1e6 MeV for protons. Alpha energies are four times those values. The alpha
+histories per point are truncated to an integer before multiplication by the
+point count. The generated source-direction and source-position histograms each
+use 120 azimuth bins and 60 cosine bins. See
 [energy bins and macros](../inputs.md#energy-bins-and-macros) for the exact
 event-count convention. This command does not read `.spec` files.
 
@@ -29,7 +29,7 @@ usage: atris-generate-macros [-h] [--particles-per-bin COUNT] [--alpha-factor FA
                              [--random-seed SEED] [--energy-min-power POWER]
                              [--energy-max-power POWER] [--energy-points COUNT]
                              [--physics-list NAME] [--output-mode {response,profile,shower}]
-                             [-q | -v] [--version]
+                             [--output-format FORMAT] [-q | -v] [--version]
                              [RUN_DIRECTORY]
 
 Generate the proton and alpha macros, energy grids, and geometry copies needed to run AtRIS.
@@ -58,6 +58,8 @@ options:
                         FTFP_BERT_HP).
   --output-mode {response,profile,shower}
                         AtRIS output mode recorded in both macros (default: response).
+  --output-format FORMAT
+                        Geant4 analysis output format recorded in both macros (default: csv).
   -q, --quiet           Suppress normal progress; show warnings and errors only.
   -v, --verbose         Include detailed per-file, per-request, or per-chunk progress.
   --version             Show the AtRIS and atris-tools versions and exit.

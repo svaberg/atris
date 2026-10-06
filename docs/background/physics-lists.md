@@ -7,7 +7,7 @@ independent of the number of threads, chunks, or scheduler nodes.
 AtRIS obtains the named reference list from Geant4 and registers step-limiter
 physics. The macro generator defaults to `FTFP_BERT_HP` and records the choice
 in each species macro. Choosing the list and recording it with the model are
-part of [simulation preparation](../running-atris/prepare-simulation.md#record-physics-and-output-choices).
+part of [simulation preparation](../running-atris/prepare-simulation.md#record-run-and-output-choices).
 
 The available lists and their detailed configuration depend on the installed
 Geant4 version. See the official [Physics List Guide](https://geant4.web.cern.ch/documentation/dev/plg_html/PhysicsListGuide/physicslistguide.html).

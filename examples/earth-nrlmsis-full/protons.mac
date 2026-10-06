@@ -1,5 +1,6 @@
 /atris/physicsList FTFP_BERT_HP
 /atris/outputMode response
+/atris/outputFormat csv
 /atris/directionBins 120 60
 /atris/positionBins 120 60
 /run/initialize
