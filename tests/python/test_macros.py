@@ -96,8 +96,8 @@ def test_macro_generation_is_reproducible_and_preserves_requested_counts(tmp_pat
 def test_macro_names_each_phantom_input_file(tmp_path):
     prepare_run(tmp_path)
     (tmp_path / "phantoms.txt").write_text(
-        "0 ramona 1.0 2.0\n"
-        "1 cell 3.0 4.0\n"
+        "ramona 1.0 2.0\n"
+        "cell 3.0 4.0\n"
     )
     for stem in ("ramona", "cell"):
         (tmp_path / (stem + "_response.txt")).write_text("response\n")

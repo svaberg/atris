@@ -38,8 +38,8 @@ The remaining goals are:
 The repository now has one `phantoms/` library. Its named response and counting
 tables are source data. Run preparation selects entries from that library and
 stages them under their descriptive filenames; the run's `phantoms.txt` records
-the selected IDs, stems, masses, and areas. Generated species macros name the
-response and counting files explicitly.
+the selected stems, masses, and areas, with row order assigning IDs. Generated
+species macros name the response and counting files explicitly.
 
 The same directory still contains old response tables, variance tables, plots,
 and other historical data. Their provenance and continuing role should be

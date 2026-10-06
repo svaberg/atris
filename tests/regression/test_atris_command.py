@@ -175,7 +175,7 @@ def prepare_run(
             run_directory / counting_file,
         )
         phantom_files.append((response_file, counting_file))
-        phantom_rows.append("%i %s 1.0 1.0\n" % (phantom_id, stem))
+        phantom_rows.append("%s 1.0 1.0\n" % stem)
     if phantom_rows:
         (run_directory / "phantoms.txt").write_text("".join(phantom_rows))
 

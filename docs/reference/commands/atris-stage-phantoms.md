@@ -57,9 +57,9 @@ options:
                         progress.
   --version             Show the AtRIS and atris-tools versions and exit.
 
-Each phantoms.txt row must contain ID, file stem, mass, and area; IDs must be
-contiguous from zero. The command does not create radiation-response tables or
-change phantoms.txt. Symbolic links are updated to match the current
+Each phantoms.txt row must contain file stem, mass, and area; row order
+defines zero-based phantom IDs. The command does not create radiation-response
+tables or change phantoms.txt. Symbolic links are updated to match the current
 selection, while regular destination files are not overwritten. An error in
 one row does not prevent other rows from being staged.
 ```

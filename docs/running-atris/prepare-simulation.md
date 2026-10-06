@@ -75,6 +75,11 @@ Changing them later does not change the response already recorded in the
 histograms, so select them as part of the physical setup before preparing the
 particle sampling.
 
+The mass and area columns have a different role: AtRIS does not use them during
+transport. They are read later by `atris-postprocess` to scale the raw phantom
+histograms. Changing only those values changes the processed phantom products,
+not the existing raw simulation output.
+
 ## Prepare particle inputs
 
 The standard macro generator prepares separate proton and alpha simulations.

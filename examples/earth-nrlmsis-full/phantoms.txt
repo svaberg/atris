@@ -1,7 +1,7 @@
 # Each row defines one phantom.
-# IDs run contiguously from 0 and identify numbered AtRIS input and output.
+# Row order defines the zero-based phantom ID used in AtRIS input and output.
 # Phantom is the filename stem shared by _response.txt and _counting.txt.
 # Mass is the phantom mass; area is its cross-sectional area.
-# ID  Phantom                          mass [g] area [cm2]
-   0  ramona_zero_0.060MeV_detA          0.5082      6.928
-   1  icru_zero_0.000MeV_detAB       14094.7550    1413.72
+# Phantom                                mass [g]   area [cm2]
+ramona_zero_0.060MeV_detA                  0.5082        6.928
+icru_zero_0.000MeV_detAB               14094.7550     1413.720

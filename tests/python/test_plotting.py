@@ -62,9 +62,7 @@ def prepare_processed_run(run_directory, phantom_count, gdml_text):
     phantom_rows = []
     for phantom_id in range(phantom_count):
         stem = "phantom_" + str(phantom_id)
-        phantom_rows.append(
-            "%i  %s  1.0  2.0\n" % (phantom_id, stem)
-        )
+        phantom_rows.append("%s  1.0  2.0\n" % stem)
         (run_directory / ("protons_h2_h2.dos%i.csv" % phantom_id)).touch()
         for extension in ("dose", "equi", "rates"):
             np.savetxt(

@@ -16,6 +16,11 @@ mass/area metadata from `phantoms.txt` when phantom products are present.
 `.doseN`, `.equiN`, and `.ratesN`, replacing existing processed files.
 Available input/output consistency checks produce warnings.
 
+Phantom mass and area are post-processing scale factors only. They are not
+read by the C++ executable and do not affect particle transport or raw
+histogram accumulation. Dose and equivalent-dose products use both mass and
+area; counting-rate products use area but not mass.
+
 The output is normalized per simulated primary energy bin; it does not include
 source-flux folding or conversion into physical rates. See
 [processed response tables](../outputs.md#processed-response-tables) for units,

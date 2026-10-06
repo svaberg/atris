@@ -25,8 +25,8 @@ def prepare_run(tmp_path, plan=None):
         "".join("%s %s %s\n" % entry for entry in plan)
     )
     (tmp_path / "phantoms.txt").write_text(
-        "0 first 1.0 2.0\n"
-        "1 second 3.0 4.0\n"
+        "first 1.0 2.0\n"
+        "second 3.0 4.0\n"
     )
     for stem in ("first", "second"):
         (tmp_path / (stem + "_response.txt")).touch()

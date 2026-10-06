@@ -35,7 +35,7 @@ def prepare_inputs(run_directory, gdml_text):
     (run_directory / "protons.mac").write_text(MACRO)
     np.savetxt(run_directory / "protons.bins", [1, 10, 100])
     (run_directory / "phantoms.txt").write_text(
-        "0  test-phantom  1.0  2.0\n"
+        "test-phantom  1.0  2.0\n"
     )
 
     response = np.vstack(

@@ -225,18 +225,25 @@ spectrum into the results. Such files may be retained as run inputs by
 
 ## Phantom selection
 
-`phantoms.txt` has four whitespace-separated fields per non-comment line:
+`phantoms.txt` has three whitespace-separated fields per non-comment line:
 
 ```text
-# ID  stem                          mass_g      area_cm2
-0     ramona_zero_0.060MeV_detA      0.5082      6.928
-1     icru_zero_0.000MeV_detAB       14094.7550  1413.72
+# stem                          mass_g      area_cm2
+ramona_zero_0.060MeV_detA          0.5082      6.928
+icru_zero_0.000MeV_detAB       14094.7550   1413.720
 ```
 
-IDs must be unique and contiguous from zero; rows are sorted by ID. Mass is
-in grams and area in cm². Use the area associated with the response table's
-calibration. The parser accepts numeric mass and area values without checking
-that they are positive; post-processing requires physically valid values.
+Row order defines the zero-based phantom ID: the first data row is phantom 0,
+the second is phantom 1, and so on. Mass is in grams and area in cm². Use the
+area associated with the response table's calibration. The parser accepts
+numeric mass and area values without checking that they are positive;
+post-processing requires physically valid values.
+
+The C++ executable does not read the mass or area. These values do not affect
+Geant4 transport or the raw phantom histograms. `atris-postprocess` reads them
+from `phantoms.txt` and applies the mass and area factors when producing
+`.doseN`, `.equiN`, and `.ratesN`; see the
+[normalization formulas](outputs.md#processed-response-tables).
 
 For each stem, staging locates `<stem>_response.txt` and `<stem>_counting.txt`
 in the run directory first, then the archive. It creates relative symbolic links

@@ -28,7 +28,7 @@ flowchart TD
     subgraph Physical["Physical setup"]
         B["simulation.psf: primary model input"]
         B -->|atris-psf-to-gdml| C["simulation.gdml"]
-        F["Optional: phantoms.txt + response library"] -->|atris-stage-phantoms| G["Numbered phantom files"]
+        F["Optional: phantoms.txt + response library"] -->|atris-stage-phantoms| G["Named phantom files"]
     end
     subgraph Sampling["Particle sampling"]
         D["atris-generate-macros"] --> E["Species .gdml, .mac, .bins"]
@@ -143,8 +143,9 @@ atris-stage-phantoms . --copy
 | --- | --- |
 | `phantoms.txt`, selected named tables in `$ATRIS_ROOT/phantoms` | Local named response/counting table copies |
 
-`phantoms.txt` selects phantom IDs `0` and `1`, their table filename stems,
-masses, and areas. It contains metadata, not the response matrices themselves.
+`phantoms.txt` selects two table filename stems with their masses and areas.
+Their row order assigns phantom IDs `0` and `1`. The file contains metadata,
+not the response matrices themselves.
 The named copies in this example are:
 
 ```text

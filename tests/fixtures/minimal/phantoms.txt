@@ -1,2 +1,2 @@
-# ID  Phantom   mass [g]  area [cm2]
-0  icru_zero  14094.7550  1413.72
+# Phantom   mass [g]  area [cm2]
+icru_zero  14094.7550  1413.720

@@ -94,7 +94,7 @@ def test_input_output_warnings_report_mismatched_run_files(tmp_path, monkeypatch
         "#axis edges -0.5 0.5 1.5 2.5\n"
         "entries,Sw\n"
     )
-    (tmp_path / "phantoms.txt").write_text("0  test  1.0  2.0\n")
+    (tmp_path / "phantoms.txt").write_text("test  1.0  2.0\n")
     monkeypatch.chdir(tmp_path)
 
     warnings = postprocess.input_output_warnings("protons")
@@ -186,16 +186,16 @@ def test_process_phantoms_accepts_run_without_phantoms(tmp_path, monkeypatch):
     assert phantoms.shape == (0, 2)
 
 
-def test_process_phantoms_uses_ids_independently_of_row_order(tmp_path, monkeypatch):
+def test_process_phantoms_follows_row_order(tmp_path, monkeypatch):
     (tmp_path / "phantoms.txt").write_text(
-        "1  second  30.5 40.5\n"
-        "0  first   10.5 20.5\n"
+        "second  30.5 40.5\n"
+        "first   10.5 20.5\n"
     )
     monkeypatch.chdir(tmp_path)
 
     phantoms = postprocess.process_phantoms(2)
 
-    np.testing.assert_allclose(phantoms, [[10.5, 20.5], [30.5, 40.5]])
+    np.testing.assert_allclose(phantoms, [[30.5, 40.5], [10.5, 20.5]])
 
 
 def test_main_skips_missing_species(tmp_path, monkeypatch, caplog):

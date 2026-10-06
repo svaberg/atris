@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from atris_tools.phantoms import stage_phantoms
+from atris_tools.phantoms import read_phantoms, stage_phantoms
 
 
 def make_archive(tmp_path):
@@ -19,35 +19,40 @@ def make_archive(tmp_path):
 def write_phantoms(
     run_directory,
     rows=(
-        "0  first    1.5  2.5\n"
-        "1  second  30.5 40.5\n"
+        "first    1.5  2.5\n"
+        "second  30.5 40.5\n"
     ),
 ):
-    contents = "# ID  Phantom  mass [g]  area [cm2]\n" + rows
+    contents = "# Phantom  mass [g]  area [cm2]\n" + rows
     (run_directory / "phantoms.txt").write_text(contents)
     return contents
 
 
-def test_stage_phantoms_uses_ids_independently_of_row_order(tmp_path):
+def test_phantom_ids_follow_row_order(tmp_path):
     archive = make_archive(tmp_path)
     run_directory = tmp_path / "run"
     run_directory.mkdir()
     metadata = write_phantoms(
         run_directory,
-        "1  second  30.5 40.5\n"
-        "0  first   10.5 20.5\n",
+        "second  30.5 40.5\n"
+        "first   10.5 20.5\n",
     )
 
     count = stage_phantoms(run_directory, archive)
+    phantoms = read_phantoms(run_directory)
 
     assert count == 2
-    radiation_zero = run_directory / "first_response.txt"
-    counting_one = run_directory / "second_counting.txt"
-    assert radiation_zero.is_symlink()
-    assert counting_one.is_symlink()
-    assert not os.path.isabs(os.readlink(radiation_zero))
-    assert radiation_zero.read_text() == "first radiation\n"
-    assert counting_one.read_text() == "second counting\n"
+    assert [(phantom["id"], phantom["stem"]) for phantom in phantoms] == [
+        (0, "second"),
+        (1, "first"),
+    ]
+    radiation = run_directory / "first_response.txt"
+    counting = run_directory / "second_counting.txt"
+    assert radiation.is_symlink()
+    assert counting.is_symlink()
+    assert not os.path.isabs(os.readlink(radiation))
+    assert radiation.read_text() == "first radiation\n"
+    assert counting.read_text() == "second counting\n"
     assert (run_directory / "phantoms.txt").read_text() == metadata
 
 
@@ -57,7 +62,7 @@ def test_stage_phantoms_can_copy_files(tmp_path):
     run_directory.mkdir()
     write_phantoms(
         run_directory,
-        "0  first  1.5 2.5\n",
+        "first  1.5 2.5\n",
     )
 
     stage_phantoms(run_directory, archive, copy=True)
@@ -78,7 +83,7 @@ def test_stage_phantoms_copy_replaces_matching_links(tmp_path):
     run_directory.mkdir()
     write_phantoms(
         run_directory,
-        "0  first  1.5 2.5\n",
+        "first  1.5 2.5\n",
     )
     stage_phantoms(run_directory, archive)
 
@@ -99,10 +104,10 @@ def test_stage_phantoms_updates_links_after_selection_changes(tmp_path):
     archive = make_archive(tmp_path)
     run_directory = tmp_path / "run"
     run_directory.mkdir()
-    write_phantoms(run_directory, "0  first  1.5 2.5\n")
+    write_phantoms(run_directory, "first  1.5 2.5\n")
     stage_phantoms(run_directory, archive)
 
-    write_phantoms(run_directory, "0  second  3.5 4.5\n")
+    write_phantoms(run_directory, "second  3.5 4.5\n")
     count = stage_phantoms(run_directory, archive)
 
     assert count == 1
@@ -120,10 +125,10 @@ def test_stage_phantoms_copy_keeps_old_files_and_updates_links(tmp_path):
     archive = make_archive(tmp_path)
     run_directory = tmp_path / "run"
     run_directory.mkdir()
-    write_phantoms(run_directory, "0  first  1.5 2.5\n")
+    write_phantoms(run_directory, "first  1.5 2.5\n")
     stage_phantoms(run_directory, archive, copy=True)
 
-    write_phantoms(run_directory, "0  second  3.5 4.5\n")
+    write_phantoms(run_directory, "second  3.5 4.5\n")
     count = stage_phantoms(run_directory, archive, copy=True)
 
     assert count == 1
@@ -140,7 +145,7 @@ def test_stage_phantoms_leaves_descriptive_links_for_removed_rows(tmp_path):
     write_phantoms(run_directory)
     stage_phantoms(run_directory, archive)
 
-    write_phantoms(run_directory, "0  first  1.5 2.5\n")
+    write_phantoms(run_directory, "first  1.5 2.5\n")
     count = stage_phantoms(run_directory, archive)
 
     assert count == 1
@@ -156,10 +161,10 @@ def test_stage_phantoms_keeps_old_links_when_replacement_is_missing(
     archive = make_archive(tmp_path)
     run_directory = tmp_path / "run"
     run_directory.mkdir()
-    write_phantoms(run_directory, "0  first  1.5 2.5\n")
+    write_phantoms(run_directory, "first  1.5 2.5\n")
     stage_phantoms(run_directory, archive)
 
-    write_phantoms(run_directory, "0  missing  3.5 4.5\n")
+    write_phantoms(run_directory, "missing  3.5 4.5\n")
     count = stage_phantoms(run_directory, archive)
 
     assert count == 0
@@ -172,7 +177,7 @@ def test_stage_phantoms_does_not_remove_regular_files_for_removed_rows(tmp_path)
     archive = make_archive(tmp_path)
     run_directory = tmp_path / "run"
     run_directory.mkdir()
-    write_phantoms(run_directory, "0  first  1.5 2.5\n")
+    write_phantoms(run_directory, "first  1.5 2.5\n")
     stale_file = run_directory / "radiation_phantom1.txt"
     stale_file.write_text("keep me\n")
 
@@ -189,7 +194,7 @@ def test_stage_phantoms_accepts_custom_files_in_run_directory(tmp_path):
     (run_directory / "custom_counting.txt").write_text("custom counting\n")
     write_phantoms(
         run_directory,
-        "0  custom  7.5 8.5\n",
+        "custom  7.5 8.5\n",
     )
 
     stage_phantoms(run_directory)
@@ -209,7 +214,7 @@ def test_stage_phantoms_stages_absolute_stem_under_local_names(tmp_path):
     Path(str(source) + "_counting.txt").write_text("custom counting\n")
     run_directory = tmp_path / "run"
     run_directory.mkdir()
-    write_phantoms(run_directory, "0  %s  7.5 8.5\n" % source)
+    write_phantoms(run_directory, "%s  7.5 8.5\n" % source)
 
     stage_phantoms(run_directory)
 
@@ -267,7 +272,7 @@ def test_stage_phantoms_can_create_dummy_counting_response(tmp_path, caplog):
     (archive / "first_counting.txt").unlink()
     run_directory = tmp_path / "run"
     run_directory.mkdir()
-    write_phantoms(run_directory, "0  first  1.5 2.5\n")
+    write_phantoms(run_directory, "first  1.5 2.5\n")
 
     count = stage_phantoms(
         run_directory,
@@ -297,7 +302,7 @@ def test_stage_phantoms_prefers_real_counting_response(tmp_path):
     archive = make_archive(tmp_path)
     run_directory = tmp_path / "run"
     run_directory.mkdir()
-    write_phantoms(run_directory, "0  first  1.5 2.5\n")
+    write_phantoms(run_directory, "first  1.5 2.5\n")
 
     count = stage_phantoms(
         run_directory,
@@ -317,7 +322,7 @@ def test_stage_phantoms_does_not_overwrite_existing_dummy_file(tmp_path, caplog)
     (archive / "first_counting.txt").unlink()
     run_directory = tmp_path / "run"
     run_directory.mkdir()
-    write_phantoms(run_directory, "0  first  1.5 2.5\n")
+    write_phantoms(run_directory, "first  1.5 2.5\n")
     dummy = run_directory / "first_dummy_counting.txt"
     dummy.write_text("keep me\n")
 
@@ -339,7 +344,7 @@ def test_stage_phantoms_continues_after_missing_file(tmp_path, caplog):
     run_directory.mkdir()
     write_phantoms(
         run_directory,
-        "0  missing  1.5 2.5\n1  second  3.5 4.5\n",
+        "missing  1.5 2.5\nsecond  3.5 4.5\n",
     )
 
     count = stage_phantoms(run_directory, archive)
@@ -355,17 +360,17 @@ def test_stage_phantoms_continues_after_missing_file(tmp_path, caplog):
 @pytest.mark.parametrize(
     "rows",
     (
-        "0  first  1.5 2.5\n0  second  3.5 4.5\n",
-        "1  first  1.5 2.5\n",
+        "first  1.5\n",
+        "first  not-a-mass  2.5\n",
     ),
 )
-def test_stage_phantoms_rejects_duplicate_or_gapped_ids(tmp_path, rows):
+def test_stage_phantoms_rejects_invalid_rows(tmp_path, rows):
     archive = make_archive(tmp_path)
     run_directory = tmp_path / "run"
     run_directory.mkdir()
     write_phantoms(run_directory, rows)
 
-    with pytest.raises(ValueError, match="unique and contiguous"):
+    with pytest.raises(ValueError, match="Expected|Invalid"):
         stage_phantoms(run_directory, archive)
 
     assert list(run_directory.iterdir()) == [run_directory / "phantoms.txt"]
