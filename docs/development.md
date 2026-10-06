@@ -306,14 +306,6 @@ Some modules still retain names and implementation details from the original
 standalone scripts. Further cleanup should favor clear importable functions and
 small command-line entry points without changing the supported workflow.
 
-### Executable interface migration
-
-The eventual executable interface should retain two invocation forms: the
-complete legacy form with `argc == 5`, and the new run-name form with one
-user-supplied argument (`argc == 2`). The currently accepted intermediate
-argument counts are transitional. Keep them until the run-file path and its
-calling tools are complete; do not make them part of the final interface.
-
 ## Thread scaling
 
 Do not assume that AtRIS becomes faster whenever more worker threads are added.
