@@ -15,8 +15,8 @@ your source settings. NRLMSIS tables are one optional source for creating a PSF.
 | `<species>.mac` | AtRIS | File selection, Geant4 initialization, source settings, seeds, and event count. |
 | `<species>.bins` | AtRIS | Primary kinetic-energy bin edges, in MeV; the macro names the file explicitly. |
 | `phantoms.txt` | Staging, chunk runner, post-processing, plotting | Selection of named phantom tables, masses, and areas. |
-| `<stem>_response.txt` | AtRIS | Response table named by one or more `/atris/phantom/response` commands. |
-| `<stem>_counting.txt` | AtRIS | Counting-response table named by an `/atris/phantom/response` command. |
+| `<stem>_response.txt` | AtRIS | Response table named by one or more `/atris/phantom/response/file` properties. |
+| `<stem>_counting.txt` | AtRIS | Counting-response table named by an `/atris/phantom/response/file` property. |
 | `<prefix>.chunk.mac`, `chunks.txt` | Chunk workflow | Shared chunk macro and seed plan; see [Scatter/gather files](chunks.md). |
 
 The Python workflow uses the species names `protons` and `alphas`. The

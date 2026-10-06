@@ -108,14 +108,24 @@ chunk executions assigned to that worker, so AtRIS would not need worker-count,
 worker-index, or modulo-dispatch logic. Such worker macros would be generated
 execution artifacts rather than the authoritative species configuration.
 
-Phantom responses are declared independently in the generated macro. Each
-command retains the phantom stem, response name, accumulation rule, and source
-table:
+Phantom responses are declared independently in the generated macro. A
+phantom is selected once, then each response sets its name, accumulation rule,
+and source table before it is added:
 
 ```text
-/atris/phantom/response ramona_zero_0.060MeV_detA dos energy ramona_zero_0.060MeV_detA_response.txt
-/atris/phantom/response ramona_zero_0.060MeV_detA equi radiation-weighted-energy ramona_zero_0.060MeV_detA_response.txt
-/atris/phantom/response ramona_zero_0.060MeV_detA rates coefficient ramona_zero_0.060MeV_detA_counting.txt
+/atris/phantom/name ramona_zero_0.060MeV_detA
+/atris/phantom/response/type energy
+/atris/phantom/response/name dos
+/atris/phantom/response/file ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response/add
+/atris/phantom/response/type radiation-weighted-energy
+/atris/phantom/response/name equi
+/atris/phantom/response/file ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response/add
+/atris/phantom/response/type coefficient
+/atris/phantom/response/name rates
+/atris/phantom/response/file ramona_zero_0.060MeV_detA_counting.txt
+/atris/phantom/response/add
 ```
 
 Mass and cross-sectional area describe the phantom itself and remain in

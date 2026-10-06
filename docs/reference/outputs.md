@@ -1,9 +1,9 @@
 # Output files
 
-`<name>` below is the suffix-free simulation prefix. `<stem>` and `<response>`
-are the names supplied by `/atris/phantom/response`. The simulation argument's
-extension selects the Geant4 output backend independently of the output mode
-and must match the macro's
+`<name>` below is the suffix-free simulation prefix. `<stem>` is supplied by
+`/atris/phantom/name`, and `<response>` by
+`/atris/phantom/response/name`. The simulation argument's extension selects
+the Geant4 output backend independently of the output mode and must match the macro's
 `/atris/outputFormat` value. Without an extension, the macro value selects the
 backend.
 
