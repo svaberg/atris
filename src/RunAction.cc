@@ -1,21 +1,23 @@
 #include "RunAction.hh"
-#include "G4ParticleTable.hh"
-#include "G4Run.hh"
-#include "globals.hh"
-#include "G4RunManager.hh"
-#include "G4SystemOfUnits.hh"
-#include "G4PhysicalConstants.hh"
+
 #include "HistoManager.hh"
-#include "G4AnalysisManager.hh"
-#include "G4UnitsTable.hh"
 #include "OutputMode.hh"
 #include "RunSettings.hh"
-#include <vector>
+
+#include "G4AnalysisManager.hh"
+#include "G4ParticleTable.hh"
+#include "G4PhysicalConstants.hh"
+#include "G4Run.hh"
+#include "G4RunManager.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4UnitsTable.hh"
+#include "globals.hh"
+
 #include <cmath>
 #include <fstream>
-#include <sstream>
 #include <iostream>
-
+#include <sstream>
+#include <vector>
 
 namespace atris {
 

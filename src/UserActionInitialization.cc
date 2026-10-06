@@ -1,7 +1,9 @@
 #include "UserActionInitialization.hh"
-#include "RunAction.hh"
+
 #include "PrimaryGeneratorAction.hh"
+#include "RunAction.hh"
 #include "RunSettings.hh"
+
 #include "G4ios.hh"
 
 namespace atris {

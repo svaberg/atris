@@ -1,9 +1,11 @@
 #include "PrimaryGeneratorAction.hh"
+
+#include "G4AnalysisManager.hh"
 #include "G4Event.hh"
 #include "G4GeneralParticleSource.hh"
-#include "G4AnalysisManager.hh"
-#include "G4SystemOfUnits.hh"
 #include "G4PhysicalConstants.hh"
+#include "G4SystemOfUnits.hh"
+
 #include <chrono>
 #include <ctime>
 

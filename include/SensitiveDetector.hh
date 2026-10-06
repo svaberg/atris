@@ -1,17 +1,16 @@
 #ifndef SensitiveDetector_hh
 #define SensitiveDetector_hh 1
 
-#include "G4VSensitiveDetector.hh"
+#include "G4Allocator.hh"
+#include "G4THitsCollection.hh"
+#include "G4ThreeVector.hh"
 #include "G4UImessenger.hh"
+#include "G4VHit.hh"
+#include "G4VSensitiveDetector.hh"
+#include "tls.hh"
 
 #include <cstddef>
 #include <vector>
-
-#include "G4VHit.hh"
-#include "G4THitsCollection.hh"
-#include "G4Allocator.hh"
-#include "G4ThreeVector.hh"
-#include "tls.hh"
 
 class G4Step;
 class G4HCofThisEvent;

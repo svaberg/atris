@@ -1,23 +1,24 @@
-#include "G4MTRunManager.hh"
-#include "G4Threading.hh"
-#include "G4UImanager.hh"
-#include "G4GDMLParser.hh"
-
 #include "DetectorConstruction.hh"
 #include "PhantomResponses.hh"
 #include "RunConfiguration.hh"
 #include "RunSettings.hh"
+
+#include "G4GDMLParser.hh"
+#include "G4MTRunManager.hh"
+#include "G4Threading.hh"
+#include "G4UImanager.hh"
 #include "Randomize.hh"
+
 #include <array>
-#include <vector>
-#include <string>
-#include <cstddef>
 #include <chrono>
+#include <cstddef>
 #include <cstdlib>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <fstream>
 #include <sstream>
+#include <string>
+#include <vector>
 
 namespace {
 

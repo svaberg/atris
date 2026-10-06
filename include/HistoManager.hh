@@ -1,9 +1,9 @@
 #ifndef HistoManager_h
 #define HistoManager_h 1
 
-#include "globals.hh"
-#include "G4Types.hh"
 #include "G4String.hh"
+#include "G4Types.hh"
+#include "globals.hh"
 
 namespace atris {
 

@@ -1,12 +1,12 @@
 #ifndef RunSettings_hh
 #define RunSettings_hh
 
+#include "OutputMode.hh"
+
 #include "globals.hh"
 
 #include <array>
 #include <vector>
-
-#include "OutputMode.hh"
 
 namespace atris {
 
