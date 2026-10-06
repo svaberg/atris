@@ -26,6 +26,8 @@ should not have to be inferred from a value such as a PDG particle code.
 
 The remaining goals are:
 
+- Move persistent simulation configuration into a composable tree of Geant4
+  macro files.
 - Reduce duplicated files and make the role of each retained dataset explicit.
 - Provide small, reproducible system tests for installation and complete
   workflows.
@@ -67,6 +69,92 @@ initialization, while `atris-run` only supplies the seeded chunk name. Thread
 counts, worker assignments, deadlines, and scheduler limits remain execution
 settings.
 
+The longer-term goal is to represent the complete persistent run configuration
+as a tree of `.mac` files. Separate macros should hold shared AtRIS settings,
+particle-specific settings, and chunk-specific settings, with Geant4 macro
+execution composing them into one run. Phantom declarations and other settings
+that are currently discovered or supplied through special paths should move
+into this hierarchy where practical.
+
+A complete simulation may be written as one macro or composed from other macros
+with Geant4's `/control/execute` command. AtRIS should not require particular
+macro filenames or a fixed include hierarchy. The Python tools should generate
+and document a recommended structure in which a top-level AtRIS macro executes
+a particle macro, which in turn executes the chunk-specific macro, while
+leaving users free to organize equivalent macros differently.
+
+The division into files is therefore user configuration, not part of the C++
+runtime model. `atris_tools` is responsible for creating, splitting, updating,
+and linking macro files with `/control/execute`; the executable consumes the
+resulting command stream without needing to know which source file supplied a
+command.
+
+A Python preparation tool should also be able to expand a composed macro tree
+recursively into one flattened macro for a specific execution. The flattened
+file should preserve command order and mark the source of each expanded
+section. It is a generated record, not the canonical file to edit, and it
+remains dependent on referenced scientific data files such as GDML and
+response tables.
+
+For parallel execution, `atris-scatter` may partition the chunk leaves and
+write worker-specific top-level macros such as `atris_worker_001.mac`. Each
+generated macro contains only the chunk executions assigned to that worker,
+so AtRIS does not need worker-count, worker-index, or modulo-dispatch logic.
+These worker macros are generated execution artifacts; the unsplit
+`atris.mac` remains the authoritative campaign configuration. A deployment
+using exactly one AtRIS process per compute node may call them node macros,
+but the general concept is a worker rather than a physical node.
+
+Phantom configuration should expose the properties of each indexed phantom
+individually rather than packing them into one opaque command. Conceptually,
+the generated macro configuration should provide entries such as:
+
+```text
+/atris/phantom/name              0 ramona_zero_0.060MeV_detA
+/atris/phantom/mass              0 0.5082 g
+/atris/phantom/area              0 6.928 cm2
+/atris/phantom/response/path      0 radiation ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response/kernel    0 radiation energy
+/atris/phantom/response/path      0 counting ramona_zero_0.060MeV_detA_counting.txt
+/atris/phantom/response/kernel    0 counting count
+```
+
+Mass and cross-sectional area describe the phantom itself and should appear
+once. A phantom should own an arbitrary collection of named response channels,
+not two fixed radiation and counting fields. Each channel identifies its table
+and the calculation that applies its coefficients at a particle crossing. The
+existing radiation and counting tables are the first two channel types: the
+radiation table supplies the dose and equivalent-dose responses, while the
+counting table supplies the count response. Another channel may reuse an
+existing calculation or introduce a new one without being represented as a new
+physical phantom.
+
+The channels' numerical values and table schemas are independent. Channels
+with matching particle and energy indexing may share one lookup for efficiency,
+but this is an implementation optimization rather than a format requirement.
+
+The phantom ID identifies configuration and output; it should not impose a
+numbered filename. Macros should refer directly to the named response files.
+Run preparation may copy those files or create ordinary symbolic links that
+retain their names, and users may equivalently stage them with `ln -s`.
+Numbered aliases such as `radiation_phantom0.txt` and
+`counting_phantom0.txt` should disappear with the executable's filename
+discovery logic.
+
+Phantom definitions are shared by proton and alpha simulations, so the
+recommended hierarchy should place them in the shared AtRIS-level macro rather
+than copy them into each particle macro. The Python phantom-staging tool should
+write these entries after staging the referenced files. Once the macro
+configuration is authoritative, mass, area, name, and response paths should
+also be retained in output metadata so that downstream tools do not have to
+reconstruct the run configuration from filenames.
+
+The Python preparation tools should create and update these macro files. They
+should not become a second runtime configuration system: after preparation,
+the macro tree and the referenced scientific input files should record what the
+AtRIS executable will run. Scheduler limits, worker allocation, and similar
+execution concerns remain outside the persistent simulation configuration.
+
 The name `atris-generate-macros` also needs reconsideration. The command already
 prepares geometry copies and energy bins as well as macros, and would then
 define more of the simulation configuration. Its name should describe preparing
@@ -86,6 +174,16 @@ blocks of one canonical response matrix. The run would retain complete proton
 and alpha energy grids, while each chunk could select a contiguous subset of
 those bins and its own event count. The selection changes where computation is
 spent; it does not change the definition of the final response.
+
+Combining histograms with different binning is common and remains a valid
+post-processing option. It is exact when the source bins align with the target
+edges, such as when fine bins are combined into coarser bins. When edges do not
+align, redistributing an already accumulated bin requires an assumption about
+the values within that bin and therefore loses information. The canonical
+world grid is intended to make routine chunk gathering exact and reproducible,
+not to prohibit deliberate rebinning or statistical combination on another
+grid. Any such conversion should preserve available uncertainties and make its
+interpolation or redistribution assumptions explicit.
 
 The plan should store canonical bin indices rather than independent
 floating-point limits. For example, a versioned plan entry could contain the
@@ -133,14 +231,32 @@ Histograms without a primary-energy axis, such as source direction and source
 position, can continue to be added directly. Both CSV and ROOT gathering
 should follow the same mapping and validation rules.
 
-Only sampling properties represented by an output dimension can safely vary
-between additive chunks. Energy range, event count, sampling weight between
-energy bins, and random seeds may differ because actual primary counts are
-retained for every energy bin. Geometry, materials, physics list, phantom
-definitions, detector layout, and canonical bin boundaries must remain fixed.
-Changing the source direction or position distribution would not be safe with
-the present response products because those dimensions are averaged out rather
-than retained in the response matrix.
+Structural compatibility means that each stored quantity can be mapped into
+the same result bins and channels and combined without guessing, interpolation,
+or physical assumptions. It requires matching quantities and units,
+dimensionality, axis meanings and ordering, and stored statistic and
+normalization state. Bin edges must either match or map exactly onto a common
+grid, and detector, phantom, and response-channel identifiers must have an
+unambiguous correspondence. Different event counts are compatible when the
+corresponding primary counts or other required normalization information are
+retained. CSV and ROOT storage are not structural differences once their
+readers have produced the same internal histogram representation.
+
+Scientific configuration is separate from structural compatibility. Seeds,
+event counts, source spectra, source positions and directions, particle
+populations, physics lists, and geometries may differ while the stored results
+remain structurally mergeable. Such a merge represents a weighted mixture of
+the contributing simulations. For example, structurally compatible SEP and
+GCR chunks may intentionally be combined, although their separate
+contributions cannot be recovered from the aggregate unless that distinction
+is retained as an output dimension.
+
+`atris-gather` should reject only corrupt data or data that cannot be mapped
+and added unambiguously. Differences in scientific configuration should be
+reported as warnings and recorded in the gathered metadata, but should not
+prevent gathering. No override is needed: gathering creates a derived result
+and retains the original chunks, so the user can inspect, regroup, or gather
+them again without rerunning the simulation.
 
 ### Choosing valuable follow-up chunks
 
