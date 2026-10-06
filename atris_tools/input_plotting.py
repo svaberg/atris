@@ -197,31 +197,56 @@ def read_macro(filename):
 
 def read_macro_phantoms(filename):
     phantoms = {}
+    phantom_name = None
+    response = {}
+    property_commands = {
+        "/atris/phantom/response/type": "accumulation",
+        "/atris/phantom/response/name": "name",
+        "/atris/phantom/response/file": "file",
+    }
     with Path(filename).open() as macro:
         for line_number, line in enumerate(macro, start=1):
             fields = line.split()
-            if (
-                not fields
-                or fields[0].startswith("#")
-                or fields[0] != "/atris/phantom/response"
-            ):
+            if not fields or fields[0].startswith("#"):
                 continue
-            if len(fields) != 5:
+            command = fields[0]
+            if command == "/atris/phantom/name":
+                if len(fields) != 2:
+                    raise ValueError(
+                        "Invalid phantom name command at %s:%i"
+                        % (filename, line_number)
+                    )
+                phantom_name = fields[1]
+                continue
+            if command in property_commands:
+                if len(fields) != 2:
+                    raise ValueError(
+                        "Invalid phantom response property at %s:%i"
+                        % (filename, line_number)
+                    )
+                response[property_commands[command]] = fields[1]
+                continue
+            if command != "/atris/phantom/response/add":
+                continue
+            if len(fields) != 1 or phantom_name is None or len(response) != 3:
                 raise ValueError(
-                    "Invalid phantom response command at %s:%i"
+                    "Incomplete phantom response at %s:%i"
                     % (filename, line_number)
                 )
-            stem, response_name, accumulation, response_file = fields[1:]
-            configured = phantoms.setdefault(stem, {})
+            response_name = response["name"]
+            configured = phantoms.setdefault(phantom_name, {})
             if response_name in configured:
                 raise ValueError(
                     "Duplicate %s response for phantom %s at %s:%i"
-                    % (response_name, stem, filename, line_number)
+                    % (response_name, phantom_name, filename, line_number)
                 )
             configured[response_name] = {
-                "accumulation": accumulation,
-                "file": Path(response_file),
+                "accumulation": response["accumulation"],
+                "file": Path(response["file"]),
             }
+            response.clear()
+    if response:
+        raise ValueError("Incomplete phantom response at end of %s" % filename)
     return phantoms
 
 

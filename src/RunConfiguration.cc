@@ -13,13 +13,11 @@
 #include "G4RunManager.hh"
 #include "G4StepLimiterPhysics.hh"
 #include "G4UIcommand.hh"
-#include "G4UIparameter.hh"
 #include "Randomize.hh"
 
 #include <array>
 #include <filesystem>
 #include <fstream>
-#include <sstream>
 #include <utility>
 #include <vector>
 
@@ -67,6 +65,11 @@ RunConfiguration::RunConfiguration(
       this,
       "/atris/phantom/",
       "AtRIS phantom response files."
+    ),
+    fPhantomResponseMessenger(
+      this,
+      "/atris/phantom/response/",
+      "One response for the selected phantom."
     )
 {
   auto& geometryFileCommand = fMessenger.DeclareMethod(
@@ -104,32 +107,47 @@ RunConfiguration::RunConfiguration(
   randomSeedsCommand.SetStates(G4State_PreInit);
   fRandomSeedsCommand = randomSeedsCommand.command;
 
-  fPhantomResponseCommand = new G4UIcommand(
-    "/atris/phantom/response",
-    this
+  auto& phantomNameCommand = fPhantomMessenger.DeclareProperty(
+    "name",
+    fPhantomName,
+    "Select the phantom receiving subsequent responses."
   );
-  fPhantomResponseCommand->SetGuidance(
-    "Add a named response table for a phantom."
-  );
-  fPhantomResponseCommand->SetParameter(
-    new G4UIparameter("phantomStem", 's', false)
-  );
-  fPhantomResponseCommand->SetParameter(
-    new G4UIparameter("responseName", 's', false)
-  );
-  auto* const accumulationParameter = new G4UIparameter(
-    "accumulation",
-    's',
-    false
-  );
-  accumulationParameter->SetParameterCandidates(
+  phantomNameCommand.SetStates(G4State_PreInit);
+
+  auto& phantomResponseTypeCommand =
+    fPhantomResponseMessenger.DeclareProperty(
+      "type",
+      fPhantomResponseType,
+      "Set how this response is accumulated."
+    );
+  phantomResponseTypeCommand.SetCandidates(
     "coefficient energy radiation-weighted-energy"
   );
-  fPhantomResponseCommand->SetParameter(accumulationParameter);
-  fPhantomResponseCommand->SetParameter(
-    new G4UIparameter("file", 's', false)
+  phantomResponseTypeCommand.SetStates(G4State_PreInit);
+
+  auto& phantomResponseNameCommand =
+    fPhantomResponseMessenger.DeclareProperty(
+      "name",
+      fPhantomResponseName,
+      "Set the response histogram name."
+    );
+  phantomResponseNameCommand.SetStates(G4State_PreInit);
+
+  auto& phantomResponseFileCommand =
+    fPhantomResponseMessenger.DeclareProperty(
+      "file",
+      fPhantomResponseFile,
+      "Set the response-table file."
+    );
+  phantomResponseFileCommand.SetStates(G4State_PreInit);
+
+  auto& addPhantomResponseCommand = fPhantomResponseMessenger.DeclareMethod(
+    "add",
+    &RunConfiguration::AddPhantomResponse,
+    "Add the configured response to the selected phantom."
   );
-  fPhantomResponseCommand->AvailableForStates(G4State_PreInit);
+  addPhantomResponseCommand.SetStates(G4State_PreInit);
+  fAddPhantomResponseCommand = addPhantomResponseCommand.command;
 
   auto& physicsListCommand = fMessenger.DeclareMethod(
     "physicsList",
@@ -168,20 +186,6 @@ RunConfiguration::RunConfiguration(
   );
 
 }
-
-RunConfiguration::~RunConfiguration()
-{
-  delete fPhantomResponseCommand;
-}
-
-void RunConfiguration::SetNewValue(
-  G4UIcommand* const command,
-  G4String newValue
-)
-{
-  if (command == fPhantomResponseCommand) SetPhantomResponse(newValue);
-}
-
 void RunConfiguration::DeclareHistogramBinsCommand(
   const G4String& name,
   void (RunConfiguration::*setter)(G4int, G4int),
@@ -360,36 +364,36 @@ void RunConfiguration::SetRandomSeeds(
          << secondSeed << G4endl;
 }
 
-void RunConfiguration::SetPhantomResponse(G4String specification)
+void RunConfiguration::AddPhantomResponse()
 {
-  std::istringstream fields(specification);
-  G4String phantomStem;
-  G4String responseName;
-  G4String accumulationName;
-  G4String fileName;
-  G4String extra;
   if (
-    !(fields >> phantomStem >> responseName >> accumulationName >> fileName)
-    || fields >> extra
+    fPhantomName.empty()
+    || fPhantomResponseType.empty()
+    || fPhantomResponseName.empty()
+    || fPhantomResponseFile.empty()
   ) {
     G4ExceptionDescription message;
-    message << "Expected: <phantom-stem> <response-name> "
-            << "<accumulation> <file>.";
-    fPhantomResponseCommand->CommandFailed(message);
+    message << "Set /atris/phantom/name and every "
+               "/atris/phantom/response property before "
+               "/atris/phantom/response/add.";
+    fAddPhantomResponseCommand->CommandFailed(message);
     return;
   }
   if (!fPhantomResponses.Add(
-        phantomStem,
-        responseName,
-        accumulationName,
-        fileName
+        fPhantomName,
+        fPhantomResponseName,
+        fPhantomResponseType,
+        fPhantomResponseFile
       )) {
     G4ExceptionDescription message;
-    message << "Could not configure response '" << responseName
-            << "' for phantom '" << phantomStem << "'.";
-    fPhantomResponseCommand->CommandFailed(message);
+    message << "Could not configure response '" << fPhantomResponseName
+            << "' for phantom '" << fPhantomName << "'.";
+    fAddPhantomResponseCommand->CommandFailed(message);
     return;
   }
+  fPhantomResponseType.clear();
+  fPhantomResponseName.clear();
+  fPhantomResponseFile.clear();
 }
 
 void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)

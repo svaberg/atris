@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
 import numpy as np
+import pytest
 
 from atris_tools import input_plotting
 
@@ -9,9 +10,19 @@ MACRO = """\
 /atris/geometryFile protons.gdml
 /atris/energyBinsFile protons.bins
 /atris/outputFile protons
-/atris/phantom/response test-phantom dos energy test-phantom_response.txt
-/atris/phantom/response test-phantom equi radiation-weighted-energy test-phantom_response.txt
-/atris/phantom/response test-phantom rates coefficient test-phantom_counting.txt
+/atris/phantom/name test-phantom
+/atris/phantom/response/type energy
+/atris/phantom/response/name dos
+/atris/phantom/response/file test-phantom_response.txt
+/atris/phantom/response/add
+/atris/phantom/response/type radiation-weighted-energy
+/atris/phantom/response/name equi
+/atris/phantom/response/file test-phantom_response.txt
+/atris/phantom/response/add
+/atris/phantom/response/type coefficient
+/atris/phantom/response/name rates
+/atris/phantom/response/file test-phantom_counting.txt
+/atris/phantom/response/add
 /gps/particle proton
 /gps/ene/type User
 /gps/hist/type energy
@@ -71,6 +82,19 @@ def test_read_macro_and_atmosphere(tmp_path, gdml_text):
     np.testing.assert_array_equal(detector_ids, [2, 3])
     np.testing.assert_allclose(positions, [0.5, 2.0])
     np.testing.assert_allclose(edges, [0.0, 1.0, 3.0])
+
+
+def test_read_macro_phantoms_rejects_incomplete_response(tmp_path):
+    macro = tmp_path / "protons.mac"
+    macro.write_text(
+        "/atris/phantom/name test-phantom\n"
+        "/atris/phantom/response/type energy\n"
+        "/atris/phantom/response/name dos\n"
+        "/atris/phantom/response/add\n"
+    )
+
+    with pytest.raises(ValueError, match="Incomplete phantom response"):
+        input_plotting.read_macro_phantoms(macro)
 
 
 def test_non_termination_layers_accept_every_intermediate_material_type():

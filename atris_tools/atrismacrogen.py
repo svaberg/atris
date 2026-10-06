@@ -131,17 +131,16 @@ def genMacro(
     for phantom in read_phantoms(output_dir):
         response, counting = configured_phantom_files(output_dir, phantom)
         stem = os.path.basename(phantom["stem"])
+        lines += "/atris/phantom/name %s\n" % stem
         for response_name, accumulation, filename in (
             ("dos", "energy", response.name),
             ("equi", "radiation-weighted-energy", response.name),
             ("rates", "coefficient", counting.name),
         ):
-            lines += "/atris/phantom/response %s %s %s %s\n" % (
-                stem,
-                response_name,
-                accumulation,
-                filename,
-            )
+            lines += "/atris/phantom/response/type %s\n" % accumulation
+            lines += "/atris/phantom/response/name %s\n" % response_name
+            lines += "/atris/phantom/response/file %s\n" % filename
+            lines += "/atris/phantom/response/add\n"
     lines += "\n# Physics and analysis configuration\n"
     lines += "/atris/physicsList %s\n" % physics_list
     lines += "/atris/outputMode %s\n" % output_mode

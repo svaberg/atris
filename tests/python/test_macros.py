@@ -106,19 +106,26 @@ def test_macro_names_each_phantom_input_file(tmp_path):
     macroGenManager(2, output_dir=tmp_path, energy_points=3)
 
     macro = (tmp_path / "protons.mac").read_text()
+    assert "/atris/phantom/name ramona\n" in macro
     assert (
-        "/atris/phantom/response ramona dos energy ramona_response.txt\n"
-        in macro
+        "/atris/phantom/response/type energy\n"
+        "/atris/phantom/response/name dos\n"
+        "/atris/phantom/response/file ramona_response.txt\n"
+        "/atris/phantom/response/add\n" in macro
     )
     assert (
-        "/atris/phantom/response ramona equi radiation-weighted-energy "
-        "ramona_response.txt\n" in macro
+        "/atris/phantom/response/type radiation-weighted-energy\n"
+        "/atris/phantom/response/name equi\n"
+        "/atris/phantom/response/file ramona_response.txt\n"
+        "/atris/phantom/response/add\n" in macro
     )
     assert (
-        "/atris/phantom/response ramona rates coefficient "
-        "ramona_counting.txt\n" in macro
+        "/atris/phantom/response/type coefficient\n"
+        "/atris/phantom/response/name rates\n"
+        "/atris/phantom/response/file ramona_counting.txt\n"
+        "/atris/phantom/response/add\n" in macro
     )
-    assert "/atris/phantom/response cell dos energy cell_response.txt\n" in macro
+    assert "/atris/phantom/name cell\n" in macro
 
 
 def test_macro_generation_rejects_too_short_energy_grid(tmp_path):

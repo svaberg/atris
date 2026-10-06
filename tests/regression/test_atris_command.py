@@ -122,16 +122,20 @@ def write_macro(
         "/atris/outputFile " + output_file,
     ]
     for stem, response_file, counting_file in phantom_files:
-        lines.extend(
-            (
-                "/atris/phantom/response %s dos energy %s"
-                % (stem, response_file),
-                "/atris/phantom/response %s equi "
-                "radiation-weighted-energy %s" % (stem, response_file),
-                "/atris/phantom/response %s rates coefficient %s"
-                % (stem, counting_file),
+        lines.append("/atris/phantom/name " + stem)
+        for response_name, response_type, filename in (
+            ("dos", "energy", response_file),
+            ("equi", "radiation-weighted-energy", response_file),
+            ("rates", "coefficient", counting_file),
+        ):
+            lines.extend(
+                (
+                    "/atris/phantom/response/type " + response_type,
+                    "/atris/phantom/response/name " + response_name,
+                    "/atris/phantom/response/file " + filename,
+                    "/atris/phantom/response/add",
+                )
             )
-        )
     lines.extend(
         (
             "/atris/physicsList " + physics_list,
@@ -802,7 +806,11 @@ def test_macro_accepts_an_additional_named_response(tmp_path, atris_command):
     macro.write_text(
         macro.read_text().replace(
             "/atris/physicsList ",
-            "/atris/phantom/response %s bounting coefficient %s\n"
+            "/atris/phantom/name %s\n"
+            "/atris/phantom/response/type coefficient\n"
+            "/atris/phantom/response/name bounting\n"
+            "/atris/phantom/response/file %s\n"
+            "/atris/phantom/response/add\n"
             "/atris/physicsList " % (RESPONSE_STEM, extra),
         )
     )
@@ -811,6 +819,23 @@ def test_macro_accepts_an_additional_named_response(tmp_path, atris_command):
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert (tmp_path / ("protons_h2_h2.%s.bounting.csv" % RESPONSE_STEM)).is_file()
+
+
+@pytest.mark.regression
+def test_macro_rejects_an_incomplete_phantom_response(tmp_path, atris_command):
+    macro = prepare_run(tmp_path)
+    macro.write_text(
+        macro.read_text().replace(
+            "/atris/phantom/response/file %s_response.txt\n" % RESPONSE_STEM,
+            "",
+            1,
+        )
+    )
+
+    result = run_atris(atris_command, tmp_path)
+
+    assert result.returncode != 0
+    assert "every /atris/phantom/response property" in result.stdout + result.stderr
 
 
 @pytest.mark.regression

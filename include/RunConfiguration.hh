@@ -2,7 +2,6 @@
 #define RunConfiguration_hh
 
 #include "G4GenericMessenger.hh"
-#include "G4UImessenger.hh"
 #include "globals.hh"
 
 class G4RunManager;
@@ -14,7 +13,7 @@ namespace atris {
 class PhantomResponses;
 struct RunSettings;
 
-class RunConfiguration : public G4UImessenger
+class RunConfiguration
 {
   public:
     RunConfiguration(
@@ -23,9 +22,6 @@ class RunConfiguration : public G4UImessenger
       ::G4GDMLParser& parser,
       PhantomResponses& phantomResponses
     );
-    ~RunConfiguration() override;
-
-    void SetNewValue(G4UIcommand* command, G4String newValue) override;
 
   private:
     void DeclareHistogramBinsCommand(
@@ -39,7 +35,7 @@ class RunConfiguration : public G4UImessenger
     void SetEnergyBinsFile(G4String requestedFile);
     void SetOutputFile(G4String requestedFile);
     void SetRandomSeeds(G4long firstSeed, G4long secondSeed);
-    void SetPhantomResponse(G4String specification);
+    void AddPhantomResponse();
     void SetPhysicsList(G4String requestedPhysicsList);
     void SetOutputMode(G4String requestedOutputMode);
     void SetOutputFormat(G4String requestedOutputFormat);
@@ -60,11 +56,16 @@ class RunConfiguration : public G4UImessenger
     G4bool fHasUserActions = false;
     G4GenericMessenger fMessenger;
     G4GenericMessenger fPhantomMessenger;
+    G4GenericMessenger fPhantomResponseMessenger;
+    G4String fPhantomName;
+    G4String fPhantomResponseType;
+    G4String fPhantomResponseName;
+    G4String fPhantomResponseFile;
     G4UIcommand* fGeometryFileCommand = nullptr;
     G4UIcommand* fEnergyBinsFileCommand = nullptr;
     G4UIcommand* fOutputFileCommand = nullptr;
     G4UIcommand* fRandomSeedsCommand = nullptr;
-    G4UIcommand* fPhantomResponseCommand = nullptr;
+    G4UIcommand* fAddPhantomResponseCommand = nullptr;
     G4UIcommand* fPhysicsListCommand = nullptr;
     G4UIcommand* fOutputModeCommand = nullptr;
     G4UIcommand* fOutputFormatCommand = nullptr;
