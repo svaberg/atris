@@ -18,22 +18,6 @@ from .phantoms import read_phantoms
 
 logger = logging.getLogger(__name__)
 
-OUTPUT_MODES = ("response", "profile", "shower")
-OUTPUT_MODE_VALUES = {
-    "response": "-1",
-    "profile": "0",
-    "shower": "1",
-}
-
-
-def normalize_output_mode(value):
-    """Validate and return a named AtRIS output mode."""
-    value = str(value)
-    if value not in OUTPUT_MODES:
-        raise ValueError("output mode must be response, profile, or shower")
-    return value
-
-
 def format_estimated_time(minutes):
     """Format an estimated remaining time in minutes or hours."""
     if minutes < 60:
@@ -91,8 +75,6 @@ def incomplete_entry_numbers(run_directory):
 
 def run_chunks(
     run_directory,
-    physics_list="FTFP_BERT_HP",
-    mode="response",
     entry=None,
     worker_index=0,
     worker_count=1,
@@ -103,9 +85,6 @@ def run_chunks(
 ):
     """Run incomplete chunks and mark each successful run as complete."""
     run_directory = Path(run_directory).expanduser().resolve()
-    mode_name = normalize_output_mode(mode)
-    mode = OUTPUT_MODE_VALUES[mode_name]
-    output_suffix = ".root" if mode_name in ("profile", "shower") else ""
     entries = read_chunk_plan(run_directory)
     selected_entries = select_entries(
         entries,
@@ -125,8 +104,6 @@ def run_chunks(
     logger.info("%sStarting AtRIS chunked run", prefix)
     logger.info("%sRun directory: %s", prefix, run_directory)
     logger.info("%sChunk plan: %s", prefix, run_directory / "chunks.txt")
-    logger.info("%sPhysics list: %s", prefix, physics_list)
-    logger.info("%sOutput mode: %s (%s)", prefix, mode_name, mode)
     for phantom_number, phantom in enumerate(phantoms, start=1):
         phantom_id = phantom["id"]
         phantom_label = "Phantom %i/%i" % (phantom_number, phantom_count)
@@ -207,12 +184,7 @@ def run_chunks(
         started = timer()
         with log_path.open("w") as log:
             subprocess.run(
-                [
-                    "AtRIS",
-                    physics_list,
-                    str(Path("chunks") / (run_name + output_suffix)),
-                    str(mode),
-                ],
+                ["AtRIS", chunk_stem],
                 cwd=run_directory,
                 stdout=log,
                 stderr=subprocess.STDOUT,
@@ -270,15 +242,15 @@ def main():
         ),
         formatter_class=HelpFormatter,
         epilog=(
-            "The command reads chunks.txt and phantoms.txt, skips entries with "
-            "an existing .COMPLETE marker, and runs selected entries "
-            "sequentially. Worker coordinates select a collision-free shard; "
+            "The command reads chunks.txt, uses phantoms.txt when present for "
+            "progress labels, skips entries with an existing .COMPLETE marker, "
+            "and runs selected entries sequentially. Worker coordinates select "
+            "a collision-free shard; "
             "they do not launch workers or control Geant4 threads. A deadline "
             "is checked only before a chunk starts and never interrupts a "
-            "running chunk. Failed chunks are left incomplete. Response writes "
-            "the normal histogram workflow; profile adds particle crossings at "
-            "atmospheric-layer interfaces; shower also records every transport "
-            "step. This command does not gather or post-process results."
+            "running chunk. Failed chunks are left incomplete. Each species "
+            "macro selects its physics list, output mode, and other run "
+            "settings. This command does not gather or post-process results."
         ),
     )
     parser.add_argument(
@@ -288,24 +260,6 @@ def main():
         default=Path.cwd(),
         metavar="RUN_DIRECTORY",
         help="Scattered run directory (default: current directory).",
-    )
-    atris_options = parser.add_argument_group("AtRIS execution options")
-    atris_options.add_argument(
-        "--physics-list",
-        default="FTFP_BERT_HP",
-        metavar="NAME",
-        help="Geant4 reference physics list passed to AtRIS (default: FTFP_BERT_HP).",
-    )
-    atris_options.add_argument(
-        "--mode",
-        type=normalize_output_mode,
-        choices=OUTPUT_MODES,
-        default="response",
-        help=(
-            "AtRIS output mode: response writes the normal histograms; "
-            "profile writes ROOT histograms and an interface ntuple; shower "
-            "adds a transport-step ntuple to the ROOT output (default: response)."
-        ),
     )
     chunk_options = parser.add_argument_group("Chunk plan and worker options")
     chunk_options.add_argument(
@@ -414,8 +368,6 @@ def main():
 
     run_chunks(
         args.run_directory,
-        physics_list=args.physics_list,
-        mode=args.mode,
         entry=args.entry,
         worker_index=worker_index,
         worker_count=worker_count,

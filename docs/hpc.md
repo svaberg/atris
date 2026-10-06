@@ -5,9 +5,8 @@
 **Next step:** [Process the completed results](running-atris/process-results.md).
 
 Start with a [prepared simulation](running-atris/prepare-simulation.md) and a
-[chunk plan](running-atris/plan-chunks.md). Preserve the physics list and output mode
-chosen during preparation when configuring the scheduler script. The supplied
-script defaults to `FTFP_BERT_HP` and response output.
+[chunk plan](running-atris/plan-chunks.md). The physics list and output mode
+chosen during preparation are stored in the species macros.
 
 This guide runs any prepared AtRIS simulation through a scheduler. The Slurm
 templates in `examples/slurm/` specify resources and worker launches; they do
@@ -33,14 +32,13 @@ Inside the allocated shell, launch one chunk through `srun`:
 ```bash
 export G4FORCENUMBEROFTHREADS="$SLURM_CPUS_PER_TASK"
 srun --ntasks=1 --cpus-per-task="$SLURM_CPUS_PER_TASK" --cpu-bind=cores \
-    atris-run . --entry 1 --physics-list FTFP_BERT_HP --mode response
+    atris-run . --entry 1
 ```
 
 `--entry` is a one-based line of `chunks.txt`. Repeat with selected entries
 covering the other particle species. Each command exits after that chunk;
-it does not start the rest of the plan. Use your prepared physics list and
-output mode throughout. Run transport through `srun`, not directly on the
-login node.
+it does not start the rest of the plan. Run transport through `srun`, not
+directly on the login node.
 
 Gather and process the completed subset within the allocation:
 
@@ -127,9 +125,8 @@ receives lines 1, 21, 41, and so on from `chunks.txt`; worker 1 receives lines
 2, 22, 42, and so on. Their assignments do not overlap. Each chunk starts a new
 AtRIS process; `srun` remains active until the workers exit.
 
-The script uses the runner defaults, `FTFP_BERT_HP` and response output. If your
-prepared simulation requires different settings, add `--physics-list` and
-`--mode` to the `atris-run` command inside `bash -c`.
+AtRIS reads the physics list and output mode from each prepared species macro;
+the scheduler script does not repeat those settings.
 
 ### Wall time and completion
 

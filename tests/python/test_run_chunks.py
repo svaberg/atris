@@ -7,7 +7,6 @@ from atris_tools.run_chunks import (
     chunk_label,
     incomplete_entry_numbers,
     main,
-    normalize_output_mode,
     run_chunks,
     select_entries,
     worker_label,
@@ -42,14 +41,14 @@ def test_run_chunks_executes_plan_and_marks_success(tmp_path, monkeypatch):
     assert run_chunks(tmp_path) == 2
     assert calls == [
         (
-            ["AtRIS", "FTFP_BERT_HP", "chunks/protons_111111_222222", "-1"],
+            ["AtRIS", "chunks/protons_111111_222222"],
             tmp_path.resolve(),
             str(tmp_path / "chunks/protons_111111_222222.log"),
             subprocess.STDOUT,
             True,
         ),
         (
-            ["AtRIS", "FTFP_BERT_HP", "chunks/alphas_333333_444444", "-1"],
+            ["AtRIS", "chunks/alphas_333333_444444"],
             tmp_path.resolve(),
             str(tmp_path / "chunks/alphas_333333_444444.log"),
             subprocess.STDOUT,
@@ -72,9 +71,7 @@ def test_run_chunks_skips_complete_entries(tmp_path, monkeypatch, caplog):
     with caplog.at_level(logging.DEBUG, logger="atris_tools.run_chunks"):
         assert run_chunks(tmp_path) == 1
 
-    assert calls == [
-        ["AtRIS", "FTFP_BERT_HP", "chunks/alphas_333333_444444", "-1"]
-    ]
+    assert calls == [["AtRIS", "chunks/alphas_333333_444444"]]
     assert "Chunk 1/2 complete: chunks/protons_111111_222222" in caplog.text
     assert "Chunk 2/2 starting: chunks/alphas_333333_444444" in caplog.text
     assert "Chunk 2/2 complete" in caplog.text
@@ -99,9 +96,7 @@ def test_run_chunks_can_select_one_plan_entry(tmp_path, monkeypatch):
     )
 
     assert run_chunks(tmp_path, entry=2) == 1
-    assert calls == [
-        ["AtRIS", "FTFP_BERT_HP", "chunks/alphas_333333_444444", "-1"]
-    ]
+    assert calls == [["AtRIS", "chunks/alphas_333333_444444"]]
     assert not (tmp_path / "chunks/protons_111111_222222.COMPLETE").exists()
 
 
@@ -169,8 +164,8 @@ def test_run_chunks_executes_only_the_workers_shard(tmp_path, monkeypatch):
 
     assert run_chunks(tmp_path, worker_index=1, worker_count=2) == 2
     assert calls == [
-        ["AtRIS", "FTFP_BERT_HP", "chunks/protons_333333_444444", "-1"],
-        ["AtRIS", "FTFP_BERT_HP", "chunks/alphas_777777_888888", "-1"],
+        ["AtRIS", "chunks/protons_333333_444444"],
+        ["AtRIS", "chunks/alphas_777777_888888"],
     ]
 
 
@@ -194,8 +189,6 @@ def test_run_chunks_logs_timed_progress_for_each_chunk(tmp_path, monkeypatch, ca
         "Starting AtRIS chunked run",
         "Run directory: %s" % tmp_path.resolve(),
         "Chunk plan: %s" % (tmp_path.resolve() / "chunks.txt"),
-        "Physics list: FTFP_BERT_HP",
-        "Output mode: response (-1)",
         "Phantom 1/2: first",
         "Phantom 2/2: second",
         "Processing 2 chunks...",
@@ -300,8 +293,6 @@ def test_main_defaults_to_one_scheduler_neutral_worker(tmp_path, monkeypatch):
         (
             (tmp_path,),
             {
-                "physics_list": "FTFP_BERT_HP",
-                "mode": "response",
                 "entry": None,
                 "worker_index": 0,
                 "worker_count": 1,
@@ -319,41 +310,7 @@ def test_incomplete_entry_numbers_uses_completion_markers(tmp_path):
     assert incomplete_entry_numbers(tmp_path) == [2]
 
 
-@pytest.mark.parametrize("value", ("response", "profile", "shower"))
-def test_output_modes_use_named_values(value):
-    assert normalize_output_mode(value) == value
-
-
-def test_output_mode_rejects_unknown_names():
-    with pytest.raises(ValueError, match="response, profile, or shower"):
-        normalize_output_mode("unknown")
-
-
-@pytest.mark.parametrize(
-    ("mode", "value"),
-    [
-        ("response", "-1"),
-        ("profile", "0"),
-        ("shower", "1"),
-    ],
-)
-def test_run_chunks_translates_named_modes_for_atris(
-    tmp_path, monkeypatch, mode, value
-):
-    prepare_run(tmp_path)
-    calls = []
-    monkeypatch.setattr(
-        "atris_tools.run_chunks.subprocess.run",
-        lambda command, **kwargs: calls.append(command),
-    )
-
-    assert run_chunks(tmp_path, mode=mode, entry=1) == 1
-    assert calls[0][3] == value
-    expected_suffix = ".root" if mode in ("profile", "shower") else ""
-    assert calls[0][2] == "chunks/protons_111111_222222" + expected_suffix
-
-
-def test_help_separates_atris_chunk_and_logging_options(monkeypatch, capsys):
+def test_help_separates_chunk_and_logging_options(monkeypatch, capsys):
     monkeypatch.setattr("sys.argv", ["atris-run", "--help"])
 
     with pytest.raises(SystemExit) as exit_info:
@@ -361,10 +318,8 @@ def test_help_separates_atris_chunk_and_logging_options(monkeypatch, capsys):
 
     assert exit_info.value.code == 0
     help_text = capsys.readouterr().out
-    assert "AtRIS execution options:" in help_text
     assert "Chunk plan and worker options:" in help_text
     assert "Logging options:" in help_text
-    assert help_text.index("--physics-list") < help_text.index("--entry")
     assert help_text.index("--check-complete") < help_text.index("--quiet")
     assert "Examples:" in help_text
     normalized_help = " ".join(help_text.split())

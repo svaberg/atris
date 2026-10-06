@@ -234,8 +234,8 @@ Run the first proton chunk and the first alpha chunk:
 
 ```bash
 export G4FORCENUMBEROFTHREADS=4
-atris-run . --entry 1 --physics-list FTFP_BERT_HP --mode response
-atris-run . --entry 3001 --physics-list FTFP_BERT_HP --mode response
+atris-run . --entry 1
+atris-run . --entry 3001
 ```
 
 `--entry` selects one line of `chunks.txt`, numbered from one. In this plan,
@@ -259,8 +259,9 @@ chunks/protons_123456_654321.COMPLETE
 ```
 
 The marker is created when the subprocess succeeds. A later `atris-run` skips
-marked entries and reruns incomplete ones. The runner selects the number of
-phantoms from `phantoms.txt`. Without that file it selects zero phantoms.
+marked entries and reruns incomplete ones. AtRIS discovers the staged numbered
+phantom pairs directly; the runner uses `phantoms.txt` to label them in its
+progress log.
 
 ## 7. Gather completed chunks
 
@@ -356,7 +357,7 @@ If the setup looks right, process all remaining entries using the same inputs
 and settings:
 
 ```bash
-atris-run . --physics-list FTFP_BERT_HP --mode response
+atris-run .
 ```
 
 The two completed chunks are skipped. To sample a few more before committing
@@ -368,10 +369,11 @@ not required before gathering.
 
 ## Where particle records fit
 
-The walkthrough used `--mode response`, which produces histogram CSVs.
-`--mode profile` instead writes `<prefix>.root` containing the same response
-histograms and an `interfaces` ntuple. `--mode shower` adds a `steps` ntuple to
-that ROOT file.
+The walkthrough generated the macros with `--output-mode response`, which
+produces histogram CSVs. Generating them with `--output-mode profile` instead
+writes `<prefix>.root` containing the same response histograms and an
+`interfaces` ntuple. `--output-mode shower` adds a `steps` ntuple to that ROOT
+file.
 
 The ntuples are parallel outputs of the simulation. They do not replace the
 histograms consumed by `atris-postprocess`. `atris-dump` can stream either

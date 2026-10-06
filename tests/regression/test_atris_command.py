@@ -18,6 +18,7 @@ from atris_tools.interface_output import read_root
 from atris_tools.gather import gather_simulation
 from atris_tools.response_histograms import ResponseHistogramReader
 from atris_tools.root_output import has_ntuple, read_ntuple
+from atris_tools.run_chunks import run_chunks
 from atris_tools.step_output import STEP_FIELDS, process_name
 
 
@@ -104,8 +105,9 @@ def prepend_run_configuration(
     output_mode="response",
     direction_bins=(120, 60),
     position_bins=(120, 60),
+    macro_name="protons.mac",
 ):
-    macro = run_directory / "protons.mac"
+    macro = run_directory / macro_name
     macro.write_text(
         "/atris/physicsList %s\n"
         "/atris/outputMode %s\n"
@@ -430,6 +432,31 @@ def test_seeded_mode_one_writes_root_file_inside_chunks(tmp_path, atris_command)
     assert not list((tmp_path / "chunks").glob("*.csv"))
     with uproot.open(root_path) as root_file:
         assert "h1.1" in root_file
+
+
+@pytest.mark.regression
+def test_chunk_runner_uses_configuration_from_chunk_macro(
+    tmp_path, atris_command, monkeypatch
+):
+    prepare_run(tmp_path, chunked=True)
+    prepend_run_configuration(
+        tmp_path,
+        output_mode="profile",
+        macro_name="protons.chunk.mac",
+    )
+    shutil.copyfile(FIXTURE / "phantoms.txt", tmp_path / "phantoms.txt")
+    (tmp_path / "chunks.txt").write_text("protons 123456 654321\n")
+    monkeypatch.setenv("G4FORCENUMBEROFTHREADS", "1")
+
+    assert run_chunks(tmp_path, entry=1) == 1
+
+    output = tmp_path / "chunks" / "protons_123456_654321.root"
+    assert output.is_file()
+    assert (tmp_path / "chunks" / "protons_123456_654321.COMPLETE").is_file()
+    with uproot.open(output) as root_file:
+        assert root_file["metadata"]["output_mode"].array(library="np").tolist() == [
+            0
+        ]
 
 
 @pytest.mark.regression

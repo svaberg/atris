@@ -118,10 +118,9 @@ For more sampling with the existing macros, use [chunk extension](plan-chunks.md
 
 Choose a [Geant4 physics list](../background/physics-lists.md) and an
 [output mode](../reference/executable.md#output-modes) when generating the
-macros. The launch guides use `FTFP_BERT_HP` and `response`. During the current
-command-line transition, supply the same choices to `atris-run`; AtRIS rejects
-a mismatch. These choices belong to the physical calculation and remain in
-the generated macro files.
+macros. The launch guides use `FTFP_BERT_HP` and `response`. These choices
+belong to the physical calculation, remain in the generated macro files, and
+are read by AtRIS when each species runs.
 
 ## Check the prepared inputs
 

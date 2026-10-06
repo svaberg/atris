@@ -44,7 +44,7 @@ being plotted.
 
 ### Step traces
 
-For an available `steps` ntuple from `--mode shower`, `<species>.steps.png`
+For an available `steps` ntuple from `shower` output mode, `<species>.steps.png`
 summarizes particle species, step-defining processes, shower development by
 layer, and kinetic-energy distributions. `<species>.shower.png` shows the
 event with the most recorded steps in altitude and transverse radius, on

@@ -5,8 +5,9 @@ used during transport. It is part of the physical simulation definition,
 independent of the number of threads, chunks, or scheduler nodes.
 
 AtRIS obtains the named reference list from Geant4 and registers step-limiter
-physics. The standard runner uses `FTFP_BERT_HP`. Choosing the list and recording
-it with the model are part of [simulation preparation](../running-atris/prepare-simulation.md#record-physics-and-output-choices).
+physics. The macro generator defaults to `FTFP_BERT_HP` and records the choice
+in each species macro. Choosing the list and recording it with the model are
+part of [simulation preparation](../running-atris/prepare-simulation.md#record-physics-and-output-choices).
 
 The available lists and their detailed configuration depend on the installed
 Geant4 version. See the official [Physics List Guide](https://geant4.web.cern.ch/documentation/dev/plg_html/PhysicsListGuide/physicslistguide.html).
@@ -51,5 +52,5 @@ be rerun with the intended configuration.
 
 ## Implementation
 
-`src/main.cc` constructs the physics list;
-`atris_tools/run_chunks.py` supplies the runner settings.
+`atris_tools/atrismacrogen.py` writes the macro setting, and `src/main.cc`
+constructs the selected physics list.

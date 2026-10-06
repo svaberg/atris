@@ -6,8 +6,8 @@
 
 Start in the run directory containing the [prepared chunk plan](plan-chunks.md),
 with AtRIS and Geant4 available. The runner preserves completed outputs.
-Use the physics list and output mode chosen during preparation; this example
-uses `FTFP_BERT_HP` and `response`.
+AtRIS reads the physics list and output mode chosen during preparation from
+each species macro.
 
 
 ## Run a few chunks first
@@ -16,7 +16,7 @@ Run the first entry of the prepared plan:
 
 ```bash
 export G4FORCENUMBEROFTHREADS=4
-atris-run . --entry 1 --physics-list FTFP_BERT_HP --mode response
+atris-run . --entry 1
 ```
 
 Four threads are an example; choose a count suitable for your computer.
@@ -35,16 +35,16 @@ the rest. Check the setup, initial responses, and runtime, then
 If the setup looks right, run all remaining chunks:
 
 ```bash
-atris-run . --physics-list FTFP_BERT_HP --mode response
+atris-run .
 ```
 
 The runner skips completed chunks and executes the remaining entries sequentially
-in the foreground. It reports progress and reads the phantom selection from
-`phantoms.txt`; without that file it uses no phantoms. Continue gathering and
-inspecting as more chunks finish.
+in the foreground. It reports progress and uses `phantoms.txt`, when present,
+to label the staged phantoms in its initial log. AtRIS discovers the numbered
+phantom pairs directly. Continue gathering and inspecting as more chunks finish.
 
 To resume after an interruption, wait until the previous runner and its AtRIS
-child have exited, then repeat `atris-run` with the same settings. Completed
+child have exited, then repeat the same `atris-run` command. Completed
 chunks are skipped; unfinished chunks restart from the beginning.
 
 ## Confirm completion

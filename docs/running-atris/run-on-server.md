@@ -16,9 +16,9 @@ whole prepared directory if it was created elsewhere, including the targets of
 any phantom links. Preparation with `atris-stage-phantoms --copy` keeps those
 targets local.
 
-Use the physics list and output mode chosen during preparation. The commands
-here use `FTFP_BERT_HP` and response output, as in that guide. Check current load
-and the machine's resource policy before choosing a thread count.
+AtRIS reads the physics list and output mode chosen during preparation from
+each species macro. Check current load and the machine's resource policy before
+choosing a thread count.
 
 ## Use the prepared chunk plan
 
@@ -32,7 +32,7 @@ Start with a selected entry in the foreground:
 
 ```bash
 export G4FORCENUMBEROFTHREADS=4
-nice -n 10 atris-run . --entry 1 --physics-list FTFP_BERT_HP --mode response
+nice -n 10 atris-run . --entry 1
 ```
 
 Choose the thread count for the machine and current load. `--entry` selects a
@@ -53,7 +53,7 @@ conservative thread count when the server is shared:
 
 ```bash
 export G4FORCENUMBEROFTHREADS=4  # example: choose for this machine and current load
-nohup nice -n 10 atris-run . --physics-list FTFP_BERT_HP --mode response >> atris-run.log 2>&1 < /dev/null &
+nohup nice -n 10 atris-run . >> atris-run.log 2>&1 < /dev/null &
 ```
 
 `atris-run` does not background itself or set its own priority. Here, `nohup`
