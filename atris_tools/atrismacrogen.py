@@ -145,8 +145,12 @@ def genMacro(
     lines += "/atris/physicsList %s\n" % physics_list
     lines += "/atris/outputMode %s\n" % output_mode
     lines += "/atris/outputFormat %s\n" % output_format
-    lines += "/atris/directionBins %i %i\n" % DIRECTION_HISTOGRAM_BINS
-    lines += "/atris/positionBins %i %i\n" % POSITION_HISTOGRAM_BINS
+    for histogram, bins in (
+        ("direction", DIRECTION_HISTOGRAM_BINS),
+        ("position", POSITION_HISTOGRAM_BINS),
+    ):
+        lines += "/atris/%sHistogram/azimuthBins %i\n" % (histogram, bins[0])
+        lines += "/atris/%sHistogram/cosineBins %i\n" % (histogram, bins[1])
     lines += "/atris/randomSeeds %i %i\n" % (nr1, nr2)
     lines += "\n# Initialize Geant4 after all pre-initialization settings\n"
     lines += "/run/initialize\n"

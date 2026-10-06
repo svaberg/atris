@@ -141,8 +141,10 @@ def write_macro(
             "/atris/physicsList " + physics_list,
             "/atris/outputMode " + output_mode,
             "/atris/outputFormat " + output_format,
-            "/atris/directionBins %i %i" % direction_bins,
-            "/atris/positionBins %i %i" % position_bins,
+            "/atris/directionHistogram/azimuthBins %i" % direction_bins[0],
+            "/atris/directionHistogram/cosineBins %i" % direction_bins[1],
+            "/atris/positionHistogram/azimuthBins %i" % position_bins[0],
+            "/atris/positionHistogram/cosineBins %i" % position_bins[1],
             "/atris/randomSeeds 123456 654321",
         )
     )
@@ -672,13 +674,23 @@ def test_macro_configures_source_histogram_bins(tmp_path, atris_command):
     prepare_run(tmp_path)
     replace_command(
         tmp_path / "protons.mac",
-        "/atris/directionBins ",
-        "/atris/directionBins 12 6",
+        "/atris/directionHistogram/azimuthBins ",
+        "/atris/directionHistogram/azimuthBins 12",
     )
     replace_command(
         tmp_path / "protons.mac",
-        "/atris/positionBins ",
-        "/atris/positionBins 10 5",
+        "/atris/directionHistogram/cosineBins ",
+        "/atris/directionHistogram/cosineBins 6",
+    )
+    replace_command(
+        tmp_path / "protons.mac",
+        "/atris/positionHistogram/azimuthBins ",
+        "/atris/positionHistogram/azimuthBins 10",
+    )
+    replace_command(
+        tmp_path / "protons.mac",
+        "/atris/positionHistogram/cosineBins ",
+        "/atris/positionHistogram/cosineBins 5",
     )
 
     result = run_atris(atris_command, tmp_path)
@@ -697,8 +709,8 @@ def test_macro_rejects_nonpositive_source_histogram_bins(
     prepare_run(tmp_path)
     replace_command(
         tmp_path / "protons.mac",
-        "/atris/directionBins ",
-        "/atris/directionBins 0 6",
+        "/atris/directionHistogram/azimuthBins ",
+        "/atris/directionHistogram/azimuthBins 0",
     )
 
     result = run_atris(atris_command, tmp_path)

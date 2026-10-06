@@ -71,8 +71,10 @@ def test_macro_generation_is_reproducible_and_preserves_requested_counts(tmp_pat
     assert "/atris/physicsList QGSP_BERT\n" in proton_macro
     assert "/atris/outputMode profile\n" in proton_macro
     assert "/atris/outputFormat root\n" in proton_macro
-    assert "/atris/directionBins 120 60\n" in proton_macro
-    assert "/atris/positionBins 120 60\n" in proton_macro
+    assert "/atris/directionHistogram/azimuthBins 120\n" in proton_macro
+    assert "/atris/directionHistogram/cosineBins 60\n" in proton_macro
+    assert "/atris/positionHistogram/azimuthBins 120\n" in proton_macro
+    assert "/atris/positionHistogram/cosineBins 60\n" in proton_macro
     assert "# Primary particle and energy distribution\n" in proton_macro
     assert "# Source position and direction\n" in proton_macro
     assert "# Transport and event count\n" in proton_macro

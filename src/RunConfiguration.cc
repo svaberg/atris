@@ -46,6 +46,30 @@ G4int CountSensitiveDetectors(const G4GDMLParser& parser)
   return detectorCount;
 }
 
+void DeclareHistogramBinsProperties(
+  G4GenericMessenger& messenger,
+  std::array<G4int, 2>& bins
+)
+{
+  auto& azimuthBins = messenger.DeclareProperty(
+    "azimuthBins",
+    bins[0],
+    "Set the number of azimuth bins."
+  );
+  azimuthBins.SetParameterName("azimuthBins", false);
+  azimuthBins.SetRange("azimuthBins>0");
+  azimuthBins.SetStates(G4State_PreInit);
+
+  auto& cosineBins = messenger.DeclareProperty(
+    "cosineBins",
+    bins[1],
+    "Set the number of cosine bins."
+  );
+  cosineBins.SetParameterName("cosineBins", false);
+  cosineBins.SetRange("cosineBins>0");
+  cosineBins.SetStates(G4State_PreInit);
+}
+
 }  // namespace
 
 namespace atris {
@@ -61,6 +85,16 @@ RunConfiguration::RunConfiguration(
     fParser(parser),
     fPhantomResponses(phantomResponses),
     fMessenger(this, "/atris/", "AtRIS run configuration."),
+    fDirectionHistogramMessenger(
+      this,
+      "/atris/directionHistogram/",
+      "Source-direction histogram configuration."
+    ),
+    fPositionHistogramMessenger(
+      this,
+      "/atris/positionHistogram/",
+      "Source-position histogram configuration."
+    ),
     fPhantomMessenger(
       this,
       "/atris/phantom/",
@@ -174,29 +208,15 @@ RunConfiguration::RunConfiguration(
   outputFormatCommand.SetStates(G4State_PreInit);
   fOutputFormatCommand = outputFormatCommand.command;
 
-  DeclareHistogramBinsCommand(
-    "directionBins",
-    &RunConfiguration::SetDirectionBins,
-    "Set the azimuth and cosine bin counts for the source-direction histogram."
+  DeclareHistogramBinsProperties(
+    fDirectionHistogramMessenger,
+    fSettings.directionHistogramBins
   );
-  DeclareHistogramBinsCommand(
-    "positionBins",
-    &RunConfiguration::SetPositionBins,
-    "Set the azimuth and cosine bin counts for the source-position histogram."
+  DeclareHistogramBinsProperties(
+    fPositionHistogramMessenger,
+    fSettings.positionHistogramBins
   );
 
-}
-void RunConfiguration::DeclareHistogramBinsCommand(
-  const G4String& name,
-  void (RunConfiguration::*setter)(G4int, G4int),
-  const G4String& guidance
-)
-{
-  auto& command = fMessenger.DeclareMethod(name, setter, guidance);
-  command.SetParameterName(G4int{0}, "azimuthBins", false);
-  command.SetParameterName(G4int{1}, "cosineBins", false);
-  command.SetRange("azimuthBins>0 && cosineBins>0");
-  command.SetStates(G4State_PreInit);
 }
 
 G4bool RunConfiguration::InstallPhysicsList(
@@ -468,22 +488,6 @@ void RunConfiguration::ReportOutputMode() const
               "transport-step ntuples; output may be very large"
            << G4endl;
   }
-}
-
-void RunConfiguration::SetDirectionBins(
-  const G4int azimuthBins,
-  const G4int cosineBins
-)
-{
-  fSettings.directionHistogramBins = {azimuthBins, cosineBins};
-}
-
-void RunConfiguration::SetPositionBins(
-  const G4int azimuthBins,
-  const G4int cosineBins
-)
-{
-  fSettings.positionHistogramBins = {azimuthBins, cosineBins};
 }
 
 }  // namespace atris

@@ -24,11 +24,6 @@ class RunConfiguration
     );
 
   private:
-    void DeclareHistogramBinsCommand(
-      const G4String& name,
-      void (RunConfiguration::*setter)(G4int, G4int),
-      const G4String& guidance
-    );
     G4bool InstallPhysicsList(const G4String& requestedPhysicsList);
     void InstallUserActionsIfConfigured();
     void SetGeometryFile(G4String requestedFile);
@@ -40,8 +35,6 @@ class RunConfiguration
     void SetOutputMode(G4String requestedOutputMode);
     void SetOutputFormat(G4String requestedOutputFormat);
     void ReportOutputMode() const;
-    void SetDirectionBins(G4int azimuthBins, G4int cosineBins);
-    void SetPositionBins(G4int azimuthBins, G4int cosineBins);
 
     G4RunManager* const fRunManager;
     RunSettings& fSettings;
@@ -55,6 +48,8 @@ class RunConfiguration
     G4bool fHasConfiguredSeeds = false;
     G4bool fHasUserActions = false;
     G4GenericMessenger fMessenger;
+    G4GenericMessenger fDirectionHistogramMessenger;
+    G4GenericMessenger fPositionHistogramMessenger;
     G4GenericMessenger fPhantomMessenger;
     G4GenericMessenger fPhantomResponseMessenger;
     G4String fPhantomName;
