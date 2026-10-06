@@ -25,7 +25,6 @@
 
 namespace {
 
-constexpr std::size_t kLegacyPhysicsListSuffixLength = 4;
 constexpr G4int kInvalidOutputMode = 2;
 
 G4int OutputModeValue(const G4String& name)
@@ -201,16 +200,7 @@ G4bool RunConfiguration::InstallPhysicsList(
 )
 {
   G4PhysListFactory factory;
-  // Legacy validation also retries after removing four trailing characters.
-  // The full name is still passed to Geant4, so this does not normalize input.
-  const G4bool isValid = factory.IsReferencePhysList(requestedPhysicsList)
-    || factory.IsReferencePhysList(
-      requestedPhysicsList.substr(
-        0,
-        requestedPhysicsList.size() - kLegacyPhysicsListSuffixLength
-      )
-    );
-  if (!isValid) {
+  if (!factory.IsReferencePhysList(requestedPhysicsList)) {
     G4cout << "### AtRIS: " << requestedPhysicsList
            << " is not valid! use: " << G4endl;
     const std::vector<G4String> available = factory.AvailablePhysLists();

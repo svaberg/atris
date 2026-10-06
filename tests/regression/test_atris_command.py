@@ -617,18 +617,26 @@ def test_wrong_argument_count_returns_failure(tmp_path, atris_command, arguments
 
 
 @pytest.mark.regression
-def test_unsupported_physics_list_exits_nonzero(tmp_path, atris_command):
+@pytest.mark.parametrize(
+    "physics_list",
+    ["NOT_A_GEANT4_PHYSICS_LIST", "FTFP_BERT_HPjunk"],
+)
+def test_unsupported_physics_list_exits_nonzero(
+    tmp_path,
+    atris_command,
+    physics_list,
+):
     prepare_run(tmp_path)
     replace_command(
         tmp_path / "protons.mac",
         "/atris/physicsList ",
-        "/atris/physicsList NOT_A_GEANT4_PHYSICS_LIST",
+        "/atris/physicsList " + physics_list,
     )
 
     result = run_atris(atris_command, tmp_path)
 
     assert result.returncode != 0
-    assert "NOT_A_GEANT4_PHYSICS_LIST is not valid" in result.stdout
+    assert physics_list + " is not valid" in result.stdout
     assert "FTFP_BERT_HP" in result.stdout
     assert not list(tmp_path.glob("protons_*.csv"))
 
