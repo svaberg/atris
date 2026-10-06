@@ -8,7 +8,7 @@ set(ATRIS_SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 set(ATRIS_VERSION "unknown")
 if(EXISTS "${ATRIS_SOURCE_ROOT}/.git")
   execute_process(
-    COMMAND git describe --tags --always --dirty
+    COMMAND git describe --tags --always --dirty --match "v[0-9]*"
     WORKING_DIRECTORY "${ATRIS_SOURCE_ROOT}"
     OUTPUT_VARIABLE ATRIS_VERSION
     OUTPUT_STRIP_TRAILING_WHITESPACE
