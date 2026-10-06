@@ -35,8 +35,10 @@ with commands of this form:
 /atris/physicsList FTFP_BERT_HP
 /atris/outputMode response
 /atris/outputFormat csv
-/atris/directionBins 120 60
-/atris/positionBins 120 60
+/atris/directionHistogram/azimuthBins 120
+/atris/directionHistogram/cosineBins 60
+/atris/positionHistogram/azimuthBins 120
+/atris/positionHistogram/cosineBins 60
 /atris/randomSeeds 123456 654321
 /run/initialize
 ```

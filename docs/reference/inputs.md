@@ -194,10 +194,10 @@ Generated macros name their GDML, energy-bin, output, and phantom files with
 `/atris/geometryFile`, `/atris/energyBinsFile`, `/atris/outputFile`, and the
 `/atris/phantom/*File` commands. They record the Geant4 reference physics list
 with `/atris/physicsList`, the named output mode with `/atris/outputMode`, and
-the Geant4 analysis format with `/atris/outputFormat`. They record the two source
-histogram dimensions with `/atris/directionBins` and `/atris/positionBins`.
-Each histogram command takes its azimuth-bin count followed by its cosine-bin
-count; both counts must be positive. The macro then initializes the run,
+the Geant4 analysis format with `/atris/outputFormat`. Each source histogram
+records its positive azimuth- and cosine-bin counts with separate properties
+under `/atris/directionHistogram/` or `/atris/positionHistogram/`. The macro
+then initializes the run,
 selects a proton or alpha GPS source, uses `User` energy histograms, emits one
 primary per event from a spherical surface, uses a cosine angular distribution
 over 0–90 degrees, sets a 100 m production cut, sets two random seeds with
