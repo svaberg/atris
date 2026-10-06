@@ -41,13 +41,10 @@ namespace atris {
 RunConfiguration::RunConfiguration(
   G4RunManager* runManager,
   RunSettings& settings,
-  const G4String& physicsList,
-  const G4int outputMode
+  const G4String& physicsList
 )
   : fRunManager(runManager),
     fSettings(settings),
-    fPhysicsList(physicsList),
-    fOutputMode(outputMode),
     fHasCommandLineSettings(!physicsList.empty()),
     fHasConfiguredOutputMode(fHasCommandLineSettings),
     fMessenger(this, "/atris/", "AtRIS run configuration.")
@@ -89,18 +86,13 @@ RunConfiguration::RunConfiguration(
   );
 
   if (fHasCommandLineSettings) {
-    if (!InstallPhysicsList(fPhysicsList)) {
+    if (!InstallPhysicsList(physicsList)) {
       fIsValid = false;
     } else {
       InstallUserActionsIfConfigured();
       ReportOutputMode();
     }
   }
-}
-
-G4bool RunConfiguration::IsValid() const
-{
-  return fIsValid;
 }
 
 void RunConfiguration::DeclareHistogramBinsCommand(
@@ -152,7 +144,7 @@ void RunConfiguration::InstallUserActionsIfConfigured()
 {
   if (
     fHasUserActions
-    || fPhysicsList.empty()
+    || fSettings.physicsListName.empty()
     || !fHasConfiguredOutputMode
     || (!fHasCommandLineSettings && !fHasConfiguredOutputFormat)
   ) return;
@@ -162,8 +154,8 @@ void RunConfiguration::InstallUserActionsIfConfigured()
 
 void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)
 {
-  if (!fPhysicsList.empty()) {
-    if (requestedPhysicsList == fPhysicsList) return;
+  if (!fSettings.physicsListName.empty()) {
+    if (requestedPhysicsList == fSettings.physicsListName) return;
 
     G4ExceptionDescription message;
     message << "AtRIS physics-list conflict: ";
@@ -172,7 +164,7 @@ void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)
     } else {
       message << "the run already selects '";
     }
-    message << fPhysicsList << "' but the macro requests '"
+    message << fSettings.physicsListName << "' but the macro requests '"
             << requestedPhysicsList << "'.";
     fPhysicsListCommand->CommandFailed(message);
     return;
@@ -185,7 +177,6 @@ void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)
     fPhysicsListCommand->CommandFailed(message);
     return;
   }
-  fPhysicsList = requestedPhysicsList;
   InstallUserActionsIfConfigured();
 }
 
@@ -193,11 +184,12 @@ void RunConfiguration::SetOutputMode(G4String requestedOutputMode)
 {
   const G4int requestedValue = OutputModeValue(requestedOutputMode);
   if (fHasCommandLineSettings) {
-    if (requestedValue == fOutputMode) return;
+    if (requestedValue == fSettings.outputMode) return;
 
     G4ExceptionDescription message;
     message << "AtRIS output-mode conflict: the command line selects '"
-            << OutputModeName(fOutputMode) << "' (" << fOutputMode
+            << OutputModeName(fSettings.outputMode) << "' ("
+            << fSettings.outputMode
             << ") but the macro requests '" << requestedOutputMode
             << "' (" << requestedValue << ").";
     fOutputModeCommand->CommandFailed(message);
@@ -205,18 +197,18 @@ void RunConfiguration::SetOutputMode(G4String requestedOutputMode)
   }
 
   if (fHasConfiguredOutputMode) {
-    if (requestedValue == fOutputMode) return;
+    if (requestedValue == fSettings.outputMode) return;
 
     G4ExceptionDescription message;
     message << "AtRIS output-mode conflict: the run already selects '"
-            << OutputModeName(fOutputMode) << "' (" << fOutputMode
+            << OutputModeName(fSettings.outputMode) << "' ("
+            << fSettings.outputMode
             << ") but the macro later requests '" << requestedOutputMode
             << "' (" << requestedValue << ").";
     fOutputModeCommand->CommandFailed(message);
     return;
   }
 
-  fOutputMode = requestedValue;
   fSettings.outputMode = requestedValue;
   fHasConfiguredOutputMode = true;
   InstallUserActionsIfConfigured();
@@ -244,11 +236,11 @@ void RunConfiguration::SetOutputFormat(G4String requestedOutputFormat)
 
 void RunConfiguration::ReportOutputMode() const
 {
-  if (fOutputMode == kInterfaceOutputMode) {
+  if (fSettings.outputMode == kInterfaceOutputMode) {
     G4cout << "### AtRIS: mode 0 writes histograms and interface ntuples"
            << G4endl;
   }
-  if (fOutputMode == kStepOutputMode) {
+  if (fSettings.outputMode == kStepOutputMode) {
     G4cout << "### AtRIS: mode 1 writes histograms, interface, and "
               "transport-step ntuples; output may be very large"
            << G4endl;

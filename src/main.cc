@@ -154,8 +154,7 @@ int main(int argc,char** argv){
 	atris::RunConfiguration runConfiguration(
 		runManager,
 		settings,
-		commandLinePhysicsList,
-		settings.outputMode
+		commandLinePhysicsList
 	);
 	if (!runConfiguration.IsValid()) return -1;
 

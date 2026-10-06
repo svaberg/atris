@@ -13,10 +13,16 @@ class PhantomResponses
   public:
     G4bool Load();
 
-    G4int GetCount() const;
+    G4int GetCount() const { return static_cast<G4int>(fRadiation.size()); }
     G4int FindParticleIndex(G4int pdg) const;
-    G4double GetRadiation(G4int phantomIndex, G4int responseIndex) const;
-    G4double GetCounting(G4int phantomIndex, G4int responseIndex) const;
+    G4double GetRadiation(G4int phantomIndex, G4int responseIndex) const
+    {
+      return fRadiation[phantomIndex][responseIndex];
+    }
+    G4double GetCounting(G4int phantomIndex, G4int responseIndex) const
+    {
+      return fCounting[phantomIndex][responseIndex];
+    }
 
   private:
     std::vector<G4int> fLightParticleIndices;

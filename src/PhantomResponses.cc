@@ -9,6 +9,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <utility>
 
 namespace {
 
@@ -204,11 +205,6 @@ G4bool PhantomResponses::Load()
   return true;
 }
 
-G4int PhantomResponses::GetCount() const
-{
-  return static_cast<G4int>(fRadiation.size());
-}
-
 G4int PhantomResponses::FindParticleIndex(const G4int pdg) const
 {
   if (std::abs(pdg) < kLightParticlePDGLimit) {
@@ -218,22 +214,6 @@ G4int PhantomResponses::FindParticleIndex(const G4int pdg) const
   if (pdg < kFirstSupportedIonPDG) return -1;
   const auto found = fIonIndices.find(pdg);
   return found == fIonIndices.end() ? -1 : found->second;
-}
-
-G4double PhantomResponses::GetRadiation(
-  const G4int phantomIndex,
-  const G4int responseIndex
-) const
-{
-  return fRadiation[phantomIndex][responseIndex];
-}
-
-G4double PhantomResponses::GetCounting(
-  const G4int phantomIndex,
-  const G4int responseIndex
-) const
-{
-  return fCounting[phantomIndex][responseIndex];
 }
 
 }  // namespace atris

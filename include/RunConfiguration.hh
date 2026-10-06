@@ -17,11 +17,10 @@ class RunConfiguration
     RunConfiguration(
       G4RunManager* runManager,
       RunSettings& settings,
-      const G4String& physicsList,
-      G4int outputMode
+      const G4String& physicsList
     );
 
-    G4bool IsValid() const;
+    G4bool IsValid() const { return fIsValid; }
 
   private:
     void DeclareHistogramBinsCommand(
@@ -40,8 +39,6 @@ class RunConfiguration
 
     G4RunManager* const fRunManager;
     RunSettings& fSettings;
-    G4String fPhysicsList;
-    G4int fOutputMode;
     const G4bool fHasCommandLineSettings;
     G4bool fHasConfiguredOutputMode;
     G4bool fHasConfiguredOutputFormat = false;
