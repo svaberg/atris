@@ -1,29 +1,19 @@
-#include "G4RunManager.hh"
 #include "G4MTRunManager.hh"
 #include "G4Threading.hh"
 #include "G4UImanager.hh"
-#include "G4UIcommand.hh"
-#include "G4GenericMessenger.hh"
-#include "G4ApplicationState.hh"
-#include "G4Exception.hh"
 #include "G4GDMLParser.hh"
 
 #include "DetectorConstruction.hh"
-#include "OutputMode.hh"
 #include "PhantomResponses.hh"
+#include "RunConfiguration.hh"
 #include "RunSettings.hh"
-#include "UserActionInitialization.hh"
 #include "Randomize.hh"
-#include "G4PhysListFactory.hh"
-#include "G4StepLimiterPhysics.hh"
 #include <array>
 #include <vector>
 #include <string>
 #include <cstddef>
 #include <chrono>
-#include <cmath>
 #include <cstdlib>
-#include <ctime>
 #include <iomanip>
 #include <iostream>
 #include <fstream>
@@ -33,265 +23,6 @@ namespace {
 
 constexpr std::size_t kChunkSeedDigits = 6;
 constexpr G4double kDetectorBinHalfWidth = 0.5;
-constexpr std::size_t kLegacyPhysicsListSuffixLength = 4;
-constexpr G4int kInvalidOutputMode = 2;
-G4int OutputModeValue(const G4String& name)
-{
-  if (name == "response") return atris::kResponseOutputMode;
-  if (name == "profile") return atris::kInterfaceOutputMode;
-  if (name == "shower") return atris::kStepOutputMode;
-  return kInvalidOutputMode;
-}
-
-G4String OutputModeName(const G4int value)
-{
-  if (value == atris::kResponseOutputMode) return "response";
-  if (value == atris::kInterfaceOutputMode) return "profile";
-  if (value == atris::kStepOutputMode) return "shower";
-  return "invalid";
-}
-
-class RunConfiguration {
-  public:
-    RunConfiguration(
-      G4RunManager* runManager,
-      atris::RunSettings& settings,
-      const G4String& physicsList,
-      const G4int outputMode
-    )
-      : fRunManager(runManager),
-        fSettings(settings),
-        fPhysicsList(physicsList),
-        fOutputMode(outputMode),
-        fHasCommandLineSettings(!physicsList.empty()),
-        fHasConfiguredOutputMode(fHasCommandLineSettings),
-        fMessenger(this, "/atris/", "AtRIS run configuration.")
-    {
-      auto& physicsListCommand = fMessenger.DeclareMethod(
-        "physicsList",
-        &RunConfiguration::SetPhysicsList,
-        "Set the Geant4 reference physics list."
-      );
-      physicsListCommand.SetStates(G4State_PreInit);
-      fPhysicsListCommand = physicsListCommand.command;
-
-      auto& outputModeCommand = fMessenger.DeclareMethod(
-        "outputMode",
-        &RunConfiguration::SetOutputMode,
-        "Set the AtRIS output mode."
-      );
-      outputModeCommand.SetCandidates("response profile shower");
-      outputModeCommand.SetStates(G4State_PreInit);
-      fOutputModeCommand = outputModeCommand.command;
-
-      auto& outputFormatCommand = fMessenger.DeclareMethod(
-        "outputFormat",
-        &RunConfiguration::SetOutputFormat,
-        "Set the Geant4 analysis output format."
-      );
-      outputFormatCommand.SetStates(G4State_PreInit);
-      fOutputFormatCommand = outputFormatCommand.command;
-
-      DeclareHistogramBinsCommand(
-        "directionBins",
-        &RunConfiguration::SetDirectionBins,
-        "Set the azimuth and cosine bin counts for the source-direction histogram."
-      );
-      DeclareHistogramBinsCommand(
-        "positionBins",
-        &RunConfiguration::SetPositionBins,
-        "Set the azimuth and cosine bin counts for the source-position histogram."
-      );
-
-      if (fHasCommandLineSettings) {
-        if (!InstallPhysicsList(fPhysicsList)) {
-          fIsValid = false;
-        } else {
-          InstallUserActionsIfConfigured();
-          ReportOutputMode();
-        }
-      }
-    }
-
-    G4bool IsValid() const { return fIsValid; }
-
-  private:
-    void DeclareHistogramBinsCommand(
-      const G4String& name,
-      void (RunConfiguration::*setter)(G4int, G4int),
-      const G4String& guidance
-    )
-    {
-      auto& command = fMessenger.DeclareMethod(name, setter, guidance);
-      command.SetParameterName(G4int{0}, "azimuthBins", false);
-      command.SetParameterName(G4int{1}, "cosineBins", false);
-      command.SetRange("azimuthBins>0 && cosineBins>0");
-      command.SetStates(G4State_PreInit);
-    }
-
-    G4bool InstallPhysicsList(const G4String& requestedPhysicsList)
-    {
-      G4PhysListFactory factory;
-      // Legacy validation also retries after removing four trailing characters.
-      // The full name is still passed to Geant4, so this does not normalize input.
-      const G4bool isValid = factory.IsReferencePhysList(requestedPhysicsList)
-        || factory.IsReferencePhysList(
-          requestedPhysicsList.substr(
-            0,
-            requestedPhysicsList.size() - kLegacyPhysicsListSuffixLength
-          )
-        );
-      if (!isValid) {
-        G4cout << "### AtRIS: " << requestedPhysicsList
-               << " is not valid! use: " << G4endl;
-        const std::vector<G4String> available = factory.AvailablePhysLists();
-        for (const G4String& availablePhysicsList : available) {
-          G4cout << availablePhysicsList << G4endl;
-        }
-        return false;
-      }
-
-      G4VModularPhysicsList* const physicsList =
-        factory.GetReferencePhysList(requestedPhysicsList);
-      physicsList->RegisterPhysics(new G4StepLimiterPhysics());
-      fRunManager->SetUserInitialization(physicsList);
-      fSettings.physicsListName = requestedPhysicsList;
-      return true;
-    }
-
-    void InstallUserActionsIfConfigured()
-    {
-      if (
-        fHasUserActions
-        || fPhysicsList.empty()
-        || !fHasConfiguredOutputMode
-        || (!fHasCommandLineSettings && !fHasConfiguredOutputFormat)
-      ) return;
-      fRunManager->SetUserInitialization(
-        new atris::UserActionInitialization(fSettings)
-      );
-      fHasUserActions = true;
-    }
-
-    void SetPhysicsList(G4String requestedPhysicsList)
-    {
-      if (!fPhysicsList.empty()) {
-        if (requestedPhysicsList == fPhysicsList) return;
-
-        G4ExceptionDescription message;
-        message << "AtRIS physics-list conflict: ";
-        if (fHasCommandLineSettings) {
-          message << "the command line selects '";
-        } else {
-          message << "the run already selects '";
-        }
-        message << fPhysicsList << "' but the macro requests '"
-                << requestedPhysicsList << "'.";
-        fPhysicsListCommand->CommandFailed(message);
-        return;
-      }
-
-      if (!InstallPhysicsList(requestedPhysicsList)) {
-        G4ExceptionDescription message;
-        message << "'" << requestedPhysicsList
-                << "' is not a valid Geant4 reference physics list.";
-        fPhysicsListCommand->CommandFailed(message);
-        return;
-      }
-      fPhysicsList = requestedPhysicsList;
-      InstallUserActionsIfConfigured();
-    }
-
-    void SetOutputMode(G4String requestedOutputMode)
-    {
-      const G4int requestedValue = OutputModeValue(requestedOutputMode);
-      if (fHasCommandLineSettings) {
-        if (requestedValue == fOutputMode) return;
-
-        G4ExceptionDescription message;
-        message << "AtRIS output-mode conflict: the command line selects '"
-                << OutputModeName(fOutputMode) << "' (" << fOutputMode
-                << ") but the macro requests '" << requestedOutputMode
-                << "' (" << requestedValue << ").";
-        fOutputModeCommand->CommandFailed(message);
-        return;
-      }
-
-      if (fHasConfiguredOutputMode) {
-        if (requestedValue == fOutputMode) return;
-
-        G4ExceptionDescription message;
-        message << "AtRIS output-mode conflict: the run already selects '"
-                << OutputModeName(fOutputMode) << "' (" << fOutputMode
-                << ") but the macro later requests '" << requestedOutputMode
-                << "' (" << requestedValue << ").";
-        fOutputModeCommand->CommandFailed(message);
-        return;
-      }
-
-      fOutputMode = requestedValue;
-      fSettings.outputMode = requestedValue;
-      fHasConfiguredOutputMode = true;
-      InstallUserActionsIfConfigured();
-      ReportOutputMode();
-    }
-
-    void SetOutputFormat(G4String requestedOutputFormat)
-    {
-      if (
-        !fSettings.outputFileFormat.empty()
-        && requestedOutputFormat != fSettings.outputFileFormat
-      ) {
-        G4ExceptionDescription message;
-        message << "AtRIS output-format conflict: the run already selects '"
-                << fSettings.outputFileFormat << "' but the macro later requests '"
-                << requestedOutputFormat << "'.";
-        fOutputFormatCommand->CommandFailed(message);
-        return;
-      }
-
-      fSettings.outputFileFormat = requestedOutputFormat;
-      fHasConfiguredOutputFormat = true;
-      InstallUserActionsIfConfigured();
-    }
-
-    void ReportOutputMode() const
-    {
-      if (fOutputMode == atris::kInterfaceOutputMode) {
-        G4cout << "### AtRIS: mode 0 writes histograms and interface ntuples"
-               << G4endl;
-      }
-      if (fOutputMode == atris::kStepOutputMode) {
-        G4cout << "### AtRIS: mode 1 writes histograms, interface, and "
-                  "transport-step ntuples; output may be very large"
-               << G4endl;
-      }
-    }
-
-    void SetDirectionBins(G4int azimuthBins, G4int cosineBins)
-    {
-      fSettings.directionHistogramBins = {azimuthBins, cosineBins};
-    }
-
-    void SetPositionBins(G4int azimuthBins, G4int cosineBins)
-    {
-      fSettings.positionHistogramBins = {azimuthBins, cosineBins};
-    }
-
-    G4RunManager* const fRunManager;
-    atris::RunSettings& fSettings;
-    G4String fPhysicsList;
-    G4int fOutputMode;
-    const G4bool fHasCommandLineSettings;
-    G4bool fHasConfiguredOutputMode;
-    G4bool fHasConfiguredOutputFormat = false;
-    G4bool fIsValid = true;
-    G4bool fHasUserActions = false;
-    G4GenericMessenger fMessenger;
-    G4UIcommand* fPhysicsListCommand = nullptr;
-    G4UIcommand* fOutputModeCommand = nullptr;
-    G4UIcommand* fOutputFormatCommand = nullptr;
-};
 
 }  // namespace
 
@@ -420,7 +151,7 @@ int main(int argc,char** argv){
 	atris::DetectorConstruction* const detector =
 		new atris::DetectorConstruction(parser, settings, phantomResponses);
 	runManager->SetUserInitialization(detector);
-	RunConfiguration runConfiguration(
+	atris::RunConfiguration runConfiguration(
 		runManager,
 		settings,
 		commandLinePhysicsList,
