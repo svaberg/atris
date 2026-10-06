@@ -64,9 +64,7 @@ void RunAction::BeginOfRunAction(const G4Run*)
   G4cout << "### AtRIS: executing BeginOfRunAction" << G4endl;
   G4cout << "=== MASTER: " << IsMaster() << G4endl;
   G4AnalysisManager* const analysis = G4AnalysisManager::Instance();
-  analysis->SetDefaultFileType(
-    fSettings.outputFileFormat.empty() ? "csv" : fSettings.outputFileFormat
-  );
+  analysis->SetDefaultFileType(fSettings.outputFileFormat);
   if (WritesInterfaceNtuple(fSettings.outputMode)) analysis->SetNtupleMerging(true);
   fHisto = new HistoManager(fSettings, fPhantomResponses);
   if (analysis->IsActive()) {
