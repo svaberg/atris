@@ -97,6 +97,30 @@ def prepare_interface_run(run_directory):
     shutil.copyfile(FIXTURE / "interface.mac", run_directory / "protons.mac")
 
 
+def prepend_run_configuration(
+    run_directory,
+    *,
+    physics_list="FTFP_BERT_HP",
+    output_mode="response",
+    direction_bins=(120, 60),
+    position_bins=(120, 60),
+):
+    macro = run_directory / "protons.mac"
+    macro.write_text(
+        "/atris/physicsList %s\n"
+        "/atris/outputMode %s\n"
+        "/atris/directionBins %i %i\n"
+        "/atris/positionBins %i %i\n"
+        % (
+            physics_list,
+            output_mode,
+            *direction_bins,
+            *position_bins,
+        )
+        + macro.read_text()
+    )
+
+
 def invoke_atris(command, run_directory, *arguments, threads="1"):
     environment = os.environ.copy()
     environment["G4FORCENUMBEROFTHREADS"] = threads
@@ -474,11 +498,71 @@ def test_version_form_reports_version_without_simulation_inputs(tmp_path, atris_
 
 
 @pytest.mark.regression
+def test_short_form_reads_complete_run_configuration_from_macro(
+    tmp_path, atris_command
+):
+    prepare_run(tmp_path)
+    prepend_run_configuration(
+        tmp_path,
+        direction_bins=(12, 6),
+        position_bins=(10, 5),
+    )
+
+    result = invoke_atris(atris_command, tmp_path, "protons")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    with ResponseHistogramReader(tmp_path / "protons") as histograms:
+        assert [len(axis) - 1 for axis in histograms.axes("h2.dir")] == [12, 6]
+        assert [len(axis) - 1 for axis in histograms.axes("h2.pos")] == [10, 5]
+    annotations = histogram_annotations(tmp_path / "protons_h1_h1.1.csv")
+    assert annotations["atris.physics_list"] == "FTFP_BERT_HP"
+    assert annotations["atris.output_mode"] == "-1"
+
+
+@pytest.mark.regression
+def test_short_form_selects_root_output_for_profile_mode(tmp_path, atris_command):
+    prepare_run(tmp_path)
+    prepend_run_configuration(tmp_path, output_mode="profile")
+
+    result = invoke_atris(atris_command, tmp_path, "protons")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (tmp_path / "protons.root").is_file()
+    assert not list(tmp_path.glob("protons_*.csv"))
+    with uproot.open(tmp_path / "protons.root") as root_file:
+        assert root_file["metadata"]["output_mode"].array(library="np").tolist() == [
+            0
+        ]
+
+
+@pytest.mark.regression
+@pytest.mark.parametrize(
+    "configuration",
+    [
+        pytest.param("/atris/physicsList FTFP_BERT_HP\n", id="missing-mode"),
+        pytest.param("/atris/outputMode response\n", id="missing-physics-list"),
+    ],
+)
+def test_short_form_requires_physics_list_and_output_mode(
+    tmp_path, atris_command, configuration
+):
+    prepare_run(tmp_path)
+    macro = tmp_path / "protons.mac"
+    macro.write_text(configuration + macro.read_text())
+
+    result = invoke_atris(atris_command, tmp_path, "protons")
+
+    assert result.returncode != 0
+    assert not list(tmp_path.glob("protons_*.csv"))
+    assert not (tmp_path / "protons.root").exists()
+
+
+@pytest.mark.regression
 @pytest.mark.parametrize(
     "arguments",
     [
         pytest.param((), id="no-arguments"),
-        pytest.param(("FTFP_BERT_HP",), id="too-few-arguments"),
+        pytest.param(("FTFP_BERT_HP", "protons"), id="incomplete-legacy-form"),
         pytest.param(
             ("FTFP_BERT_HP", "protons", "-1", "1", "extra"),
             id="too-many-arguments",
@@ -492,6 +576,7 @@ def test_wrong_argument_count_prints_usage_and_currently_returns_success(
 
     assert result.returncode == 0
     assert "Usage:" in result.stdout
+    assert "<simulation-name>" in result.stdout
     assert "<physics-list> <simulation-name> <mode> [phantom-count]" in result.stdout
 
 
