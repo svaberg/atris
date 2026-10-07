@@ -12,35 +12,68 @@ execute:
 AtRIS protons.mac
 ```
 
-The macro names every file used by that run. A generated proton macro starts
-with commands of this form:
+The macro names every file used by that run. Generated macros are ordered in
+the same phases in which Geant4 consumes them:
+
+1. AtRIS input files, physics, output, histogram resolution, phantom responses,
+   and random seeds.
+2. Geant4 initialization and transport controls.
+3. General Particle Source particle, energy, position, and direction settings.
+4. The final event-processing command.
+
+The file begins with a guide to its three command namespaces. Every executable
+command has an immediately preceding comment explaining its effect, so a
+generated macro can be read without cross-referencing this page. For example:
 
 ```text
+# /atris/ configures AtRIS inputs, scoring, and output.
+# /run/ initializes Geant4, controls transport, and starts events.
+# /gps/ configures Geant4's General Particle Source (GPS).
+
+# Read the detector geometry from this GDML file.
 /atris/geometryFile protons.gdml
+# Read output energy-bin edges; GPS source sampling is configured below.
 /atris/energyBinsFile protons.bins
+# Use this suffix-free name for the simulation output.
 /atris/outputFile protons
-/atris/phantom/name ramona_zero_0.060MeV_detA
-/atris/phantom/response/type energy
-/atris/phantom/response/name dos
-/atris/phantom/response/file ramona_zero_0.060MeV_detA_response.txt
-/atris/phantom/response/add
-/atris/phantom/response/type radiation-weighted-energy
-/atris/phantom/response/name equi
-/atris/phantom/response/file ramona_zero_0.060MeV_detA_response.txt
-/atris/phantom/response/add
-/atris/phantom/response/type coefficient
-/atris/phantom/response/name rates
-/atris/phantom/response/file ramona_zero_0.060MeV_detA_counting.txt
-/atris/phantom/response/add
+
+# Use this Geant4 reference physics list for particle transport.
 /atris/physicsList FTFP_BERT_HP
+# Save aggregate response histograms only.
 /atris/outputMode response
+# Write analysis data using Geant4's csv backend.
 /atris/outputFormat csv
-/atris/directionHistogram/azimuthBins 120
-/atris/directionHistogram/cosineBins 60
-/atris/positionHistogram/azimuthBins 120
-/atris/positionHistogram/cosineBins 60
+
+# Select this phantom for the response definitions below.
+/atris/phantom/name ramona_zero_0.060MeV_detA
+# Multiply the table coefficient by crossing kinetic energy in eV.
+/atris/phantom/response/type energy
+# Use this short response name in output objects and filenames.
+/atris/phantom/response/name dos
+# Read particle- and energy-dependent coefficients from this table.
+/atris/phantom/response/file ramona_zero_0.060MeV_detA_response.txt
+# Register the configured response, then clear its three properties.
+/atris/phantom/response/add
+
+# Set the two random seeds before initialization.
 /atris/randomSeeds 123456 654321
+
+# Initialize Geant4 after all /atris/ configuration is complete.
 /run/initialize
+
+# Generate this particle species.
+/gps/particle proton
+# Sample kinetic energy from a power-law distribution.
+/gps/ene/type Pow
+# Set the minimum primary kinetic energy.
+/gps/ene/min 1 MeV
+# Set the maximum primary kinetic energy.
+/gps/ene/max 1000000 MeV
+# Use an E^-1 power law, which is uniform in log kinetic energy.
+/gps/ene/alpha -1
+
+# Process the requested events with the configuration above.
+/run/beamOn 363000
 ```
 
 Geometry, energy bins, output, and phantom tables do not have to share the
@@ -52,10 +85,10 @@ properties are cleared after each successful `add`. A phantom can have any
 number of uniquely named responses. Omit these commands for a run without
 phantom responses.
 
-The pre-initialization commands must precede `/run/initialize`. The rest of the
-macro configures the Geant4 source and starts transport with `/run/beamOn`.
-AtRIS executes the selected macro once and does not search the run directory
-for inputs.
+The pre-initialization `/atris/` commands must precede `/run/initialize`.
+Initialization makes the `/gps/` source commands available. The final
+`/run/beamOn` starts transport. AtRIS executes the selected macro once and does
+not search the run directory for inputs.
 
 ## Output modes
 

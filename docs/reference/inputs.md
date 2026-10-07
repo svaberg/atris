@@ -193,7 +193,10 @@ last edge, which samples uniformly in $\log E$. Alpha energies in the actual
 `.bins`, `.mac`, and output histograms are total particle energies, not energies
 per nucleon.
 
-Generated macros name their GDML, energy-bin, output, and phantom files with
+Generated macros are grouped and commented in execution order. Their headers
+explain that `/atris/` commands configure AtRIS, `/run/` commands control the
+Geant4 run manager, and `/gps/` commands configure Geant4's General Particle
+Source. The macros name their GDML, energy-bin, output, and phantom files with
 `/atris/geometryFile`, `/atris/energyBinsFile`, `/atris/outputFile`, and the
 `/atris/phantom/*File` commands. They record the Geant4 reference physics list
 with `/atris/physicsList`, the named output mode with `/atris/outputMode`, and

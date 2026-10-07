@@ -22,9 +22,10 @@ use 120 azimuth bins and 60 cosine bins. See
 [energy bins and macros](../inputs.md#energy-bins-and-macros) for the exact
 event-count convention. This command does not read `.spec` files.
 Each generated macro explicitly names its geometry, energy bins, output,
-phantom tables, and random seeds.
-The generated header and section labels use Geant4's `#` comment syntax;
-comment lines do not execute commands.
+phantom tables, and random seeds. It is ordered by execution phase and begins
+with a guide to the `/atris/`, `/run/`, and `/gps/` namespaces. Section headings
+and the explanation immediately above every command use Geant4's `#` comment
+syntax; comment lines do not execute commands.
 
 ## Arguments and options
 
