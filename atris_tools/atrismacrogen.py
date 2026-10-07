@@ -380,29 +380,28 @@ def macroSetup(
     if rng is None:
         rng = random
     radius  = load_psf(os.path.join(output_dir, 'simulation.psf'))[-2, OUTER_RADIUS] + 0.001 # we add 1 meter to the radius to aviod overlap.
-    bins    = base_bins
-    N = bins.shape[0] * partspb
     # We are taking two random seeds. Control this for the ability to reproduce.
     seed1     = rng.randint(31,999999)
     seed2     = rng.randint(31,999999)
-    #name      = str(seed1)+prefix
-    name      = prefix
-    shutil.copy2(os.path.join(output_dir, 'simulation.gdml'), os.path.join(output_dir, name + '.gdml'))
+    shutil.copy2(
+        os.path.join(output_dir, 'simulation.gdml'),
+        os.path.join(output_dir, prefix + '.gdml'),
+    )
     lines = genMacro(
         seed1,
         seed2,
-        N,
-        name,
+        base_bins.shape[0] * partspb,
+        prefix,
         particle,
         fact,
-        bins,
+        base_bins,
         radius,
         output_dir,
         physics_list,
         output_mode,
         output_format,
     )
-    with open(os.path.join(output_dir, name + '.mac'), 'w') as filehandle:
+    with open(os.path.join(output_dir, prefix + '.mac'), 'w') as filehandle:
         filehandle.write(lines)
     
 
