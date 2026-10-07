@@ -16,7 +16,7 @@ backend.
 | `_h2_h2.pos.csv` / `h2.pos` | Global azimuth, rad; cos(polar angle) | One per primary source position. |
 | `_h2_h2.ion.csv` / `h2.ion` | Primary energy, MeV; detector ID | Total deposit minus non-ionizing deposit, MeV, for steps in non-terminating sensitive layers. |
 | `_h2_h2.edep.csv` / `h2.edep` | Primary energy, MeV; detector ID | Total local energy deposit, MeV, for the same steps and layers as `h2.ion`. |
-| `_h2_h2.<stem>.<response>.csv` / `h2.<stem>.<response>` | Primary energy, MeV; interface ID | The weight selected by the response's accumulation mode. |
+| `_h2_h2.<stem>.<response>.csv` / `h2.<stem>.<response>` | Primary energy, MeV; interface ID | Table coefficient with the response's configured crossing-energy and radiation-weight factors. |
 
 All three modes write these histograms. CSV output writes one file per
 histogram; ROOT output stores them as objects in `<name>.root`. There are
@@ -25,9 +25,9 @@ $N_{\mathrm{response}}$ is the number of declared phantom responses. Despite
 the histogram titles, raw phantom values have not yet been divided by primary
 counts, masses, or interface areas.
 
-The standard generated macros declare `dos`, `equi`, and `rates` responses.
-Other response names are valid raw histograms; `atris-postprocess` only assigns
-its established mass/area scaling to those three standard names.
+The standard generated macros declare `dos`, `equi`, and `rates` responses,
+but response names are only labels. Other names are processed using their
+explicit factor settings in exactly the same way.
 
 By default, source-position and direction histograms have 120 azimuth bins from
 0 to $2\pi$ and 60 $\cos\theta$ bins from -1 to 1. Their separate dimensions
@@ -42,8 +42,8 @@ AtRIS adds native Geant4 `#annotation` records identifying the histogram,
 quantity, accumulated weight, simulation input prefix, physics list, output
 mode, phantom count, software version, and random seed pair. Phantom-response
 histograms also record their phantom stem, response name, source file, and
-accumulation mode. A gathered histogram records the number of represented
-chunks and all known seed pairs. Other provenance values that
+three response factor settings. A gathered histogram records the number of
+represented chunks and all known seed pairs. Other provenance values that
 differ between compatible chunks are retained with ` | ` separators; they do
 not by themselves prevent gathering.
 
@@ -97,9 +97,10 @@ The recorded angle is rounded to the nearest whole degree, so a stored value of
 | --- | --- |
 | `.ioni` | Ionizing energy deposition per cm³ per primary in the corresponding energy bin, in MeV cm⁻³ primary⁻¹. It is not yet an ion-pair production rate. |
 | `.edep` | Total local energy deposition per cm³ per primary in the corresponding energy bin, in MeV cm⁻³ primary⁻¹. It is not yet a heating rate. |
-| `.<stem>.dose` | Phantom energy response per mass per primary, using the table's radiation coefficients and eV energy factor. |
-| `.<stem>.equi` | The same response with the code's radiation weighting applied. |
-| `.<stem>.rates` | Counting response per primary, after area scaling. It is not counts per second. |
+| `.<stem>.dose` | Standard generated `dos` response: crossing-energy scaled and divided by phantom mass. |
+| `.<stem>.equi` | Standard generated `equi` response: crossing-energy and radiation-weight scaled, then divided by phantom mass. |
+| `.<stem>.rates` | Standard generated `rates` response without those three optional factors. It is not counts per second. |
+| `.<stem>.<response>` | Any other named response, scaled according to its explicit factor settings. |
 
 Each row contains:
 
@@ -116,15 +117,17 @@ places after the decimal. The first and last physical layer rows are omitted.
 Let $P_b$ be the primary H1 `entries` in energy bin $b$, $V_d$ the layer volume
 in cm³, $S_d$ the interface area in cm², and $A_s$, $M_s$ the area and mass for
 phantom stem $s$ from `phantoms.txt`. With raw ionizing and total-deposition
-sums $I$ and $T$, and phantom sums $D$, $E$, and $C$:
+sums $I$ and $T$, and a raw phantom-response sum $R$:
 
 $$
 \begin{aligned}
 \mathrm{ioni}_{d,b} &= \frac{I_{d,b}}{P_b V_d},\\
 \mathrm{edep}_{d,b} &= \frac{T_{d,b}}{P_b V_d},\\
-\mathrm{dose}_{s,d,b} &= \frac{D_{d,b} A_s}{P_b M_s S_d},\\
-\mathrm{equi}_{s,d,b} &= \frac{E_{d,b} A_s}{P_b M_s S_d},\\
-\mathrm{rates}_{s,d,b} &= \frac{C_{d,b} A_s}{P_b S_d}.
+\mathrm{response}_{s,d,b} &= \frac{R_{d,b} A_s}{P_b S_d}
+\begin{cases}
+1/M_s, & \text{if inverse-phantom-mass scaling is enabled},\\
+1, & \text{otherwise}.
+\end{cases}
 \end{aligned}
 $$
 
@@ -206,7 +209,9 @@ When the simulation argument ends in `.root`, Geant4 writes one ROOT file. It
 contains the response histograms listed above and, in modes `0` and `1`, a
 `metadata` ntuple and the particle ntuples selected by the mode. AtRIS and its
 Python tools use Uproot, so reading these products does not require a separate
-ROOT installation.
+ROOT installation. ROOT histograms do not retain Geant4's native histogram
+annotations, so `atris-postprocess` reads response factor settings from the
+corresponding species macro. Keep that macro with the ROOT output.
 
 The `metadata` ntuple contains one row for an ordinary run or one row per
 represented chunk in a gathered ROOT file:

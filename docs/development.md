@@ -109,22 +109,28 @@ worker-index, or modulo-dispatch logic. Such worker macros would be generated
 execution artifacts rather than the authoritative species configuration.
 
 Phantom responses are declared independently in the generated macro. A
-phantom is selected once, then each response sets its name, accumulation rule,
-and source table before it is added:
+phantom is selected once, then each response sets its name, source table, and
+independent calculation factors before it is added:
 
 ```text
 /atris/phantom/name ramona_zero_0.060MeV_detA
-/atris/phantom/response/accumulation energy
 /atris/phantom/response/name dos
 /atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response/scaleByCrossingEnergy true
+/atris/phantom/response/scaleByRadiationWeight false
+/atris/phantom/response/scaleByInversePhantomMass true
 /atris/phantom/response/add
-/atris/phantom/response/accumulation radiation-weighted-energy
 /atris/phantom/response/name equi
 /atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response/scaleByCrossingEnergy true
+/atris/phantom/response/scaleByRadiationWeight true
+/atris/phantom/response/scaleByInversePhantomMass true
 /atris/phantom/response/add
-/atris/phantom/response/accumulation coefficient
 /atris/phantom/response/name rates
 /atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_counting.txt
+/atris/phantom/response/scaleByCrossingEnergy false
+/atris/phantom/response/scaleByRadiationWeight false
+/atris/phantom/response/scaleByInversePhantomMass false
 /atris/phantom/response/add
 ```
 

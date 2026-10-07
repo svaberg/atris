@@ -45,14 +45,16 @@ can therefore be read without cross-referencing this page. For example:
 # Write analysis data using Geant4's csv backend.
 /atris/outputFormat csv
 
-# accumulation chooses the calculation; name labels the output, tableFile
-# supplies coefficients, and add registers the response.
+# Each response starts with its table coefficient. The scaleBy settings choose
+# which physical factors are applied; name only labels the output.
 # Phantom: ramona_zero_0.060MeV_detA
 /atris/phantom/name ramona_zero_0.060MeV_detA
 # Response: absorbed dose (name: dos)
-/atris/phantom/response/accumulation energy
 /atris/phantom/response/name dos
 /atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response/scaleByCrossingEnergy true
+/atris/phantom/response/scaleByRadiationWeight false
+/atris/phantom/response/scaleByInversePhantomMass true
 /atris/phantom/response/add
 
 # Set the two random seeds before initialization.
@@ -80,10 +82,10 @@ can therefore be read without cross-referencing this page. For example:
 
 Geometry, energy bins, output, and phantom tables do not have to share the
 macro's basename. Paths are interpreted relative to the directory in which
-AtRIS is run. `/atris/phantom/name` selects a phantom. Set the response
-accumulation rule, name, and table file, then use
+AtRIS is run. `/atris/phantom/name` selects a phantom. Set the response name,
+table file, and three `scaleBy` factors, then use
 `/atris/phantom/response/add` to register that response. The selected phantom
-remains active, while the three response properties are cleared after each
+remains active, while the response properties are cleared after each
 successful `add`. A phantom can have any number of uniquely named responses.
 Omit these commands for a run without phantom responses.
 

@@ -251,9 +251,9 @@ post-processing requires physically valid values.
 
 The C++ executable does not read the mass or area. These values do not affect
 Geant4 transport or the raw phantom histograms. `atris-postprocess` reads them
-from `phantoms.txt` and applies the mass and area factors when producing
-`.<stem>.dose`, `.<stem>.equi`, and `.<stem>.rates`; see the
-[normalization formulas](outputs.md#processed-response-tables).
+from `phantoms.txt` and applies the area factor to every processed phantom
+response. It applies the inverse-mass factor only to responses that request it
+explicitly; see the [normalization formulas](outputs.md#processed-response-tables).
 
 For each stem, staging locates `<stem>_response.txt` and `<stem>_counting.txt`
 in the run directory first, then the archive. It creates relative symbolic links
@@ -276,13 +276,15 @@ with 0.02 spacing in log10 energy. The lookup uses
 `max(0, int(log10(kinetic_energy/eV) / 0.02))`, without interpolation or an
 upper-bound clamp. Keep energies inside the represented range.
 
-The macro assigns each table one of three accumulation modes: `coefficient`
-accumulates the table value directly, `energy` also multiplies by crossing
-kinetic energy in eV, and `radiation-weighted-energy` additionally applies the
-implemented radiation weight. See the
-[normalization formulas](outputs.md#processed-response-tables). A dummy counting
-table created with `--accept-missing-counting` contains ones and represents
-unit counting response, not a measured efficiency.
+Each response begins with its table coefficient. The macro then sets three
+independent Boolean factors. `scaleByCrossingEnergy` multiplies by crossing
+kinetic energy in eV during transport, `scaleByRadiationWeight` multiplies by
+the implemented particle radiation weight during transport, and
+`scaleByInversePhantomMass` requests division by phantom mass during
+post-processing. Response names label files and histograms; they do not select
+these calculations. See the [normalization formulas](outputs.md#processed-response-tables).
+A dummy counting table created with `--accept-missing-counting` contains ones
+and represents unit counting response, not a measured efficiency.
 
 Implementation: `atris_tools/psf.py`, `nrlmsis2psf.py`, `psf2gdml.py`,
 `atrismacrogen.py`, `phantoms.py`, `src/RunConfiguration.cc`, and

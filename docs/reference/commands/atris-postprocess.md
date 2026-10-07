@@ -13,14 +13,16 @@ is no positional species filter.
 **Inputs:** canonical histogram CSV or ROOT files, `simulation.psf`, and phantom
 mass/area metadata from `phantoms.txt` when phantom products are present.
 **Outputs:** `.ioni`, `.edep` when the raw total-deposition tally is present,
-and `.<stem>.dose`, `.<stem>.equi`, and `.<stem>.rates`, replacing existing
-processed files.
+and one `.<stem>.<response>` file per configured response. The standard `dos`
+response retains the established `.<stem>.dose` filename. Existing processed
+files are replaced.
 Available input/output consistency checks produce warnings.
 
 Phantom mass and area are post-processing scale factors only. They are not
 read by the C++ executable and do not affect particle transport or raw
-histogram accumulation. Dose and equivalent-dose products use both mass and
-area; counting-rate products use area but not mass.
+histogram accumulation. Every phantom product uses area; each response's
+explicit `scaleByInversePhantomMass` setting determines whether mass is also
+used.
 
 The output is normalized per simulated primary energy bin; it does not include
 source-flux folding or conversion into physical rates. See
@@ -51,9 +53,9 @@ options:
 The command processes the protons and alphas prefixes when their primary
 histogram files are present. It reads simulation.psf and, for phantom
 responses, phantoms.txt; it writes .ioni, .edep when total-deposition input is
-present, and stem-named dose, equi, and rates files, replacing existing
-processed files. Missing species are skipped. This command does not gather chunk
-histograms, run simulations, or make plots.
+present, and one stem- and response-named file per phantom response, replacing
+existing processed files. Missing species are skipped. This command does not
+gather chunk histograms, run simulations, or make plots.
 ```
 
 Implementation: `atris_tools/postprocess.py`.
