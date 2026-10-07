@@ -13,9 +13,24 @@ namespace atris {
 class PhantomResponses;
 struct RunSettings;
 
+/**
+ * Exposes AtRIS run configuration as Geant4 macro commands.
+ *
+ * The constructor registers the `/atris/` command tree with Geant4's UI
+ * manager. Those commands populate RunSettings, select input files, and build
+ * the PhantomResponses collection while the macro is being interpreted. The
+ * final `/atris/initialize` command reads the energy bins and GDML geometry,
+ * installs the detector, physics list, and user actions, applies explicit random
+ * seeds, and initializes the Geant4 run manager.
+ *
+ * This object owns the command messengers and must therefore remain alive for
+ * the complete macro execution. The run manager, settings, parser, and response
+ * collection are borrowed and must outlive it.
+ */
 class RunConfiguration
 {
   public:
+    /// Registers the AtRIS macro commands against the supplied run state.
     RunConfiguration(
       G4RunManager* runManager,
       RunSettings& settings,

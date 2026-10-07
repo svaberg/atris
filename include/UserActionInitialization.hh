@@ -8,6 +8,14 @@ namespace atris {
 class PhantomResponses;
 struct RunSettings;
 
+/**
+ * Installs the AtRIS user actions required by Geant4 worker roles.
+ *
+ * BuildForMaster() installs the master RunAction responsible for merged analysis
+ * output. Build() installs a worker RunAction and PrimaryGeneratorAction for
+ * event generation and worker-local accumulation. Both actions borrow the
+ * resolved settings and phantom-response collection held by the application.
+ */
 class UserActionInitialization : public G4VUserActionInitialization
 {
   public:
@@ -17,7 +25,10 @@ class UserActionInitialization : public G4VUserActionInitialization
     );
     ~UserActionInitialization() override;
 
+    /// Installs event-generation and run actions for a worker thread.
     void Build() const override;
+
+    /// Installs the run action used by the master thread.
     void BuildForMaster() const override;
 
   private:

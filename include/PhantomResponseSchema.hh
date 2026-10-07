@@ -5,6 +5,15 @@
 
 namespace atris {
 
+/**
+ * Fixed dimensions and identifiers shared by phantom-table loading and scoring.
+ *
+ * These constants describe the established phantom response-table format and
+ * the histogram booking order. They are centralized here because
+ * PhantomResponses, HistoManager, and SensitiveDetector must interpret those
+ * layouts identically.
+ */
+
 // Each particle row in a phantom response table contains 650 coefficients on
 // a log10(eV) energy grid with a spacing of 0.02 decades.
 constexpr G4int kPhantomResponseEnergyBins = 650;
