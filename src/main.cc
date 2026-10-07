@@ -27,12 +27,15 @@ int main(int argc,char** argv){
 	atris::RunSettings settings;
 	atris::PhantomResponses phantomResponses;
 
-	G4Random::setTheEngine(new CLHEP::MTwistEngine); // Choose the Random engine
-	G4MTRunManager* const runManager = new G4MTRunManager;   // Instantiate the run manager
+	// Set the master random engine before the run manager captures it for workers.
+	G4Random::setTheEngine(new CLHEP::MTwistEngine);
+	G4MTRunManager* const runManager = new G4MTRunManager;
+	// Respect an explicit thread override; otherwise use all available cores.
 	if (std::getenv("G4FORCENUMBEROFTHREADS") == nullptr) {
 		runManager->SetNumberOfThreads(G4Threading::G4GetNumberOfCores());
 	}
-	G4GDMLParser parser;                             //instantiate a GDML parser
+	G4GDMLParser parser;
+	// Keep the command messengers and their backing state alive for the macro.
 	atris::RunConfiguration runConfiguration(
 		runManager,
 		settings,
@@ -54,6 +57,7 @@ int main(int argc,char** argv){
 	} else {
 		G4cerr << "### AtRIS: macro execution failed with Geant4 status " << commandStatus << G4endl;
 	}
+	// Include Geant4 teardown in the total time, but not in the macro time.
 	delete runManager;
 	const auto totalEnd = std::chrono::steady_clock::now();
 	const double macroSeconds =
@@ -72,5 +76,6 @@ int main(int argc,char** argv){
 	} else {
 		G4cerr << "### AtRIS: Run failed." << G4endl;
 	}
+	// Preserve the detailed Geant4 status above and expose a conventional exit code.
 	return commandStatus == fCommandSucceeded ? EXIT_SUCCESS : EXIT_FAILURE;
 }
