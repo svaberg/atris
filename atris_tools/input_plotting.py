@@ -202,14 +202,7 @@ def _energy_in_mev(setting):
 def read_macro_phantoms(filename):
     phantoms = {}
     for response in read_macro_responses(filename):
-        phantoms.setdefault(response.phantom_stem, {})[response.name] = {
-            "file": response.file,
-            "scale_by_crossing_energy": response.scale_by_crossing_energy,
-            "scale_by_radiation_weight": response.scale_by_radiation_weight,
-            "scale_by_inverse_phantom_mass": (
-                response.scale_by_inverse_phantom_mass
-            ),
-        }
+        phantoms.setdefault(response.phantom_stem, {})[response.name] = response.file
     return phantoms
 
 
@@ -741,9 +734,9 @@ def plot_inputs():
             )
             continue
         missing_files = [
-            str(configured[response_name]["file"])
+            str(configured[response_name])
             for response_name in ("dos", "rates")
-            if not configured[response_name]["file"].is_file()
+            if not configured[response_name].is_file()
         ]
         if missing_files:
             errors.append(
@@ -755,8 +748,8 @@ def plot_inputs():
             filenames.append(
                 plot_phantom_inputs(
                     phantom_name,
-                    configured["dos"]["file"],
-                    configured["rates"]["file"],
+                    configured["dos"],
+                    configured["rates"],
                 )
             )
         except Exception as error:

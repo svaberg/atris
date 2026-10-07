@@ -141,52 +141,37 @@ RunConfiguration::RunConfiguration(
   randomSeedsCommand.SetStates(G4State_PreInit);
   fRandomSeedsCommand = randomSeedsCommand.command;
 
-  auto& phantomNameCommand = fPhantomMessenger.DeclareProperty(
-    "name",
-    fPhantomName,
-    "Select the phantom receiving subsequent responses."
-  );
-  phantomNameCommand.SetStates(G4State_PreInit);
+  fPhantomMessenger.DeclareProperty(
+    "name", fPhantomName, "Select the phantom receiving subsequent responses."
+  ).SetStates(G4State_PreInit);
 
-  auto& phantomResponseNameCommand =
-    fPhantomResponseMessenger.DeclareProperty(
-      "name",
-      fPhantomResponseName,
-      "Set the response histogram name."
-    );
-  phantomResponseNameCommand.SetStates(G4State_PreInit);
+  fPhantomResponseMessenger.DeclareProperty(
+    "name", fPhantomResponseName, "Set the response histogram name."
+  ).SetStates(G4State_PreInit);
 
-  auto& phantomResponseTableFileCommand =
-    fPhantomResponseMessenger.DeclareProperty(
-      "tableFile",
-      fPhantomResponseTableFile,
-      "Set the particle- and energy-dependent response-table file."
-    );
-  phantomResponseTableFileCommand.SetStates(G4State_PreInit);
+  fPhantomResponseMessenger.DeclareProperty(
+    "tableFile",
+    fPhantomResponseTableFile,
+    "Set the particle- and energy-dependent response-table file."
+  ).SetStates(G4State_PreInit);
 
-  auto& scaleByCrossingEnergyCommand =
-    fPhantomResponseMessenger.DeclareMethod(
-      "scaleByCrossingEnergy",
-      &RunConfiguration::SetPhantomResponseScaleByCrossingEnergy,
-      "Multiply the table coefficient by crossing kinetic energy in eV."
-    );
-  scaleByCrossingEnergyCommand.SetStates(G4State_PreInit);
+  fPhantomResponseMessenger.DeclareProperty(
+    "scaleByCrossingEnergy",
+    fPhantomResponseScaleByCrossingEnergy,
+    "Multiply the table coefficient by crossing kinetic energy in eV."
+  ).SetStates(G4State_PreInit);
 
-  auto& scaleByRadiationWeightCommand =
-    fPhantomResponseMessenger.DeclareMethod(
-      "scaleByRadiationWeight",
-      &RunConfiguration::SetPhantomResponseScaleByRadiationWeight,
-      "Multiply the response by the particle radiation weight."
-    );
-  scaleByRadiationWeightCommand.SetStates(G4State_PreInit);
+  fPhantomResponseMessenger.DeclareProperty(
+    "scaleByRadiationWeight",
+    fPhantomResponseScaleByRadiationWeight,
+    "Multiply the response by the particle radiation weight."
+  ).SetStates(G4State_PreInit);
 
-  auto& scaleByInversePhantomMassCommand =
-    fPhantomResponseMessenger.DeclareMethod(
-      "scaleByInversePhantomMass",
-      &RunConfiguration::SetPhantomResponseScaleByInversePhantomMass,
-      "Divide this response by phantom mass during post-processing."
-    );
-  scaleByInversePhantomMassCommand.SetStates(G4State_PreInit);
+  fPhantomResponseMessenger.DeclareProperty(
+    "scaleByInversePhantomMass",
+    fPhantomResponseScaleByInversePhantomMass,
+    "Divide this response by phantom mass during post-processing."
+  ).SetStates(G4State_PreInit);
 
   auto& addPhantomResponseCommand = fPhantomResponseMessenger.DeclareMethod(
     "add",
@@ -397,43 +382,16 @@ void RunConfiguration::SetRandomSeeds(
          << secondSeed << G4endl;
 }
 
-void RunConfiguration::SetPhantomResponseScaleByCrossingEnergy(
-  const G4bool enabled
-)
-{
-  fPhantomResponseScaleByCrossingEnergy = enabled;
-  fHasConfiguredPhantomResponseScaleByCrossingEnergy = true;
-}
-
-void RunConfiguration::SetPhantomResponseScaleByRadiationWeight(
-  const G4bool enabled
-)
-{
-  fPhantomResponseScaleByRadiationWeight = enabled;
-  fHasConfiguredPhantomResponseScaleByRadiationWeight = true;
-}
-
-void RunConfiguration::SetPhantomResponseScaleByInversePhantomMass(
-  const G4bool enabled
-)
-{
-  fPhantomResponseScaleByInversePhantomMass = enabled;
-  fHasConfiguredPhantomResponseScaleByInversePhantomMass = true;
-}
-
 void RunConfiguration::AddPhantomResponse()
 {
   if (
     fPhantomName.empty()
     || fPhantomResponseName.empty()
     || fPhantomResponseTableFile.empty()
-    || !fHasConfiguredPhantomResponseScaleByCrossingEnergy
-    || !fHasConfiguredPhantomResponseScaleByRadiationWeight
-    || !fHasConfiguredPhantomResponseScaleByInversePhantomMass
   ) {
     G4ExceptionDescription message;
-    message << "Set /atris/phantom/name and every "
-               "/atris/phantom/response property before "
+    message << "Set /atris/phantom/name, /atris/phantom/response/name, and "
+               "/atris/phantom/response/tableFile before "
                "/atris/phantom/response/add.";
     fAddPhantomResponseCommand->CommandFailed(message);
     return;
@@ -457,9 +415,6 @@ void RunConfiguration::AddPhantomResponse()
   fPhantomResponseScaleByCrossingEnergy = false;
   fPhantomResponseScaleByRadiationWeight = false;
   fPhantomResponseScaleByInversePhantomMass = false;
-  fHasConfiguredPhantomResponseScaleByCrossingEnergy = false;
-  fHasConfiguredPhantomResponseScaleByRadiationWeight = false;
-  fHasConfiguredPhantomResponseScaleByInversePhantomMass = false;
 }
 
 void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)

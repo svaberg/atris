@@ -65,10 +65,8 @@ void RunAction::BeginOfRunAction(const G4Run*)
   G4cout << "=== MASTER: " << IsMaster() << G4endl;
   G4AnalysisManager* const analysis = G4AnalysisManager::Instance();
   analysis->SetDefaultFileType(fSettings.outputFileFormat);
-  if (
-    fSettings.outputFileFormat == "root"
-    || WritesInterfaceNtuple(fSettings.outputMode)
-  ) {
+  if (fSettings.outputFileFormat == "root"
+      || WritesInterfaceNtuple(fSettings.outputMode)) {
     analysis->SetNtupleMerging(true);
   }
   fHisto = new HistoManager(fSettings, fPhantomResponses);

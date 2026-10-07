@@ -65,8 +65,8 @@ EXPECTED_ROOT_METADATA = {
 }
 EXPECTED_ROOT_RESPONSE_METADATA = {
     "phantom_stem",
-    "response_name",
-    "response_file",
+    "name",
+    "file",
     "scale_by_crossing_energy",
     "scale_by_radiation_weight",
     "scale_by_inverse_phantom_mass",
@@ -348,7 +348,7 @@ def test_macro_runs_one_worker_and_writes_expected_histograms(
             responses = root_file["responses"]
             assert set(responses.keys()) == EXPECTED_ROOT_RESPONSE_METADATA
             assert responses.num_entries == 3
-            assert responses["response_name"].array(library="np").tolist() == [
+            assert responses["name"].array(library="np").tolist() == [
                 "dos",
                 "equi",
                 "rates",
@@ -892,7 +892,7 @@ def test_macro_rejects_an_incomplete_phantom_response(tmp_path, atris_command):
     result = run_atris(atris_command, tmp_path)
 
     assert result.returncode != 0
-    assert "every /atris/phantom/response property" in result.stdout + result.stderr
+    assert "/atris/phantom/response/tableFile" in result.stdout + result.stderr
 
 
 @pytest.mark.regression

@@ -1,8 +1,6 @@
 #ifndef NtupleSchema_hh
 #define NtupleSchema_hh 1
 
-#include "OutputMode.hh"
-
 #include "globals.hh"
 
 namespace atris {
@@ -65,14 +63,6 @@ enum ResponseNtupleColumn : G4int {
 	kResponseScaleByRadiationWeight,
 	kResponseScaleByInversePhantomMass,
 };
-
-inline G4int ResponseNtupleId(const G4int outputMode)
-{
-	G4int id = kInterfaceNtupleId;
-	if (WritesInterfaceNtuple(outputMode)) ++id;
-	if (WritesStepNtuple(outputMode)) ++id;
-	return id;
-}
 
 }  // namespace atris
 

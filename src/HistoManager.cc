@@ -301,8 +301,8 @@ void HistoManager::Book() const
 			"AtRIS phantom response definitions"
 		);
 		analysis->CreateNtupleSColumn(id, "phantom_stem");
-		analysis->CreateNtupleSColumn(id, "response_name");
-		analysis->CreateNtupleSColumn(id, "response_file");
+		analysis->CreateNtupleSColumn(id, "name");
+		analysis->CreateNtupleSColumn(id, "file");
 		analysis->CreateNtupleIColumn(id, "scale_by_crossing_energy");
 		analysis->CreateNtupleIColumn(id, "scale_by_radiation_weight");
 		analysis->CreateNtupleIColumn(id, "scale_by_inverse_phantom_mass");
@@ -352,32 +352,25 @@ void HistoManager::FillMetadata() const
 	analysis->AddNtupleRow(kMetadataNtupleId);
 
 	if (!writesRootMetadata) return;
-	const G4int responseNtupleId = ResponseNtupleId(fSettings.outputMode);
+	const G4int responseNtupleId = kInterfaceNtupleId
+		+ WritesInterfaceNtuple(fSettings.outputMode)
+		+ WritesStepNtuple(fSettings.outputMode);
 	for (const PhantomResponse& response : fPhantomResponses.GetAll()) {
 		analysis->FillNtupleSColumn(
-			responseNtupleId, kResponsePhantomStem, response.phantomStem
-		);
+			responseNtupleId, kResponsePhantomStem, response.phantomStem);
 		analysis->FillNtupleSColumn(
-			responseNtupleId, kResponseName, response.name
-		);
+			responseNtupleId, kResponseName, response.name);
 		analysis->FillNtupleSColumn(
-			responseNtupleId, kResponseFile, response.fileName
-		);
+			responseNtupleId, kResponseFile, response.fileName);
 		analysis->FillNtupleIColumn(
-			responseNtupleId,
-			kResponseScaleByCrossingEnergy,
-			response.scaleByCrossingEnergy
-		);
+			responseNtupleId, kResponseScaleByCrossingEnergy,
+			response.scaleByCrossingEnergy);
 		analysis->FillNtupleIColumn(
-			responseNtupleId,
-			kResponseScaleByRadiationWeight,
-			response.scaleByRadiationWeight
-		);
+			responseNtupleId, kResponseScaleByRadiationWeight,
+			response.scaleByRadiationWeight);
 		analysis->FillNtupleIColumn(
-			responseNtupleId,
-			kResponseScaleByInversePhantomMass,
-			response.scaleByInversePhantomMass
-		);
+			responseNtupleId, kResponseScaleByInversePhantomMass,
+			response.scaleByInversePhantomMass);
 		analysis->AddNtupleRow(responseNtupleId);
 	}
 }

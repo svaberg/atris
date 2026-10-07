@@ -459,8 +459,8 @@ def test_gather_simulation_combines_root_response_histograms_only(tmp_path):
     second = chunks / "protons_333333_444444"
     responses = {
         "phantom_stem": np.array(["body"]),
-        "response_name": np.array(["dos"]),
-        "response_file": np.array(["body_response.txt"]),
+        "name": np.array(["dos"]),
+        "file": np.array(["body_response.txt"]),
         "scale_by_crossing_energy": np.array([1], dtype=np.int32),
         "scale_by_radiation_weight": np.array([0], dtype=np.int32),
         "scale_by_inverse_phantom_mass": np.array([1], dtype=np.int32),

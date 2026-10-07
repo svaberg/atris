@@ -222,36 +222,30 @@ def genMacro(
     phantoms = read_phantoms(output_dir)
     if not phantoms:
         lines.append("# No phantom responses are configured for this run.")
+    factor_commands = (
+        "scaleByCrossingEnergy",
+        "scaleByRadiationWeight",
+        "scaleByInversePhantomMass",
+    )
     for phantom in phantoms:
         response, counting = configured_phantom_files(output_dir, phantom)
         stem = os.path.basename(phantom["stem"])
         lines.extend(
             ("", "# Phantom: " + stem, "/atris/phantom/name %s" % stem)
         )
-        for (
-            response_name,
-            response_description,
-            filename,
-            scale_by_energy,
-            scale_by_radiation_weight,
-            scale_by_inverse_mass,
-        ) in (
-            ("dos", "absorbed dose", response.name, True, False, True),
+        for response_name, response_description, filename, factors in (
+            ("dos", "absorbed dose", response.name, (True, False, True)),
             (
                 "equi",
                 "equivalent dose",
                 response.name,
-                True,
-                True,
-                True,
+                (True, True, True),
             ),
             (
                 "rates",
                 "counting response",
                 counting.name,
-                False,
-                False,
-                False,
+                (False, False, False),
             ),
         ):
             lines.extend(
@@ -261,15 +255,14 @@ def genMacro(
                     % (response_description, response_name),
                     "/atris/phantom/response/name %s" % response_name,
                     "/atris/phantom/response/tableFile %s" % filename,
-                    "/atris/phantom/response/scaleByCrossingEnergy %s"
-                    % str(scale_by_energy).lower(),
-                    "/atris/phantom/response/scaleByRadiationWeight %s"
-                    % str(scale_by_radiation_weight).lower(),
-                    "/atris/phantom/response/scaleByInversePhantomMass %s"
-                    % str(scale_by_inverse_mass).lower(),
-                    "/atris/phantom/response/add",
                 )
             )
+            lines.extend(
+                "/atris/phantom/response/%s %s"
+                % (command, str(enabled).lower())
+                for command, enabled in zip(factor_commands, factors)
+            )
+            lines.append("/atris/phantom/response/add")
 
     _add_section(
         lines,

@@ -238,8 +238,8 @@ The `responses` ntuple contains one row per configured phantom response:
 | Field | Meaning |
 | --- | --- |
 | `phantom_stem` | Phantom identity used in histogram and processed-output names. |
-| `response_name` | Response channel name. |
-| `response_file` | Response table supplied to AtRIS. |
+| `name` | Response channel name. |
+| `file` | Response table supplied to AtRIS. |
 | `scale_by_crossing_energy` | `1` when each table coefficient is multiplied by crossing kinetic energy. |
 | `scale_by_radiation_weight` | `1` when each table coefficient is multiplied by the implemented radiation weight. |
 | `scale_by_inverse_phantom_mass` | `1` when post-processing divides the response by phantom mass. |

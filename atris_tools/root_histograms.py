@@ -119,15 +119,13 @@ def _combine_records(records, *, unique=False):
     if not unique or not combined:
         return combined
 
-    keep = []
-    seen = set()
-    for index in range(len(next(iter(combined.values())))):
-        row = tuple(combined[name][index].item() for name in combined)
-        if row in seen:
-            continue
-        seen.add(row)
-        keep.append(index)
-    return {name: values[keep] for name, values in combined.items()}
+    rows = list(
+        dict.fromkeys(zip(*(values.tolist() for values in combined.values())))
+    )
+    return {
+        name: np.asarray([row[index] for row in rows], dtype=values.dtype)
+        for index, (name, values) in enumerate(combined.items())
+    }
 
 
 def combine_root_histograms(source_paths, observe=None):

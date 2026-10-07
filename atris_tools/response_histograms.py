@@ -7,37 +7,29 @@ from pathlib import Path
 import numpy as np
 import uproot
 
+from .root_output import read_ntuple
+
 
 PRIMARY_HISTOGRAM = "h1.1"
 IONIZATION_HISTOGRAM = "h2.ion"
 TOTAL_DEPOSITION_HISTOGRAM = "h2.edep"
+_RESPONSE_COMMAND_FIELDS = {
+    "name": "name",
+    "tableFile": "file",
+    "scaleByCrossingEnergy": "scale_by_crossing_energy",
+    "scaleByRadiationWeight": "scale_by_radiation_weight",
+    "scaleByInversePhantomMass": "scale_by_inverse_phantom_mass",
+}
 _RESPONSE_PROPERTIES = {
-    "/atris/phantom/response/name": "name",
-    "/atris/phantom/response/tableFile": "file",
-    "/atris/phantom/response/scaleByCrossingEnergy": "scale_by_crossing_energy",
-    "/atris/phantom/response/scaleByRadiationWeight": "scale_by_radiation_weight",
-    "/atris/phantom/response/scaleByInversePhantomMass": (
-        "scale_by_inverse_phantom_mass"
-    ),
+    "/atris/phantom/response/" + command: field
+    for command, field in _RESPONSE_COMMAND_FIELDS.items()
 }
+_RESPONSE_FIELDS = ("phantom_stem", *_RESPONSE_COMMAND_FIELDS.values())
+_RESPONSE_SCALE_FIELDS = tuple(_RESPONSE_COMMAND_FIELDS.values())[2:]
 _RESPONSE_ANNOTATIONS = {
-    "atris.phantom_stem": "phantom_stem",
-    "atris.response_name": "name",
-    "atris.response_file": "file",
-    "atris.response_scale_by_crossing_energy": "scale_by_crossing_energy",
-    "atris.response_scale_by_radiation_weight": "scale_by_radiation_weight",
-    "atris.response_scale_by_inverse_phantom_mass": (
-        "scale_by_inverse_phantom_mass"
-    ),
+    "atris." + (field if field == "phantom_stem" else "response_" + field): field
+    for field in _RESPONSE_FIELDS
 }
-_ROOT_RESPONSE_FIELDS = (
-    "phantom_stem",
-    "response_name",
-    "response_file",
-    "scale_by_crossing_energy",
-    "scale_by_radiation_weight",
-    "scale_by_inverse_phantom_mass",
-)
 
 
 @dataclass(frozen=True)
@@ -47,9 +39,9 @@ class ResponseDefinition:
     phantom_stem: str
     name: str
     file: Path
-    scale_by_crossing_energy: bool
-    scale_by_radiation_weight: bool
-    scale_by_inverse_phantom_mass: bool
+    scale_by_crossing_energy: bool = False
+    scale_by_radiation_weight: bool = False
+    scale_by_inverse_phantom_mass: bool = False
 
     @property
     def histogram_name(self):
@@ -57,6 +49,8 @@ class ResponseDefinition:
 
 
 def _boolean(value, source):
+    if not isinstance(value, str):
+        return bool(value)
     normalized = value.lower()
     if normalized == "true":
         return True
@@ -66,7 +60,7 @@ def _boolean(value, source):
 
 
 def _response_definition(values, source):
-    required = {"phantom_stem", *_RESPONSE_PROPERTIES.values()}
+    required = {"phantom_stem", "name", "file"}
     missing = required - values.keys()
     if missing:
         raise ValueError(
@@ -74,70 +68,25 @@ def _response_definition(values, source):
             % (source, ", ".join(sorted(missing)))
         )
     return ResponseDefinition(
-        phantom_stem=values["phantom_stem"],
-        name=values["name"],
-        file=Path(values["file"]),
-        scale_by_crossing_energy=_boolean(
-            values["scale_by_crossing_energy"], source
-        ),
-        scale_by_radiation_weight=_boolean(
-            values["scale_by_radiation_weight"], source
-        ),
-        scale_by_inverse_phantom_mass=_boolean(
-            values["scale_by_inverse_phantom_mass"], source
-        ),
+        phantom_stem=str(values["phantom_stem"]),
+        name=str(values["name"]),
+        file=Path(str(values["file"])),
+        **{
+            field: _boolean(values[field], source)
+            for field in _RESPONSE_SCALE_FIELDS
+            if field in values
+        },
     )
 
 
-def _root_text(value):
-    if isinstance(value, bytes):
-        return value.decode()
-    return str(value)
-
-
-def _root_boolean(value, field, source):
-    value = int(value)
-    if value not in (0, 1):
-        raise ValueError("Expected 0 or 1 for %s in %s" % (field, source))
-    return bool(value)
-
-
-def _root_response_definitions(root_file):
-    source = Path(root_file.file_path).name
-    if "responses" not in root_file:
-        raise ValueError(source + " does not contain the responses ntuple")
-    tree = root_file["responses"]
-    missing = [field for field in _ROOT_RESPONSE_FIELDS if field not in tree]
-    if missing:
-        raise ValueError(
-            "responses ntuple is missing columns: " + ", ".join(missing)
+def _root_response_definitions(filename):
+    records = read_ntuple(filename, "responses", _RESPONSE_FIELDS)
+    return [
+        _response_definition(
+            {field: record[field] for field in _RESPONSE_FIELDS}, filename
         )
-    arrays = tree.arrays(_ROOT_RESPONSE_FIELDS, library="np")
-    responses = []
-    for index in range(len(arrays[_ROOT_RESPONSE_FIELDS[0]])):
-        responses.append(
-            ResponseDefinition(
-                phantom_stem=_root_text(arrays["phantom_stem"][index]),
-                name=_root_text(arrays["response_name"][index]),
-                file=Path(_root_text(arrays["response_file"][index])),
-                scale_by_crossing_energy=_root_boolean(
-                    arrays["scale_by_crossing_energy"][index],
-                    "scale_by_crossing_energy",
-                    source,
-                ),
-                scale_by_radiation_weight=_root_boolean(
-                    arrays["scale_by_radiation_weight"][index],
-                    "scale_by_radiation_weight",
-                    source,
-                ),
-                scale_by_inverse_phantom_mass=_root_boolean(
-                    arrays["scale_by_inverse_phantom_mass"][index],
-                    "scale_by_inverse_phantom_mass",
-                    source,
-                ),
-            )
-        )
-    return responses
+        for record in records
+    ]
 
 
 def read_macro_responses(filename):
@@ -145,7 +94,6 @@ def read_macro_responses(filename):
     responses = []
     phantom_name = None
     response = {}
-    configured_names = set()
     filename = Path(filename)
     with filename.open() as macro:
         for line_number, line in enumerate(macro, start=1):
@@ -156,39 +104,28 @@ def read_macro_responses(filename):
             if command == "/atris/phantom/name":
                 if len(fields) != 2:
                     raise ValueError(
-                        "Invalid phantom name command at %s:%i"
-                        % (filename, line_number)
+                        "Invalid command at %s:%i" % (filename, line_number)
                     )
                 phantom_name = fields[1]
-                continue
-            if command in _RESPONSE_PROPERTIES:
+            elif command in _RESPONSE_PROPERTIES:
                 if len(fields) != 2:
                     raise ValueError(
-                        "Invalid phantom response property at %s:%i"
-                        % (filename, line_number)
+                        "Invalid command at %s:%i" % (filename, line_number)
                     )
                 response[_RESPONSE_PROPERTIES[command]] = fields[1]
-                continue
-            if command != "/atris/phantom/response/add":
-                continue
-            if len(fields) != 1 or phantom_name is None:
-                raise ValueError(
-                    "Incomplete phantom response at %s:%i"
-                    % (filename, line_number)
+            elif command == "/atris/phantom/response/add":
+                if len(fields) != 1 or phantom_name is None:
+                    raise ValueError(
+                        "Incomplete phantom response at %s:%i"
+                        % (filename, line_number)
+                    )
+                response["phantom_stem"] = phantom_name
+                responses.append(
+                    _response_definition(
+                        response, "%s:%i" % (filename, line_number)
+                    )
                 )
-            response["phantom_stem"] = phantom_name
-            definition = _response_definition(
-                response,
-                "%s:%i" % (filename, line_number),
-            )
-            if definition.histogram_name in configured_names:
-                raise ValueError(
-                    "Duplicate %s response for phantom %s at %s:%i"
-                    % (definition.name, phantom_name, filename, line_number)
-                )
-            responses.append(definition)
-            configured_names.add(definition.histogram_name)
-            response.clear()
+                response = {}
     if response:
         raise ValueError("Incomplete phantom response at end of %s" % filename)
     return responses
@@ -385,7 +322,7 @@ class ResponseHistogramReader:
             return []
 
         if self.format == "root":
-            configured = _root_response_definitions(self._root())
+            configured = _root_response_definitions(str(self.prefix) + ".root")
         else:
             configured = []
             for histogram_name in output_names:
