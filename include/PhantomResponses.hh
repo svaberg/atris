@@ -13,8 +13,8 @@ namespace atris {
  * Describes one named response channel for one phantom.
  *
  * A channel combines a response-table file with the factors applied when a
- * particle crosses a layer interface. `values` points into storage owned by the
- * containing PhantomResponses object.
+ * particle crosses a layer interface. After the response is added, `values`
+ * points into storage owned by the containing PhantomResponses object.
  */
 struct PhantomResponse
 {
@@ -28,16 +28,16 @@ struct PhantomResponse
   G4String fileName;
 
   /// Multiply the table coefficient by the crossing particle's kinetic energy.
-  G4bool scaleByCrossingEnergy;
+  G4bool scaleByCrossingEnergy = false;
 
   /// Multiply by AtRIS's particle-dependent radiation weighting factor.
-  G4bool scaleByRadiationWeight;
+  G4bool scaleByRadiationWeight = false;
 
   /// Request inverse-mass scaling during Python post-processing.
-  G4bool scaleByInversePhantomMass;
+  G4bool scaleByInversePhantomMass = false;
 
   /// Flattened particle-by-energy response table owned by PhantomResponses.
-  const std::vector<G4double>* values;
+  const std::vector<G4double>* values = nullptr;
 };
 
 /**
@@ -56,19 +56,12 @@ class PhantomResponses
 {
   public:
     /**
-     * Adds or replaces a named response for a phantom.
+     * Loads the configured table and adds or replaces a named phantom response.
      *
      * Returns false when the table cannot be read, has the wrong number of
      * values, or has a PDG header inconsistent with tables already loaded.
      */
-    G4bool Add(
-      const G4String& phantomStem,
-      const G4String& responseName,
-      const G4String& fileName,
-      G4bool scaleByCrossingEnergy,
-      G4bool scaleByRadiationWeight,
-      G4bool scaleByInversePhantomMass
-    );
+    G4bool Add(PhantomResponse response);
 
     /// Returns configured responses in histogram-booking order.
     const std::vector<PhantomResponse>& GetAll() const { return fResponses; }

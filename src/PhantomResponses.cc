@@ -105,56 +105,42 @@ void PhantomResponses::ConfigureParticleLookup(
          << " data points in each phantom file." << G4endl;
 }
 
-G4bool PhantomResponses::Add(
-  const G4String& phantomStem,
-  const G4String& responseName,
-  const G4String& fileName,
-  const G4bool scaleByCrossingEnergy,
-  const G4bool scaleByRadiationWeight,
-  const G4bool scaleByInversePhantomMass
-)
+G4bool PhantomResponses::Add(PhantomResponse response)
 {
   const auto existing = std::find_if(
     fResponses.begin(),
     fResponses.end(),
-    [&](const PhantomResponse& response) {
-      return response.phantomStem == phantomStem
-        && response.name == responseName;
+    [&](const PhantomResponse& storedResponse) {
+      return storedResponse.phantomStem == response.phantomStem
+        && storedResponse.name == response.name;
     }
   );
-  auto table = fTables.find(fileName);
+  auto table = fTables.find(response.fileName);
   if (table == fTables.end()) {
-    G4cout << "### AtRIS: loading response '" << responseName
-           << "' for phantom '" << phantomStem << "' from " << fileName
+    G4cout << "### AtRIS: loading response '" << response.name
+           << "' for phantom '" << response.phantomStem << "' from "
+           << response.fileName
            << G4endl << std::flush;
     ResponseTable loaded;
-    if (!ReadResponseTable(fileName, loaded)) return false;
+    if (!ReadResponseTable(response.fileName, loaded)) return false;
     if (fParticleCodes.empty()) {
-      ConfigureParticleLookup(loaded.pdgs, fileName);
+      ConfigureParticleLookup(loaded.pdgs, response.fileName);
     } else if (loaded.pdgs != fParticleCodes) {
-      G4cerr << "### AtRIS: PDG header mismatch: " << fileName
+      G4cerr << "### AtRIS: PDG header mismatch: " << response.fileName
              << " does not match " << fParticleHeaderFile << G4endl;
       return false;
     }
-    if (!ValidateValueCount(fileName, loaded)) {
+    if (!ValidateValueCount(response.fileName, loaded)) {
       return false;
     }
     table = fTables.emplace(
-      fileName,
+      response.fileName,
       std::move(loaded.values)
     ).first;
   }
 
-  fPhantomStems.insert(phantomStem);
-  const PhantomResponse response = {
-    phantomStem,
-    responseName,
-    fileName,
-    scaleByCrossingEnergy,
-    scaleByRadiationWeight,
-    scaleByInversePhantomMass,
-    &table->second,
-  };
+  fPhantomStems.insert(response.phantomStem);
+  response.values = &table->second;
   if (existing == fResponses.end()) {
     fResponses.push_back(response);
   } else {

@@ -134,37 +134,37 @@ RunConfiguration::RunConfiguration(
 
   fPhantomMessenger.DeclareProperty(
     "name",
-    fSelectedPhantom.name,
+    fPendingResponse.phantomStem,
     "Select the phantom receiving subsequent responses."
   ).SetStates(G4State_PreInit);
 
   fPhantomResponseMessenger.DeclareProperty(
     "name",
-    fSelectedPhantom.response.name,
+    fPendingResponse.name,
     "Set the response histogram name."
   ).SetStates(G4State_PreInit);
 
   fPhantomResponseMessenger.DeclareProperty(
     "tableFile",
-    fSelectedPhantom.response.tableFile,
+    fPendingResponse.fileName,
     "Set the particle- and energy-dependent response-table file."
   ).SetStates(G4State_PreInit);
 
   fPhantomResponseMessenger.DeclareProperty(
     "scaleByCrossingEnergy",
-    fSelectedPhantom.response.scaleByCrossingEnergy,
+    fPendingResponse.scaleByCrossingEnergy,
     "Multiply the table coefficient by crossing kinetic energy in eV."
   ).SetStates(G4State_PreInit);
 
   fPhantomResponseMessenger.DeclareProperty(
     "scaleByRadiationWeight",
-    fSelectedPhantom.response.scaleByRadiationWeight,
+    fPendingResponse.scaleByRadiationWeight,
     "Multiply the response by the particle radiation weight."
   ).SetStates(G4State_PreInit);
 
   fPhantomResponseMessenger.DeclareProperty(
     "scaleByInversePhantomMass",
-    fSelectedPhantom.response.scaleByInversePhantomMass,
+    fPendingResponse.scaleByInversePhantomMass,
     "Divide this response by phantom mass during post-processing."
   ).SetStates(G4State_PreInit);
 
@@ -231,9 +231,9 @@ void RunConfiguration::SetOutputMode(G4String outputModeName)
 void RunConfiguration::AddPhantomResponse()
 {
   if (
-    fSelectedPhantom.name.empty()
-    || fSelectedPhantom.response.name.empty()
-    || fSelectedPhantom.response.tableFile.empty()
+    fPendingResponse.phantomStem.empty()
+    || fPendingResponse.name.empty()
+    || fPendingResponse.fileName.empty()
   ) {
     G4ExceptionDescription message;
     message << "Set /atris/phantom/name, /atris/phantom/response/name, and "
@@ -242,22 +242,17 @@ void RunConfiguration::AddPhantomResponse()
     fAddPhantomResponseCommand->CommandFailed(message);
     return;
   }
-  if (!fPhantomResponses.Add(
-        fSelectedPhantom.name,
-        fSelectedPhantom.response.name,
-        fSelectedPhantom.response.tableFile,
-        fSelectedPhantom.response.scaleByCrossingEnergy,
-        fSelectedPhantom.response.scaleByRadiationWeight,
-        fSelectedPhantom.response.scaleByInversePhantomMass
-      )) {
+  if (!fPhantomResponses.Add(fPendingResponse)) {
     G4ExceptionDescription message;
     message << "Could not configure response '"
-            << fSelectedPhantom.response.name << "' for phantom '"
-            << fSelectedPhantom.name << "'.";
+            << fPendingResponse.name << "' for phantom '"
+            << fPendingResponse.phantomStem << "'.";
     fAddPhantomResponseCommand->CommandFailed(message);
     return;
   }
-  fSelectedPhantom.response = {};
+  const G4String phantomStem = fPendingResponse.phantomStem;
+  fPendingResponse = {};
+  fPendingResponse.phantomStem = phantomStem;
 }
 
 void RunConfiguration::Initialize()

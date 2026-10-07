@@ -1,6 +1,8 @@
 #ifndef RunConfiguration_hh
 #define RunConfiguration_hh
 
+#include "PhantomResponses.hh"
+
 #include "G4GenericMessenger.hh"
 #include "globals.hh"
 
@@ -10,7 +12,6 @@ class G4UIcommand;
 
 namespace atris {
 
-class PhantomResponses;
 struct RunSettings;
 
 /**
@@ -39,23 +40,6 @@ class RunConfiguration
     );
 
   private:
-    /// Values accumulated while the macro describes one response.
-    struct PendingResponse
-    {
-      G4String name;
-      G4String tableFile;
-      G4bool scaleByCrossingEnergy = false;
-      G4bool scaleByRadiationWeight = false;
-      G4bool scaleByInversePhantomMass = false;
-    };
-
-    /// The selected phantom and the response currently being assembled for it.
-    struct SelectedPhantom
-    {
-      G4String name;
-      PendingResponse response;
-    };
-
     void SetRandomSeeds(G4long firstSeed, G4long secondSeed);
     void SetOutputMode(G4String outputModeName);
     void AddPhantomResponse();
@@ -84,7 +68,8 @@ class RunConfiguration
     /// Owns the `/atris/phantom/response/` commands.
     G4GenericMessenger fPhantomResponseMessenger;
 
-    SelectedPhantom fSelectedPhantom;
+    /// Response assembled by macro properties before `response/add` loads it.
+    PhantomResponse fPendingResponse;
     G4UIcommand* fAddPhantomResponseCommand = nullptr;
     G4UIcommand* fInitializeCommand = nullptr;
 };
