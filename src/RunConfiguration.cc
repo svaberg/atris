@@ -23,14 +23,12 @@
 
 namespace {
 
-constexpr G4int kInvalidOutputMode = 2;
-
 G4int OutputModeValue(const G4String& name)
 {
   if (name == "response") return atris::kResponseOutputMode;
   if (name == "profile") return atris::kInterfaceOutputMode;
   if (name == "shower") return atris::kStepOutputMode;
-  return kInvalidOutputMode;
+  return atris::kInvalidOutputMode;
 }
 
 G4int CountSensitiveDetectors(const G4GDMLParser& parser)
@@ -248,7 +246,7 @@ void RunConfiguration::InstallUserActionsIfConfigured()
     || fEnergyBinsFileName.empty()
     || fSettings.outputStem.empty()
     || fSettings.physicsListName.empty()
-    || !fHasConfiguredOutputMode
+    || fSettings.outputMode == kInvalidOutputMode
     || fSettings.outputFileFormat.empty()
   ) return;
   fRunManager->SetUserInitialization(
@@ -357,7 +355,7 @@ void RunConfiguration::SetRandomSeeds(
   const G4long secondSeed
 )
 {
-  if (fSettings.hasExplicitSeeds) {
+  if (fSettings.explicitSeeds[0] != 0) {
     if (
       firstSeed == fSettings.explicitSeeds[0]
       && secondSeed == fSettings.explicitSeeds[1]
@@ -373,7 +371,6 @@ void RunConfiguration::SetRandomSeeds(
   const std::array<G4long, 3> seeds = {firstSeed, secondSeed, 0};
   G4Random::setTheSeeds(seeds.data());
   fSettings.explicitSeeds = {firstSeed, secondSeed};
-  fSettings.hasExplicitSeeds = true;
   G4cout << "### AtRIS: using random seeds " << firstSeed << " and "
          << secondSeed << G4endl;
 }
@@ -439,7 +436,7 @@ void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)
 void RunConfiguration::SetOutputMode(G4String requestedOutputMode)
 {
   const G4int requestedValue = OutputModeValue(requestedOutputMode);
-  if (fHasConfiguredOutputMode) {
+  if (fSettings.outputMode != kInvalidOutputMode) {
     if (requestedValue == fSettings.outputMode) return;
 
     G4ExceptionDescription message;
@@ -450,7 +447,6 @@ void RunConfiguration::SetOutputMode(G4String requestedOutputMode)
   }
 
   fSettings.outputMode = requestedValue;
-  fHasConfiguredOutputMode = true;
   InstallUserActionsIfConfigured();
   ReportOutputMode();
 }

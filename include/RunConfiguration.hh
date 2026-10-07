@@ -42,7 +42,6 @@ class RunConfiguration
     PhantomResponses& fPhantomResponses;
     G4String fGeometryFileName;
     G4String fEnergyBinsFileName;
-    G4bool fHasConfiguredOutputMode = false;
     G4bool fHasUserActions = false;
     G4GenericMessenger fMessenger;
     G4GenericMessenger fDirectionHistogramMessenger;

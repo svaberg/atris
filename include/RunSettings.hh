@@ -16,9 +16,8 @@ struct RunSettings
   G4String outputFileFormat;
   G4String simulationInputPrefix;
   G4String physicsListName;
-  G4int outputMode = kResponseOutputMode;
+  G4int outputMode = kInvalidOutputMode;
   G4int detectorCount = 0;
-  G4bool hasExplicitSeeds = false;
   std::array<G4long, 2> explicitSeeds = {0, 0};
   std::vector<G4double> energyBins;
   std::vector<G4double> detectorBins;

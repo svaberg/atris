@@ -45,7 +45,7 @@ void AnnotateHistogram(
 	histogram->add_annotation("atris.physics_list", settings.physicsListName);
 	histogram->add_annotation("atris.output_mode", std::to_string(settings.outputMode));
 	histogram->add_annotation("atris.phantom_count", std::to_string(phantomCount));
-	if (settings.hasExplicitSeeds) {
+	if (settings.explicitSeeds[0] != 0) {
 		histogram->add_annotation(
 			"atris.random_seed_pairs",
 			std::to_string(settings.explicitSeeds[0]) + ":"
@@ -329,7 +329,9 @@ void HistoManager::FillMetadata() const
 		fPhantomResponses.GetPhantomCount()
 	);
 	analysis->FillNtupleIColumn(
-		kMetadataNtupleId, kMetadataSeedsExplicit, fSettings.hasExplicitSeeds
+		kMetadataNtupleId,
+		kMetadataSeedsExplicit,
+		fSettings.explicitSeeds[0] != 0
 	);
 	analysis->FillNtupleIColumn(
 		kMetadataNtupleId, kMetadataRandomSeed1, fSettings.explicitSeeds[0]
