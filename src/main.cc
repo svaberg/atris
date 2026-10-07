@@ -5,6 +5,7 @@
 #include "G4GDMLParser.hh"
 #include "G4MTRunManager.hh"
 #include "G4Threading.hh"
+#include "G4UIcommandStatus.hh"
 #include "G4UImanager.hh"
 #include "Randomize.hh"
 
@@ -48,7 +49,7 @@ int main(int argc,char** argv){
 	const auto macroEnd = std::chrono::steady_clock::now();
 	const G4int workerThreads = runManager->GetNumberOfThreads();
 	G4cout << "### AtRIS: simulation used " << workerThreads << " worker thread(s)" << G4endl;
-	if (commandStatus == 0) {
+	if (commandStatus == fCommandSucceeded) {
 		G4cout << "### AtRIS: the simulation has completed " << G4endl;
 	} else {
 		G4cerr << "### AtRIS: macro execution failed with Geant4 status " << commandStatus << G4endl;
@@ -66,10 +67,10 @@ int main(int argc,char** argv){
 		<< totalSeconds - macroSeconds << " s\n"
 		<< "### AtRIS timing: total wall time: " << totalSeconds << " s"
 		<< G4endl;
-	if (commandStatus == 0) {
+	if (commandStatus == fCommandSucceeded) {
 		G4cout << "### AtRIS: Run completed successfully." << G4endl;
 	} else {
 		G4cerr << "### AtRIS: Run failed." << G4endl;
 	}
-	return commandStatus == 0 ? 0 : 1;
+	return commandStatus == fCommandSucceeded ? EXIT_SUCCESS : EXIT_FAILURE;
 }
