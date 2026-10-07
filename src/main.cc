@@ -49,6 +49,8 @@ int main(int argc,char** argv){
 	G4cout << "### AtRIS: executing macro " << macroName << G4endl;
 	G4cout << "### AtRIS: Starting the simulation " << G4endl;
 	const auto macroStart = std::chrono::steady_clock::now();
+	// Execute the macro synchronously. Particle transport starts when the macro
+	// reaches /run/beamOn; this call returns after the complete macro has run.
 	const G4int commandStatus = G4UImanager::GetUIpointer()->ApplyCommand(command);
 	const auto macroEnd = std::chrono::steady_clock::now();
 	const G4int workerThreads = runManager->GetNumberOfThreads();
