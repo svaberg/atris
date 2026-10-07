@@ -256,17 +256,9 @@ void RunConfiguration::AddPhantomResponse()
 
 void RunConfiguration::Initialize()
 {
-  if (
-    fGeometryFileName.empty()
-    || fEnergyBinsFileName.empty()
-    || fSettings.outputStem.empty()
-    || fSettings.physicsListName.empty()
-    || fOutputModeName.empty()
-    || fSettings.outputFileFormat.empty()
-  ) {
+  if (fSettings.outputStem.empty()) {
     G4ExceptionDescription message;
-    message << "AtRIS initialization requires geometryFile, energyBinsFile, "
-               "outputStem, physicsList, outputMode, and outputFormat.";
+    message << "AtRIS initialization requires outputStem.";
     fInitializeCommand->CommandFailed(message);
     return;
   }

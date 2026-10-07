@@ -13,9 +13,9 @@ namespace atris {
 struct RunSettings
 {
   G4String outputStem;
-  G4String outputFileFormat;
+  G4String outputFileFormat = "csv";
   G4String simulationInputPrefix;
-  G4String physicsListName;
+  G4String physicsListName = "FTFP_BERT_HP";
   G4int outputMode = kInvalidOutputMode;
   G4int detectorCount = 0;
   std::array<G4long, 2> explicitSeeds = {0, 0};

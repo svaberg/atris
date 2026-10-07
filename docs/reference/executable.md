@@ -91,6 +91,10 @@ Adding the same response name again for that phantom replaces its earlier
 definition.
 Omit these commands for a run without phantom responses.
 
+AtRIS defaults to `simulation.gdml`, `simulation.bins`, `FTFP_BERT_HP`,
+`response` output, and CSV output when the corresponding commands are omitted.
+The output stem remains required. Generated macros state every value explicitly.
+
 Configuration commands must precede `/atris/initialize`. Repeating a setting
 before initialization replaces its earlier value. Initialization makes the
 `/gps/` source commands available. The final `/run/beamOn` starts transport.

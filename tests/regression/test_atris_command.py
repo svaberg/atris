@@ -733,6 +733,40 @@ def test_repeated_configuration_uses_last_value(tmp_path, atris_command):
 
 
 @pytest.mark.regression
+def test_macro_uses_cpp_configuration_defaults(tmp_path, atris_command):
+    macro = prepare_run(tmp_path)
+    (tmp_path / "planet.gdml").rename(tmp_path / "simulation.gdml")
+    (tmp_path / "primary-energy.bins").rename(tmp_path / "simulation.bins")
+    for command in (
+        "/atris/geometryFile ",
+        "/atris/energyBinsFile ",
+        "/atris/physicsList ",
+        "/atris/outputMode ",
+        "/atris/outputFormat ",
+    ):
+        replace_command(macro, command)
+
+    result = run_atris(atris_command, tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    annotations = csv_histogram_annotations(tmp_path / "protons_h1_h1.1.csv")
+    assert annotations["atris.input_prefix"] == "simulation"
+    assert annotations["atris.physics_list"] == "FTFP_BERT_HP"
+    assert annotations["atris.output_mode"] == "-1"
+
+
+@pytest.mark.regression
+def test_macro_requires_output_stem(tmp_path, atris_command):
+    macro = prepare_run(tmp_path)
+    replace_command(macro, "/atris/outputStem ")
+
+    result = run_atris(atris_command, tmp_path)
+
+    assert result.returncode != 0
+    assert "AtRIS initialization requires outputStem" in result.stdout + result.stderr
+
+
+@pytest.mark.regression
 def test_macro_configures_source_histogram_bins(tmp_path, atris_command):
     prepare_run(tmp_path)
     replace_command(

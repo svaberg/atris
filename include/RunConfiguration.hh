@@ -32,9 +32,9 @@ class RunConfiguration
     RunSettings& fSettings;
     ::G4GDMLParser& fParser;
     PhantomResponses& fPhantomResponses;
-    G4String fGeometryFileName;
-    G4String fEnergyBinsFileName;
-    G4String fOutputModeName;
+    G4String fGeometryFileName = "simulation.gdml";
+    G4String fEnergyBinsFileName = "simulation.bins";
+    G4String fOutputModeName = "response";
     G4GenericMessenger fMessenger;
     G4GenericMessenger fDirectionHistogramMessenger;
     G4GenericMessenger fPositionHistogramMessenger;
