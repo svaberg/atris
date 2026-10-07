@@ -73,17 +73,12 @@ G4double AccumulatedResponse(
 	const G4double kineticEnergy
 )
 {
-	const G4double coefficient = (*response.values)[responseIndex];
-	switch (response.accumulation) {
-		case ResponseAccumulation::kCoefficient:
-			return coefficient;
-		case ResponseAccumulation::kEnergy:
-			return coefficient*kineticEnergy/eV;
-		case ResponseAccumulation::kRadiationWeightedEnergy:
-			return coefficient*kineticEnergy/eV
-				*RadiationWeight(particlePDG, kineticEnergy);
+	G4double value = (*response.values)[responseIndex];
+	if (response.scaleByCrossingEnergy) value *= kineticEnergy/eV;
+	if (response.scaleByRadiationWeight) {
+		value *= RadiationWeight(particlePDG, kineticEnergy);
 	}
-	return 0.;
+	return value;
 }
 
 }  // namespace

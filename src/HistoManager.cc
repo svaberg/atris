@@ -68,30 +68,21 @@ void AnnotateHistogram(
 	}
 }
 
-G4String AccumulationName(const atris::ResponseAccumulation accumulation)
+G4String BooleanName(const G4bool value)
 {
-	switch (accumulation) {
-		case atris::ResponseAccumulation::kCoefficient:
-			return "coefficient";
-		case atris::ResponseAccumulation::kEnergy:
-			return "energy";
-		case atris::ResponseAccumulation::kRadiationWeightedEnergy:
-			return "radiation-weighted-energy";
-	}
-	return "unknown";
+	return value ? "true" : "false";
 }
 
-G4String AccumulatedWeight(const atris::ResponseAccumulation accumulation)
+G4String AccumulatedWeight(const atris::PhantomResponse& response)
 {
-	switch (accumulation) {
-		case atris::ResponseAccumulation::kCoefficient:
-			return "response coefficient";
-		case atris::ResponseAccumulation::kEnergy:
-			return "response coefficient times crossing kinetic energy [eV]";
-		case atris::ResponseAccumulation::kRadiationWeightedEnergy:
-			return "response coefficient times crossing kinetic energy and radiation weight [eV]";
+	G4String weight = "response coefficient";
+	if (response.scaleByCrossingEnergy) {
+		weight += " times crossing kinetic energy [eV]";
 	}
-	return "unknown response weight";
+	if (response.scaleByRadiationWeight) {
+		weight += " times radiation weight";
+	}
+	return weight;
 }
 
 }  // namespace
@@ -213,9 +204,7 @@ void HistoManager::Book() const
 	for (const PhantomResponse& response : responses) {
 		const G4String histogramName =
 			"h2." + response.phantomStem + "." + response.name;
-		const G4String accumulatedWeight = AccumulatedWeight(
-			response.accumulation
-		);
+		const G4String accumulatedWeight = AccumulatedWeight(response);
 		id = analysis->CreateH2(
 			histogramName,
 			response.name + " response for " + response.phantomStem,
@@ -237,8 +226,16 @@ void HistoManager::Book() const
 			histogram->add_annotation("atris.response_name", response.name);
 			histogram->add_annotation("atris.response_file", response.fileName);
 			histogram->add_annotation(
-				"atris.response_accumulation",
-				AccumulationName(response.accumulation)
+				"atris.response_scale_by_crossing_energy",
+				BooleanName(response.scaleByCrossingEnergy)
+			);
+			histogram->add_annotation(
+				"atris.response_scale_by_radiation_weight",
+				BooleanName(response.scaleByRadiationWeight)
+			);
+			histogram->add_annotation(
+				"atris.response_scale_by_inverse_phantom_mass",
+				BooleanName(response.scaleByInversePhantomMass)
 			);
 		}
 		analysis->SetH2XAxisTitle(id, "Primary kinetic energy [MeV]");

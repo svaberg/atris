@@ -9,6 +9,7 @@ from matplotlib.colors import LogNorm
 import numpy as np
 
 from .psf import read_psf_layers
+from .response_histograms import read_macro_responses
 from .units import energy_to_mev
 
 
@@ -200,56 +201,15 @@ def _energy_in_mev(setting):
 
 def read_macro_phantoms(filename):
     phantoms = {}
-    phantom_name = None
-    response = {}
-    property_commands = {
-        "/atris/phantom/response/accumulation": "accumulation",
-        "/atris/phantom/response/name": "name",
-        "/atris/phantom/response/tableFile": "file",
-    }
-    with Path(filename).open() as macro:
-        for line_number, line in enumerate(macro, start=1):
-            fields = line.split()
-            if not fields or fields[0].startswith("#"):
-                continue
-            command = fields[0]
-            if command == "/atris/phantom/name":
-                if len(fields) != 2:
-                    raise ValueError(
-                        "Invalid phantom name command at %s:%i"
-                        % (filename, line_number)
-                    )
-                phantom_name = fields[1]
-                continue
-            if command in property_commands:
-                if len(fields) != 2:
-                    raise ValueError(
-                        "Invalid phantom response property at %s:%i"
-                        % (filename, line_number)
-                    )
-                response[property_commands[command]] = fields[1]
-                continue
-            if command != "/atris/phantom/response/add":
-                continue
-            if len(fields) != 1 or phantom_name is None or len(response) != 3:
-                raise ValueError(
-                    "Incomplete phantom response at %s:%i"
-                    % (filename, line_number)
-                )
-            response_name = response["name"]
-            configured = phantoms.setdefault(phantom_name, {})
-            if response_name in configured:
-                raise ValueError(
-                    "Duplicate %s response for phantom %s at %s:%i"
-                    % (response_name, phantom_name, filename, line_number)
-                )
-            configured[response_name] = {
-                "accumulation": response["accumulation"],
-                "file": Path(response["file"]),
-            }
-            response.clear()
-    if response:
-        raise ValueError("Incomplete phantom response at end of %s" % filename)
+    for response in read_macro_responses(filename):
+        phantoms.setdefault(response.phantom_stem, {})[response.name] = {
+            "file": response.file,
+            "scale_by_crossing_energy": response.scale_by_crossing_energy,
+            "scale_by_radiation_weight": response.scale_by_radiation_weight,
+            "scale_by_inverse_phantom_mass": (
+                response.scale_by_inverse_phantom_mass
+            ),
+        }
     return phantoms
 
 

@@ -211,11 +211,12 @@ def genMacro(
     )
     lines.extend(
         (
-            "# accumulation chooses the calculation: coefficient uses the table",
-            "# value directly; energy multiplies it by crossing energy in eV;",
-            "# radiation-weighted-energy also applies the radiation weight.",
+            "# Each response starts with its table coefficient. The three scaleBy",
+            "# settings independently apply crossing energy, radiation weight, and",
+            "# inverse phantom mass. The first two act during transport; inverse",
+            "# phantom mass is applied by atris-postprocess.",
             "# name labels the output, tableFile supplies coefficients, and add",
-            "# registers the response and clears those three response properties.",
+            "# registers the response and clears the response properties.",
         )
     )
     phantoms = read_phantoms(output_dir)
@@ -227,24 +228,45 @@ def genMacro(
         lines.extend(
             ("", "# Phantom: " + stem, "/atris/phantom/name %s" % stem)
         )
-        for response_name, response_description, accumulation, filename in (
-            ("dos", "absorbed dose", "energy", response.name),
+        for (
+            response_name,
+            response_description,
+            filename,
+            scale_by_energy,
+            scale_by_radiation_weight,
+            scale_by_inverse_mass,
+        ) in (
+            ("dos", "absorbed dose", response.name, True, False, True),
             (
                 "equi",
                 "equivalent dose",
-                "radiation-weighted-energy",
                 response.name,
+                True,
+                True,
+                True,
             ),
-            ("rates", "counting response", "coefficient", counting.name),
+            (
+                "rates",
+                "counting response",
+                counting.name,
+                False,
+                False,
+                False,
+            ),
         ):
             lines.extend(
                 (
                     "",
                     "# Response: %s (name: %s)"
                     % (response_description, response_name),
-                    "/atris/phantom/response/accumulation %s" % accumulation,
                     "/atris/phantom/response/name %s" % response_name,
                     "/atris/phantom/response/tableFile %s" % filename,
+                    "/atris/phantom/response/scaleByCrossingEnergy %s"
+                    % str(scale_by_energy).lower(),
+                    "/atris/phantom/response/scaleByRadiationWeight %s"
+                    % str(scale_by_radiation_weight).lower(),
+                    "/atris/phantom/response/scaleByInversePhantomMass %s"
+                    % str(scale_by_inverse_mass).lower(),
                     "/atris/phantom/response/add",
                 )
             )

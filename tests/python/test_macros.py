@@ -128,7 +128,10 @@ def test_macro_generation_is_reproducible_and_preserves_requested_counts(tmp_pat
         if line.startswith("/") and not line.startswith("/atris/phantom/"):
             assert proton_lines[line_number - 1].startswith("# ")
 
-    assert proton_macro.count("# accumulation chooses the calculation:") == 1
+    assert (
+        proton_macro.count("# Each response starts with its table coefficient.")
+        == 1
+    )
     assert proton_macro.endswith("# End of AtRIS simulation macro.\n")
     assert alpha_macro.endswith("# End of AtRIS simulation macro.\n")
 
@@ -154,22 +157,28 @@ def test_macro_names_each_phantom_input_file(tmp_path):
     assert "# Response: counting response (name: rates)\n" in macro
     commands = [line for line in macro.splitlines() if line.startswith("/")]
     ramona_start = commands.index("/atris/phantom/name ramona")
-    assert commands[ramona_start : ramona_start + 13] == [
+    assert commands[ramona_start : ramona_start + 19] == [
         "/atris/phantom/name ramona",
-        "/atris/phantom/response/accumulation energy",
         "/atris/phantom/response/name dos",
         "/atris/phantom/response/tableFile ramona_response.txt",
+        "/atris/phantom/response/scaleByCrossingEnergy true",
+        "/atris/phantom/response/scaleByRadiationWeight false",
+        "/atris/phantom/response/scaleByInversePhantomMass true",
         "/atris/phantom/response/add",
-        "/atris/phantom/response/accumulation radiation-weighted-energy",
         "/atris/phantom/response/name equi",
         "/atris/phantom/response/tableFile ramona_response.txt",
+        "/atris/phantom/response/scaleByCrossingEnergy true",
+        "/atris/phantom/response/scaleByRadiationWeight true",
+        "/atris/phantom/response/scaleByInversePhantomMass true",
         "/atris/phantom/response/add",
-        "/atris/phantom/response/accumulation coefficient",
         "/atris/phantom/response/name rates",
         "/atris/phantom/response/tableFile ramona_counting.txt",
+        "/atris/phantom/response/scaleByCrossingEnergy false",
+        "/atris/phantom/response/scaleByRadiationWeight false",
+        "/atris/phantom/response/scaleByInversePhantomMass false",
         "/atris/phantom/response/add",
     ]
-    assert commands[ramona_start + 13] == "/atris/phantom/name cell"
+    assert commands[ramona_start + 19] == "/atris/phantom/name cell"
 
 
 def test_macro_generation_rejects_too_short_energy_grid(tmp_path):

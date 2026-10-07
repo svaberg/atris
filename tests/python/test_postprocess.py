@@ -11,6 +11,7 @@ from atris_tools import postprocess
 from atris_tools.response_histograms import (
     PRIMARY_HISTOGRAM,
     TOTAL_DEPOSITION_HISTOGRAM,
+    ResponseDefinition,
     ResponseHistogramReader,
     csv_histogram_axes,
     read_csv_histogram,
@@ -198,6 +199,31 @@ def test_process_phantoms_uses_stems_independently_of_row_order(
     phantoms = postprocess.process_phantoms(["first", "second"])
 
     np.testing.assert_allclose(phantoms, [[10.5, 20.5], [30.5, 40.5]])
+
+
+def test_response_scaling_uses_explicit_inverse_mass_factor():
+    histogram = np.zeros((3, 3))
+    histogram[1, 1] = 12.0
+    data = [np.array([0.0, 2.0, 0.0])] + [histogram.copy() for _ in range(6)]
+    responses = [
+        ResponseDefinition("body", "first", Path("a.txt"), False, False, False),
+        ResponseDefinition("body", "second", Path("b.txt"), False, False, True),
+    ]
+    geometry = {
+        "volume/cm3": np.array([1.0]),
+        "inn_surface/cm2": np.array([5.0]),
+    }
+
+    scaled = postprocess.scale_data(
+        data,
+        responses,
+        ["body"],
+        np.array([[2.0, 10.0]]),
+        geometry,
+    )
+
+    assert scaled[4][0, 0] == pytest.approx(12.0)
+    assert scaled[5][0, 0] == pytest.approx(6.0)
 
 
 def test_main_skips_missing_species(tmp_path, monkeypatch, caplog):

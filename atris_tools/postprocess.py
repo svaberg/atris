@@ -210,7 +210,8 @@ def process_phantoms(phantom_stems):
 
 def scale_data(
     data,
-    nphant,
+    responses,
+    phantom_stems,
     phantom_data,
     geometry,
     atmospheric_response_count=1,
@@ -221,13 +222,16 @@ def scale_data(
         new_data = data[hist_index][1:-1, 1:-1].T
         data[hist_index] = new_data / nrparticles[None, :]
         data[hist_index] = data[hist_index] / geometry["volume/cm3"][:, None]
-    for hist_index in range(phantom_start, phantom_start + nphant * 3):
+    phantom_indices = {
+        stem: index for index, stem in enumerate(phantom_stems)
+    }
+    for response_index, response in enumerate(responses):
+        hist_index = phantom_start + response_index
         new_data = data[hist_index][1:-1, 1:-1].T
         data[hist_index] = new_data / nrparticles[None, :]
-        phantom_offset = hist_index - phantom_start
-        phantom_nr = int(phantom_offset / 3)
+        phantom_nr = phantom_indices[response.phantom_stem]
         phantom_surface = phantom_data[phantom_nr, 1]
-        if (phantom_offset % 3) != 2:
+        if response.scale_by_inverse_phantom_mass:
             phantom_surface = phantom_surface / phantom_data[phantom_nr, 0]
         data[hist_index] = (
             data[hist_index]
@@ -241,14 +245,13 @@ def make_output(
     data,
     geometry,
     simname,
-    phantom_stems,
+    responses,
     atmospheric_extensions=(".ioni",),
 ):
     altitude = (geometry["inn_surface/cm2"] / (4.0 * np.pi)) ** 0.5 / 100000.0
     altitude = altitude - altitude[2]
     altitude = altitude[1:-1, None]
     sdid = geometry["sdid"][1:-1, None]
-    extensions = ("dose", "equi", "rates")
     number_format = ["%.5e"] * data[3].shape[1]
     number_format = ["%8.3f"] + number_format
     number_format = ["%5i"] + number_format
@@ -257,13 +260,17 @@ def make_output(
         (3 + offset, extension)
         for offset, extension in enumerate(atmospheric_extensions)
     ]
+    response_extensions = {"dos": "dose"}
     outputs.extend(
         (
-            phantom_start + phantom_index * 3 + response_index,
-            ".%s.%s" % (stem, extension),
+            phantom_start + response_index,
+            ".%s.%s"
+            % (
+                response.phantom_stem,
+                response_extensions.get(response.name, response.name),
+            ),
         )
-        for phantom_index, stem in enumerate(phantom_stems)
-        for response_index, extension in enumerate(extensions)
+        for response_index, response in enumerate(responses)
     )
     for hist_index, extension in outputs:
         histogram_data = data[hist_index][1:-1, :]
@@ -282,13 +289,8 @@ def process_run(simname):
         for warning in _input_output_warnings(simname, histograms):
             logger.warning("%s", warning)
         geometry, _ = process_psf()
-        response_names = histograms.responses()
-        standard_responses = {"dos", "equi", "rates"}
-        phantom_stems = sorted(
-            stem
-            for stem, names in response_names.items()
-            if names & standard_responses
-        )
+        responses = histograms.response_definitions()
+        phantom_stems = sorted({response.phantom_stem for response in responses})
         phantom_count = len(phantom_stems)
         energy_edges = histograms.axes(PRIMARY_HISTOGRAM)[0]
         phantom_data = process_phantoms(phantom_stems)
@@ -305,16 +307,13 @@ def process_run(simname):
             atmospheric_outputs.append((TOTAL_DEPOSITION_HISTOGRAM, ".edep"))
         names = [PRIMARY_HISTOGRAM, "h2.dir", "h2.pos"]
         names += [name for name, _ in atmospheric_outputs]
-        names += [
-            "h2.%s.%s" % (stem, quantity)
-            for stem in phantom_stems
-            for quantity in ("dos", "equi", "rates")
-        ]
+        names += [response.histogram_name for response in responses]
         data = [histograms.values(name) for name in names]
     logger.debug("Scaling %s response data", simname)
     scaled_data = scale_data(
         data,
-        phantom_count,
+        responses,
+        phantom_stems,
         phantom_data,
         geometry,
         atmospheric_response_count=len(atmospheric_outputs),
@@ -324,7 +323,7 @@ def process_run(simname):
         scaled_data,
         geometry,
         simname,
-        phantom_stems,
+        responses,
         atmospheric_extensions=tuple(
             extension for _, extension in atmospheric_outputs
         ),
@@ -344,8 +343,8 @@ def main():
             "The command processes the protons and alphas prefixes when their "
             "primary histogram files are present. It reads simulation.psf and, "
             "for phantom responses, phantoms.txt; it writes .ioni, .edep when "
-            "total-deposition input is present, and stem-named dose, equi, and "
-            "rates files, replacing existing processed files. "
+            "total-deposition input is present, and one stem- and response-named "
+            "file per phantom response, replacing existing processed files. "
             "Missing species are skipped. This command does not gather chunk "
             "histograms, run simulations, or make plots."
         ),

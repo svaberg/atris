@@ -1,5 +1,6 @@
 """Read AtRIS response histograms from Geant4 CSV or ROOT output."""
 
+from dataclasses import dataclass
 import re
 from pathlib import Path
 
@@ -10,6 +11,128 @@ import uproot
 PRIMARY_HISTOGRAM = "h1.1"
 IONIZATION_HISTOGRAM = "h2.ion"
 TOTAL_DEPOSITION_HISTOGRAM = "h2.edep"
+_RESPONSE_PROPERTIES = {
+    "/atris/phantom/response/name": "name",
+    "/atris/phantom/response/tableFile": "file",
+    "/atris/phantom/response/scaleByCrossingEnergy": "scale_by_crossing_energy",
+    "/atris/phantom/response/scaleByRadiationWeight": "scale_by_radiation_weight",
+    "/atris/phantom/response/scaleByInversePhantomMass": (
+        "scale_by_inverse_phantom_mass"
+    ),
+}
+_RESPONSE_ANNOTATIONS = {
+    "atris.phantom_stem": "phantom_stem",
+    "atris.response_name": "name",
+    "atris.response_file": "file",
+    "atris.response_scale_by_crossing_energy": "scale_by_crossing_energy",
+    "atris.response_scale_by_radiation_weight": "scale_by_radiation_weight",
+    "atris.response_scale_by_inverse_phantom_mass": (
+        "scale_by_inverse_phantom_mass"
+    ),
+}
+
+
+@dataclass(frozen=True)
+class ResponseDefinition:
+    """Configuration and identity of one phantom response histogram."""
+
+    phantom_stem: str
+    name: str
+    file: Path
+    scale_by_crossing_energy: bool
+    scale_by_radiation_weight: bool
+    scale_by_inverse_phantom_mass: bool
+
+    @property
+    def histogram_name(self):
+        return "h2.%s.%s" % (self.phantom_stem, self.name)
+
+
+def _boolean(value, source):
+    normalized = value.lower()
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
+    raise ValueError("Expected true or false for %s, got %s" % (source, value))
+
+
+def _response_definition(values, source):
+    required = {"phantom_stem", *_RESPONSE_PROPERTIES.values()}
+    missing = required - values.keys()
+    if missing:
+        raise ValueError(
+            "Incomplete phantom response in %s; missing: %s"
+            % (source, ", ".join(sorted(missing)))
+        )
+    return ResponseDefinition(
+        phantom_stem=values["phantom_stem"],
+        name=values["name"],
+        file=Path(values["file"]),
+        scale_by_crossing_energy=_boolean(
+            values["scale_by_crossing_energy"], source
+        ),
+        scale_by_radiation_weight=_boolean(
+            values["scale_by_radiation_weight"], source
+        ),
+        scale_by_inverse_phantom_mass=_boolean(
+            values["scale_by_inverse_phantom_mass"], source
+        ),
+    )
+
+
+def read_macro_responses(filename):
+    """Read explicit phantom response definitions from an AtRIS macro."""
+    responses = []
+    phantom_name = None
+    response = {}
+    configured_names = set()
+    filename = Path(filename)
+    with filename.open() as macro:
+        for line_number, line in enumerate(macro, start=1):
+            fields = line.split()
+            if not fields or fields[0].startswith("#"):
+                continue
+            command = fields[0]
+            if command == "/atris/phantom/name":
+                if len(fields) != 2:
+                    raise ValueError(
+                        "Invalid phantom name command at %s:%i"
+                        % (filename, line_number)
+                    )
+                phantom_name = fields[1]
+                continue
+            if command in _RESPONSE_PROPERTIES:
+                if len(fields) != 2:
+                    raise ValueError(
+                        "Invalid phantom response property at %s:%i"
+                        % (filename, line_number)
+                    )
+                response[_RESPONSE_PROPERTIES[command]] = fields[1]
+                continue
+            if command != "/atris/phantom/response/add":
+                continue
+            if len(fields) != 1 or phantom_name is None:
+                raise ValueError(
+                    "Incomplete phantom response at %s:%i"
+                    % (filename, line_number)
+                )
+            response["phantom_stem"] = phantom_name
+            definition = _response_definition(
+                response,
+                "%s:%i" % (filename, line_number),
+            )
+            if definition.histogram_name in configured_names:
+                raise ValueError(
+                    "Duplicate %s response for phantom %s at %s:%i"
+                    % (definition.name, phantom_name, filename, line_number)
+                )
+            responses.append(definition)
+            configured_names.add(definition.histogram_name)
+            response.clear()
+    if response:
+        raise ValueError("Incomplete phantom response at end of %s" % filename)
+    return responses
 
 
 def csv_histogram_path(prefix, name):
@@ -48,6 +171,19 @@ def read_csv_histogram(path):
     lines, column_index = _csv_lines(path)
     data = np.loadtxt(path, delimiter=",", skiprows=column_index + 1)
     return lines[:column_index], lines[column_index], np.atleast_2d(data)
+
+
+def csv_histogram_annotations(path):
+    """Return native Geant4 annotations from a CSV histogram header."""
+    annotations = {}
+    for line in Path(path).read_text().splitlines():
+        if not line.startswith("#"):
+            break
+        if line.startswith("#annotation "):
+            fields = line.split(maxsplit=2)
+            if len(fields) == 3:
+                annotations[fields[1]] = fields[2]
+    return annotations
 
 
 def csv_histogram_axes(path):
@@ -178,6 +314,46 @@ class ResponseHistogramReader:
             if match is not None:
                 responses.setdefault(match.group(1), set()).add(match.group(2))
         return responses
+
+    def response_definitions(self):
+        """Return response metadata independently of histogram storage format."""
+        output_names = {
+            "h2.%s.%s" % (stem, name)
+            for stem, names in self.responses().items()
+            for name in names
+        }
+        if not output_names:
+            return []
+
+        if self.format == "root":
+            configured = read_macro_responses(
+                self.prefix.with_name(self.prefix.name + ".mac")
+            )
+        else:
+            configured = []
+            for histogram_name in output_names:
+                annotations = csv_histogram_annotations(
+                    csv_histogram_path(self.prefix, histogram_name)
+                )
+                values = {
+                    field: annotations[key]
+                    for key, field in _RESPONSE_ANNOTATIONS.items()
+                    if key in annotations
+                }
+                configured.append(
+                    _response_definition(values, histogram_name)
+                )
+
+        by_histogram = {
+            response.histogram_name: response for response in configured
+        }
+        missing = output_names - by_histogram.keys()
+        if missing:
+            raise ValueError(
+                "No response configuration found for "
+                + ", ".join(sorted(missing))
+            )
+        return [by_histogram[name] for name in sorted(output_names)]
 
     def phantom_stems(self):
         return set(self.responses())

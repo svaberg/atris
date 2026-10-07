@@ -123,16 +123,21 @@ def write_macro(
     ]
     for stem, response_file, counting_file in phantom_files:
         lines.append("/atris/phantom/name " + stem)
-        for response_name, response_type, filename in (
-            ("dos", "energy", response_file),
-            ("equi", "radiation-weighted-energy", response_file),
-            ("rates", "coefficient", counting_file),
+        for response_name, filename, factors in (
+            ("dos", response_file, (True, False, True)),
+            ("equi", response_file, (True, True, True)),
+            ("rates", counting_file, (False, False, False)),
         ):
             lines.extend(
                 (
-                    "/atris/phantom/response/accumulation " + response_type,
                     "/atris/phantom/response/name " + response_name,
                     "/atris/phantom/response/tableFile " + filename,
+                    "/atris/phantom/response/scaleByCrossingEnergy "
+                    + str(factors[0]).lower(),
+                    "/atris/phantom/response/scaleByRadiationWeight "
+                    + str(factors[1]).lower(),
+                    "/atris/phantom/response/scaleByInversePhantomMass "
+                    + str(factors[2]).lower(),
                     "/atris/phantom/response/add",
                 )
             )
@@ -351,10 +356,10 @@ def test_macro_runs_one_worker_and_writes_expected_histograms(
             )
             assert annotations["atris.random_seed_pairs"] == "123456:654321"
             assert annotations["atris.quantity"]
-        for response_name, accumulation, source_suffix in (
-            ("dos", "energy", "response"),
-            ("equi", "radiation-weighted-energy", "response"),
-            ("rates", "coefficient", "counting"),
+        for response_name, factors, source_suffix in (
+            ("dos", ("true", "false", "true"), "response"),
+            ("equi", ("true", "true", "true"), "response"),
+            ("rates", ("false", "false", "false"), "counting"),
         ):
             path = tmp_path / (
                 "protons_h2_h2.%s.%s.csv" % (RESPONSE_STEM, response_name)
@@ -365,7 +370,15 @@ def test_macro_runs_one_worker_and_writes_expected_histograms(
             assert annotations["atris.response_file"] == (
                 "%s_%s.txt" % (RESPONSE_STEM, source_suffix)
             )
-            assert annotations["atris.response_accumulation"] == accumulation
+            assert annotations[
+                "atris.response_scale_by_crossing_energy"
+            ] == factors[0]
+            assert annotations[
+                "atris.response_scale_by_radiation_weight"
+            ] == factors[1]
+            assert annotations[
+                "atris.response_scale_by_inverse_phantom_mass"
+            ] == factors[2]
             assert "atris.phantom_id" not in annotations
 
     with ResponseHistogramReader(tmp_path / "protons") as histograms:
@@ -819,9 +832,11 @@ def test_macro_accepts_an_additional_named_response(tmp_path, atris_command):
         macro.read_text().replace(
             "/atris/physicsList ",
             "/atris/phantom/name %s\n"
-            "/atris/phantom/response/accumulation coefficient\n"
             "/atris/phantom/response/name bounting\n"
             "/atris/phantom/response/tableFile %s\n"
+            "/atris/phantom/response/scaleByCrossingEnergy false\n"
+            "/atris/phantom/response/scaleByRadiationWeight false\n"
+            "/atris/phantom/response/scaleByInversePhantomMass false\n"
             "/atris/phantom/response/add\n"
             "/atris/physicsList " % (RESPONSE_STEM, extra),
         )
@@ -851,12 +866,14 @@ def test_macro_rejects_an_incomplete_phantom_response(tmp_path, atris_command):
 
 
 @pytest.mark.regression
+@pytest.mark.parametrize("output_format", ["csv", "root"])
 def test_postprocess_writes_stem_named_phantom_outputs(
     tmp_path,
     monkeypatch,
     atris_command,
+    output_format,
 ):
-    prepare_run(tmp_path, interface=True)
+    prepare_run(tmp_path, interface=True, output_format=output_format)
     psf = (FIXTURE / "simulation.psf").read_text()
     psf += (
         "2.000000 3.000000 0.000000 6.283185 0.000000 3.141593 "

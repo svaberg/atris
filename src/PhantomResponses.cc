@@ -60,29 +60,6 @@ G4bool ValidateValueCount(
   return false;
 }
 
-G4bool ParseAccumulation(
-  const G4String& name,
-  atris::ResponseAccumulation& accumulation
-)
-{
-  if (name == "coefficient") {
-    accumulation = atris::ResponseAccumulation::kCoefficient;
-    return true;
-  }
-  if (name == "energy") {
-    accumulation = atris::ResponseAccumulation::kEnergy;
-    return true;
-  }
-  if (name == "radiation-weighted-energy") {
-    accumulation = atris::ResponseAccumulation::kRadiationWeightedEnergy;
-    return true;
-  }
-  G4cerr << "### AtRIS: unknown response accumulation '" << name
-         << "'; expected coefficient, energy, or radiation-weighted-energy"
-         << G4endl;
-  return false;
-}
-
 }  // namespace
 
 namespace atris {
@@ -127,12 +104,12 @@ void PhantomResponses::ConfigureParticleLookup(
 G4bool PhantomResponses::Add(
   const G4String& phantomStem,
   const G4String& responseName,
-  const G4String& accumulationName,
-  const G4String& fileName
+  const G4String& fileName,
+  const G4bool scaleByCrossingEnergy,
+  const G4bool scaleByRadiationWeight,
+  const G4bool scaleByInversePhantomMass
 )
 {
-  ResponseAccumulation accumulation;
-  if (!ParseAccumulation(accumulationName, accumulation)) return false;
   const auto duplicate = std::find_if(
     fResponses.begin(),
     fResponses.end(),
@@ -176,7 +153,9 @@ G4bool PhantomResponses::Add(
     phantomStem,
     responseName,
     fileName,
-    accumulation,
+    scaleByCrossingEnergy,
+    scaleByRadiationWeight,
+    scaleByInversePhantomMass,
     &table->second,
   });
   return true;

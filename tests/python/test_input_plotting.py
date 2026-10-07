@@ -11,17 +11,23 @@ MACRO = """\
 /atris/energyBinsFile protons.bins
 /atris/outputStem protons
 /atris/phantom/name test-phantom
-/atris/phantom/response/accumulation energy
 /atris/phantom/response/name dos
 /atris/phantom/response/tableFile test-phantom_response.txt
+/atris/phantom/response/scaleByCrossingEnergy true
+/atris/phantom/response/scaleByRadiationWeight false
+/atris/phantom/response/scaleByInversePhantomMass true
 /atris/phantom/response/add
-/atris/phantom/response/accumulation radiation-weighted-energy
 /atris/phantom/response/name equi
 /atris/phantom/response/tableFile test-phantom_response.txt
+/atris/phantom/response/scaleByCrossingEnergy true
+/atris/phantom/response/scaleByRadiationWeight true
+/atris/phantom/response/scaleByInversePhantomMass true
 /atris/phantom/response/add
-/atris/phantom/response/accumulation coefficient
 /atris/phantom/response/name rates
 /atris/phantom/response/tableFile test-phantom_counting.txt
+/atris/phantom/response/scaleByCrossingEnergy false
+/atris/phantom/response/scaleByRadiationWeight false
+/atris/phantom/response/scaleByInversePhantomMass false
 /atris/phantom/response/add
 /gps/particle proton
 /gps/ene/type Pow
@@ -90,8 +96,10 @@ def test_read_macro_phantoms_rejects_incomplete_response(tmp_path):
     macro = tmp_path / "protons.mac"
     macro.write_text(
         "/atris/phantom/name test-phantom\n"
-        "/atris/phantom/response/accumulation energy\n"
         "/atris/phantom/response/name dos\n"
+        "/atris/phantom/response/scaleByCrossingEnergy true\n"
+        "/atris/phantom/response/scaleByRadiationWeight false\n"
+        "/atris/phantom/response/scaleByInversePhantomMass true\n"
         "/atris/phantom/response/add\n"
     )
 

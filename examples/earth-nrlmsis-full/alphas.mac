@@ -37,52 +37,65 @@
 
 # Phantom response scoring
 # Each phantom block selects a name and registers one or more responses.
-# accumulation chooses the calculation: coefficient uses the table
-# value directly; energy multiplies it by crossing energy in eV;
-# radiation-weighted-energy also applies the radiation weight.
+# Each response starts with its table coefficient. The three scaleBy
+# settings independently apply crossing energy, radiation weight, and
+# inverse phantom mass. The first two act during transport; inverse
+# phantom mass is applied by atris-postprocess.
 # name labels the output, tableFile supplies coefficients, and add
-# registers the response and clears those three response properties.
+# registers the response and clears the response properties.
 
 # Phantom: ramona_zero_0.060MeV_detA
 /atris/phantom/name ramona_zero_0.060MeV_detA
 
 # Response: absorbed dose (name: dos)
-/atris/phantom/response/accumulation energy
 /atris/phantom/response/name dos
 /atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response/scaleByCrossingEnergy true
+/atris/phantom/response/scaleByRadiationWeight false
+/atris/phantom/response/scaleByInversePhantomMass true
 /atris/phantom/response/add
 
 # Response: equivalent dose (name: equi)
-/atris/phantom/response/accumulation radiation-weighted-energy
 /atris/phantom/response/name equi
 /atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response/scaleByCrossingEnergy true
+/atris/phantom/response/scaleByRadiationWeight true
+/atris/phantom/response/scaleByInversePhantomMass true
 /atris/phantom/response/add
 
 # Response: counting response (name: rates)
-/atris/phantom/response/accumulation coefficient
 /atris/phantom/response/name rates
 /atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_counting.txt
+/atris/phantom/response/scaleByCrossingEnergy false
+/atris/phantom/response/scaleByRadiationWeight false
+/atris/phantom/response/scaleByInversePhantomMass false
 /atris/phantom/response/add
 
 # Phantom: icru_zero_0.000MeV_detAB
 /atris/phantom/name icru_zero_0.000MeV_detAB
 
 # Response: absorbed dose (name: dos)
-/atris/phantom/response/accumulation energy
 /atris/phantom/response/name dos
 /atris/phantom/response/tableFile icru_zero_0.000MeV_detAB_response.txt
+/atris/phantom/response/scaleByCrossingEnergy true
+/atris/phantom/response/scaleByRadiationWeight false
+/atris/phantom/response/scaleByInversePhantomMass true
 /atris/phantom/response/add
 
 # Response: equivalent dose (name: equi)
-/atris/phantom/response/accumulation radiation-weighted-energy
 /atris/phantom/response/name equi
 /atris/phantom/response/tableFile icru_zero_0.000MeV_detAB_response.txt
+/atris/phantom/response/scaleByCrossingEnergy true
+/atris/phantom/response/scaleByRadiationWeight true
+/atris/phantom/response/scaleByInversePhantomMass true
 /atris/phantom/response/add
 
 # Response: counting response (name: rates)
-/atris/phantom/response/accumulation coefficient
 /atris/phantom/response/name rates
 /atris/phantom/response/tableFile icru_zero_0.000MeV_detAB_counting.txt
+/atris/phantom/response/scaleByCrossingEnergy false
+/atris/phantom/response/scaleByRadiationWeight false
+/atris/phantom/response/scaleByInversePhantomMass false
 /atris/phantom/response/add
 
 # Reproducibility

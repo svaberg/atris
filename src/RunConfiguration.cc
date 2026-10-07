@@ -148,17 +148,6 @@ RunConfiguration::RunConfiguration(
   );
   phantomNameCommand.SetStates(G4State_PreInit);
 
-  auto& phantomResponseAccumulationCommand =
-    fPhantomResponseMessenger.DeclareProperty(
-      "accumulation",
-      fPhantomResponseAccumulation,
-      "Set how this response is accumulated."
-    );
-  phantomResponseAccumulationCommand.SetCandidates(
-    "coefficient energy radiation-weighted-energy"
-  );
-  phantomResponseAccumulationCommand.SetStates(G4State_PreInit);
-
   auto& phantomResponseNameCommand =
     fPhantomResponseMessenger.DeclareProperty(
       "name",
@@ -174,6 +163,30 @@ RunConfiguration::RunConfiguration(
       "Set the particle- and energy-dependent response-table file."
     );
   phantomResponseTableFileCommand.SetStates(G4State_PreInit);
+
+  auto& scaleByCrossingEnergyCommand =
+    fPhantomResponseMessenger.DeclareMethod(
+      "scaleByCrossingEnergy",
+      &RunConfiguration::SetPhantomResponseScaleByCrossingEnergy,
+      "Multiply the table coefficient by crossing kinetic energy in eV."
+    );
+  scaleByCrossingEnergyCommand.SetStates(G4State_PreInit);
+
+  auto& scaleByRadiationWeightCommand =
+    fPhantomResponseMessenger.DeclareMethod(
+      "scaleByRadiationWeight",
+      &RunConfiguration::SetPhantomResponseScaleByRadiationWeight,
+      "Multiply the response by the particle radiation weight."
+    );
+  scaleByRadiationWeightCommand.SetStates(G4State_PreInit);
+
+  auto& scaleByInversePhantomMassCommand =
+    fPhantomResponseMessenger.DeclareMethod(
+      "scaleByInversePhantomMass",
+      &RunConfiguration::SetPhantomResponseScaleByInversePhantomMass,
+      "Divide this response by phantom mass during post-processing."
+    );
+  scaleByInversePhantomMassCommand.SetStates(G4State_PreInit);
 
   auto& addPhantomResponseCommand = fPhantomResponseMessenger.DeclareMethod(
     "add",
@@ -384,13 +397,39 @@ void RunConfiguration::SetRandomSeeds(
          << secondSeed << G4endl;
 }
 
+void RunConfiguration::SetPhantomResponseScaleByCrossingEnergy(
+  const G4bool enabled
+)
+{
+  fPhantomResponseScaleByCrossingEnergy = enabled;
+  fHasConfiguredPhantomResponseScaleByCrossingEnergy = true;
+}
+
+void RunConfiguration::SetPhantomResponseScaleByRadiationWeight(
+  const G4bool enabled
+)
+{
+  fPhantomResponseScaleByRadiationWeight = enabled;
+  fHasConfiguredPhantomResponseScaleByRadiationWeight = true;
+}
+
+void RunConfiguration::SetPhantomResponseScaleByInversePhantomMass(
+  const G4bool enabled
+)
+{
+  fPhantomResponseScaleByInversePhantomMass = enabled;
+  fHasConfiguredPhantomResponseScaleByInversePhantomMass = true;
+}
+
 void RunConfiguration::AddPhantomResponse()
 {
   if (
     fPhantomName.empty()
-    || fPhantomResponseAccumulation.empty()
     || fPhantomResponseName.empty()
     || fPhantomResponseTableFile.empty()
+    || !fHasConfiguredPhantomResponseScaleByCrossingEnergy
+    || !fHasConfiguredPhantomResponseScaleByRadiationWeight
+    || !fHasConfiguredPhantomResponseScaleByInversePhantomMass
   ) {
     G4ExceptionDescription message;
     message << "Set /atris/phantom/name and every "
@@ -402,8 +441,10 @@ void RunConfiguration::AddPhantomResponse()
   if (!fPhantomResponses.Add(
         fPhantomName,
         fPhantomResponseName,
-        fPhantomResponseAccumulation,
-        fPhantomResponseTableFile
+        fPhantomResponseTableFile,
+        fPhantomResponseScaleByCrossingEnergy,
+        fPhantomResponseScaleByRadiationWeight,
+        fPhantomResponseScaleByInversePhantomMass
       )) {
     G4ExceptionDescription message;
     message << "Could not configure response '" << fPhantomResponseName
@@ -411,9 +452,14 @@ void RunConfiguration::AddPhantomResponse()
     fAddPhantomResponseCommand->CommandFailed(message);
     return;
   }
-  fPhantomResponseAccumulation.clear();
   fPhantomResponseName.clear();
   fPhantomResponseTableFile.clear();
+  fPhantomResponseScaleByCrossingEnergy = false;
+  fPhantomResponseScaleByRadiationWeight = false;
+  fPhantomResponseScaleByInversePhantomMass = false;
+  fHasConfiguredPhantomResponseScaleByCrossingEnergy = false;
+  fHasConfiguredPhantomResponseScaleByRadiationWeight = false;
+  fHasConfiguredPhantomResponseScaleByInversePhantomMass = false;
 }
 
 void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)

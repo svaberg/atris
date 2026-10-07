@@ -9,19 +9,14 @@
 
 namespace atris {
 
-enum class ResponseAccumulation
-{
-  kCoefficient,
-  kEnergy,
-  kRadiationWeightedEnergy
-};
-
 struct PhantomResponse
 {
   G4String phantomStem;
   G4String name;
   G4String fileName;
-  ResponseAccumulation accumulation;
+  G4bool scaleByCrossingEnergy;
+  G4bool scaleByRadiationWeight;
+  G4bool scaleByInversePhantomMass;
   const std::vector<G4double>* values;
 };
 
@@ -31,8 +26,10 @@ class PhantomResponses
     G4bool Add(
       const G4String& phantomStem,
       const G4String& responseName,
-      const G4String& accumulationName,
-      const G4String& fileName
+      const G4String& fileName,
+      G4bool scaleByCrossingEnergy,
+      G4bool scaleByRadiationWeight,
+      G4bool scaleByInversePhantomMass
     );
 
     const std::vector<PhantomResponse>& GetAll() const { return fResponses; }

@@ -30,6 +30,9 @@ class RunConfiguration
     void SetEnergyBinsFile(G4String requestedFile);
     void SetOutputStem(G4String requestedStem);
     void SetRandomSeeds(G4long firstSeed, G4long secondSeed);
+    void SetPhantomResponseScaleByCrossingEnergy(G4bool enabled);
+    void SetPhantomResponseScaleByRadiationWeight(G4bool enabled);
+    void SetPhantomResponseScaleByInversePhantomMass(G4bool enabled);
     void AddPhantomResponse();
     void SetPhysicsList(G4String requestedPhysicsList);
     void SetOutputMode(G4String requestedOutputMode);
@@ -53,9 +56,14 @@ class RunConfiguration
     G4GenericMessenger fPhantomMessenger;
     G4GenericMessenger fPhantomResponseMessenger;
     G4String fPhantomName;
-    G4String fPhantomResponseAccumulation;
     G4String fPhantomResponseName;
     G4String fPhantomResponseTableFile;
+    G4bool fPhantomResponseScaleByCrossingEnergy = false;
+    G4bool fPhantomResponseScaleByRadiationWeight = false;
+    G4bool fPhantomResponseScaleByInversePhantomMass = false;
+    G4bool fHasConfiguredPhantomResponseScaleByCrossingEnergy = false;
+    G4bool fHasConfiguredPhantomResponseScaleByRadiationWeight = false;
+    G4bool fHasConfiguredPhantomResponseScaleByInversePhantomMass = false;
     G4UIcommand* fGeometryFileCommand = nullptr;
     G4UIcommand* fEnergyBinsFileCommand = nullptr;
     G4UIcommand* fOutputStemCommand = nullptr;
