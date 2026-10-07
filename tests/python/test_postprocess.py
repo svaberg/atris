@@ -70,9 +70,8 @@ def test_read_csv_histogram_accepts_variable_length_annotations(tmp_path):
 def test_input_output_warnings_report_mismatched_run_files(tmp_path, monkeypatch):
     (tmp_path / "protons.bins").write_text("1\n20\n100\n")
     (tmp_path / "protons.mac").write_text(
-        "/gps/hist/point 1 0\n"
-        "/gps/hist/point 20 1\n"
-        "/gps/hist/point 100 1\n"
+        "/gps/ene/min 1 MeV\n"
+        "/gps/ene/max 200 MeV\n"
         "/run/beamOn 10\n"
     )
     (tmp_path / "protons_h1_h1.1.csv").write_text(
@@ -102,6 +101,7 @@ def test_input_output_warnings_report_mismatched_run_files(tmp_path, monkeypatch
     assert warnings == [
         "protons: protons.bins does not match the energy edges recorded in "
         "protons_h1_h1.1.csv",
+        "protons: protons.mac energy range does not match protons.bins",
         "protons: protons.mac requests 10 events, but "
         "protons_h1_h1.1.csv records 8",
         "protons: simulation.psf defines 2 detector layers, but "
@@ -115,9 +115,8 @@ def test_input_output_warnings_accept_matching_energy_and_event_inputs(
 ):
     (tmp_path / "protons.bins").write_text("1\n10\n100\n")
     (tmp_path / "protons.mac").write_text(
-        "/gps/hist/point 1 0\n"
-        "/gps/hist/point 10 1\n"
-        "/gps/hist/point 100 1\n"
+        "/gps/ene/min 1 MeV\n"
+        "/gps/ene/max 100 MeV\n"
         "/run/beamOn 8\n"
     )
     (tmp_path / "protons_h1_h1.1.csv").write_text(

@@ -29,12 +29,29 @@ def write_histogram(path, axes, row_count, column_count):
         )
 
 
+def test_power_law_bin_weights_integrate_the_configured_distribution():
+    settings = {
+        "/gps/ene/type": "Pow",
+        "/gps/ene/min": "1 MeV",
+        "/gps/ene/max": "100 MeV",
+        "/gps/ene/alpha": "-1",
+    }
+
+    weights = plotting._power_law_bin_weights(
+        settings,
+        np.array([1.0, 10.0, 100.0]),
+    )
+
+    np.testing.assert_allclose(weights, [np.log(10.0), np.log(10.0)])
+
+
 def prepare_processed_run(run_directory, phantom_count, gdml_text):
     (run_directory / "protons.gdml").write_text(gdml_text)
     (run_directory / "protons.mac").write_text(
-        "/gps/hist/point 1 0\n"
-        "/gps/hist/point 2 1\n"
-        "/gps/hist/point 3 1\n"
+        "/gps/ene/type Pow\n"
+        "/gps/ene/min 1 MeV\n"
+        "/gps/ene/max 3 MeV\n"
+        "/gps/ene/alpha -1\n"
     )
     write_histogram(
         run_directory / "protons_h1_h1.1.csv",

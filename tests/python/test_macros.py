@@ -76,6 +76,13 @@ def test_macro_generation_is_reproducible_and_preserves_requested_counts(tmp_pat
     assert "/atris/positionHistogram/azimuthBins 120\n" in proton_macro
     assert "/atris/positionHistogram/cosineBins 60\n" in proton_macro
     assert "# Primary particle and energy distribution\n" in proton_macro
+    assert "/gps/ene/type Pow\n" in proton_macro
+    assert "/gps/ene/min 1.000000000 MeV\n" in proton_macro
+    assert "/gps/ene/max 100.000000000 MeV\n" in proton_macro
+    assert "/gps/ene/alpha -1\n" in proton_macro
+    assert "/gps/hist/point" not in proton_macro
+    assert "/gps/ene/min 4.000000000 MeV\n" in alpha_macro
+    assert "/gps/ene/max 400.000000000 MeV\n" in alpha_macro
     assert "# Source position and direction\n" in proton_macro
     assert "# Transport and event count\n" in proton_macro
     assert "/run/beamOn 6" in proton_macro

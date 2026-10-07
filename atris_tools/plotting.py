@@ -37,9 +37,32 @@ from .response_histograms import (
 )
 from .root_output import has_ntuple
 from .step_plotting import plot_mode_one_output
+from .units import energy_to_mev
 
 
 logger = logging.getLogger(__name__)
+
+
+def _power_law_bin_weights(settings, edges):
+    if settings.get("/gps/ene/type") != "Pow":
+        return np.asarray([])
+    minimum_value, minimum_unit = settings["/gps/ene/min"].split()
+    maximum_value, maximum_unit = settings["/gps/ene/max"].split()
+    minimum = energy_to_mev(minimum_value, minimum_unit)
+    maximum = energy_to_mev(maximum_value, maximum_unit)
+    alpha = float(settings["/gps/ene/alpha"])
+    lower = np.maximum(edges[:-1], minimum)
+    upper = np.minimum(edges[1:], maximum)
+    included = upper > lower
+    weights = np.zeros(edges.size - 1)
+    if alpha == -1.0:
+        weights[included] = np.log(upper[included] / lower[included])
+    else:
+        exponent = alpha + 1.0
+        weights[included] = (
+            upper[included] ** exponent - lower[included] ** exponent
+        ) / exponent
+    return weights
 
 
 def _read_response(filename):
@@ -266,7 +289,7 @@ def _add_angular_plot(
 
 def _save_generic_plot(
     primary_energy,
-    configured_energy,
+    configured_weights,
     direction,
     position,
     ionization,
@@ -298,14 +321,13 @@ def _save_generic_plot(
         energy_edges,
         label="Simulated",
     )
-    if configured_energy.size:
-        configured_weights = configured_energy[1:, 1]
+    if configured_weights.size:
         weight_sum = np.sum(configured_weights)
         if weight_sum > 0:
             expected_counts = configured_weights * np.sum(primary_counts) / weight_sum
             energy_axis.stairs(
                 expected_counts,
-                configured_energy[:, 0],
+                energy_edges,
                 linestyle="--",
                 label="Configured",
             )
@@ -551,10 +573,11 @@ def plot_run(simname):
     except Exception as error:
         return filenames, ["%s results: %s" % (simname, error)]
 
-    configured_energy = np.empty((0, 2))
+    configured_weights = np.asarray([])
     if Path(simname + ".mac").is_file():
         try:
-            _, configured_energy = read_macro(simname + ".mac")
+            settings = read_macro(simname + ".mac")
+            configured_weights = _power_law_bin_weights(settings, energy_edges)
         except Exception as error:
             errors.append("%s energy input: %s" % (simname, error))
 
@@ -573,7 +596,7 @@ def plot_run(simname):
             filename = simname + ".png"
             _save_generic_plot(
                 primary_energy,
-                configured_energy,
+                configured_weights,
                 direction,
                 position,
                 ionization,

@@ -24,11 +24,10 @@ MACRO = """\
 /atris/phantom/response/file test-phantom_counting.txt
 /atris/phantom/response/add
 /gps/particle proton
-/gps/ene/type User
-/gps/hist/type energy
-/gps/hist/point 1 0
-/gps/hist/point 10 1
-/gps/hist/point 100 1
+/gps/ene/type Pow
+/gps/ene/min 1 MeV
+/gps/ene/max 100 MeV
+/gps/ene/alpha -1
 /gps/pos/type Surface
 /gps/pos/shape Sphere
 /gps/pos/radius 7000 km
@@ -67,11 +66,14 @@ def test_read_macro_and_atmosphere(tmp_path, gdml_text):
     (tmp_path / "protons.mac").write_text(MACRO)
     (tmp_path / "protons.gdml").write_text(gdml_text)
 
-    settings, energy_points = input_plotting.read_macro(tmp_path / "protons.mac")
+    settings = input_plotting.read_macro(tmp_path / "protons.mac")
     all_layers = input_plotting.read_layers(tmp_path / "protons.gdml")
 
     assert settings["/gps/particle"] == "proton"
-    np.testing.assert_allclose(energy_points, [[1, 0], [10, 1], [100, 1]])
+    assert settings["/gps/ene/type"] == "Pow"
+    assert settings["/gps/ene/min"] == "1 MeV"
+    assert settings["/gps/ene/max"] == "100 MeV"
+    assert settings["/gps/ene/alpha"] == "-1"
     assert all_layers[1]["fractions"] == {"G4_N": 0.75, "G4_O": 0.25}
     assert [layer["detector_id"] for layer in all_layers] == [1, 2, 3]
     assert [layer["state"] for layer in all_layers] == ["solid", "gas", "gas"]
@@ -206,6 +208,10 @@ def test_source_summary_explains_radius_and_atmosphere_clearance():
         "/gps/ang/type": "cos",
         "/gps/ang/mintheta": "0 deg",
         "/gps/ang/maxtheta": "90 deg",
+        "/gps/ene/type": "Pow",
+        "/gps/ene/min": "1 MeV",
+        "/gps/ene/max": "100 MeV",
+        "/gps/ene/alpha": "-1",
         "/run/setCut": "100 m",
     }
     layers = [
@@ -243,7 +249,9 @@ def test_source_summary_explains_radius_and_atmosphere_clearance():
     assert "Source sphere radius: 7421.001 km" in summary
     assert "Altitude above surface: 1050.001 km" in summary
     assert "Model clearance: 1.000 m" in summary
-    assert "Configured energies: 121" in summary
+    assert "Energy distribution: power law (index -1)" in summary
+    assert "Energy range: 1 MeV to 100 MeV" in summary
+    assert "Primary-energy bin edges: 121" in summary
     assert "Direction: inward cosine law" in summary
     assert "Secondary production range cut: 100 m" in summary
 

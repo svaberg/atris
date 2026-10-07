@@ -39,8 +39,7 @@ Other simulation settings:
     - The same is true for dose rate values.
     - Optimal energy bin width was investigated in terms of "bins per decade".
     - 10 bins per decade gives you an error of 2%, while with 20 bins per decade you get 1%.
-    - Since we are fixing the number of particles per bin, 20 bins is 2x more expensive computationaly then 10 bins per decade.
-    - Per bin you should have 5000 particles. 
+    - The total event count scales with the number of configured energy edges.
 
 How to use:
     - The script works with python3
@@ -157,13 +156,13 @@ def genMacro(
     lines += "/run/verbose 2\n"
     lines += "\n# Primary particle and energy distribution\n"
     lines += part
-    lines += "/gps/ene/type User\n"
-    lines += "/gps/hist/type energy\n"
-    bins   = thebins*fact
+    bins = thebins * fact
     np.savetxt(os.path.join(output_dir, name + '.bins'), bins)
-    lines += "/gps/hist/point %.9f %.9f\n"%(bins[0],0.0)
-    for thebin in bins[1:]:
-        lines += "/gps/hist/point %.9f %.9f\n"%(thebin,1.0)
+    lines += "# E^-1 gives uniform sampling in log kinetic energy.\n"
+    lines += "/gps/ene/type Pow\n"
+    lines += "/gps/ene/min %.9f MeV\n" % bins[0]
+    lines += "/gps/ene/max %.9f MeV\n" % bins[-1]
+    lines += "/gps/ene/alpha -1\n"
     lines += "\n# Source position and direction\n"
     lines += "/gps/pos/type Surface\n"
     lines += "/gps/pos/shape Sphere\n"
@@ -198,7 +197,7 @@ def macroSetup(
         rng = random
     radius  = load_psf(os.path.join(output_dir, 'simulation.psf'))[-2, OUTER_RADIUS] + 0.001 # we add 1 meter to the radius to aviod overlap.
     bins    = base_bins
-    N       = bins.shape[0]*partspb # At 20 bins per decade, 2500 particles per bin is good. Even better would be 5k or 10k.
+    N = bins.shape[0] * partspb
     # We are taking two random seeds. Control this for the ability to reproduce.
     seed1     = rng.randint(31,999999)
     seed2     = rng.randint(31,999999)
@@ -268,8 +267,9 @@ def main():
             "responses. It writes protons/alphas .mac, .bins, and .gdml files "
             "and refuses to overwrite any of them. The proton event count is "
             "PARTICLES_PER_BIN multiplied by ENERGY_POINTS; the alpha count "
-            "uses ALPHA_FACTOR per energy point. Alpha energies are four times "
-            "the corresponding proton grid values."
+            "uses the truncated PARTICLES_PER_BIN times ALPHA_FACTOR as its "
+            "factor. Alpha energies are four times the corresponding proton "
+            "grid values."
         ),
     )
     parser.add_argument(
@@ -284,7 +284,10 @@ def main():
         type=int,
         default=3000,
         metavar="COUNT",
-        help="Number of proton histories per energy point (default: 3000).",
+        help=(
+            "Proton event-count factor multiplied by ENERGY_POINTS "
+            "(default: 3000)."
+        ),
     )
     parser.add_argument(
         "--alpha-factor",
@@ -292,8 +295,8 @@ def main():
         default=0.66,
         metavar="FACTOR",
         help=(
-            "Alpha histories per energy point as a fraction of the proton "
-            "count; the result is truncated to an integer (default: 0.66)."
+            "Alpha event-count factor as a fraction of the proton factor; "
+            "the result is truncated to an integer (default: 0.66)."
         ),
     )
     parser.add_argument(
@@ -328,8 +331,8 @@ def main():
         default=121,
         metavar="COUNT",
         help=(
-            "Number of logarithmically spaced energy points, including both "
-            "endpoints (default: 121)."
+            "Number of logarithmically spaced output-bin edges, including "
+            "both endpoints (default: 121)."
         ),
     )
     parser.add_argument(
@@ -361,7 +364,7 @@ def main():
     args = parser.parse_args()
     configure_logging(args.log_level)
     logger.debug(
-        "Generating inputs with %i particles per bin, %i energy points, "
+        "Generating inputs with event-count factor %i, %i output-bin edges, "
         "and alpha factor %.3g",
         args.particles_per_bin,
         args.energy_points,

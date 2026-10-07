@@ -9,6 +9,7 @@ from matplotlib.colors import LogNorm
 import numpy as np
 
 from .psf import read_psf_layers
+from .units import energy_to_mev
 
 
 PHANTOM_ENERGY_EDGES_MEV = 10.0 ** np.linspace(-6.0, 7.0, 651)
@@ -180,19 +181,21 @@ def _particle_groups(particle_codes):
 
 def read_macro(filename):
     settings = {}
-    energy_points = []
     with Path(filename).open() as macro:
         for line in macro:
             fields = line.split()
             if not fields or fields[0].startswith("#"):
                 continue
             command = fields[0]
-            values = fields[1:]
-            if command == "/gps/hist/point":
-                energy_points.append((float(values[0]), float(values[1])))
-            else:
-                settings[command] = " ".join(values)
-    return settings, np.asarray(energy_points)
+            settings[command] = " ".join(fields[1:])
+    return settings
+
+
+def _energy_in_mev(setting):
+    fields = setting.split()
+    if len(fields) != 2:
+        raise ValueError("Expected an energy value with units, got: " + setting)
+    return energy_to_mev(*fields)
 
 
 def read_macro_phantoms(filename):
@@ -440,7 +443,20 @@ def _source_summary(settings, layers, energy_count):
     else:
         lines.append("Source sphere radius: " + radius)
 
-    lines.append("Configured energies: %i" % energy_count)
+    if "/gps/ene/type" in settings:
+        energy_type = settings["/gps/ene/type"]
+        if energy_type == "Pow":
+            energy_type = "power law (index %s)" % _setting(
+                settings,
+                "/gps/ene/alpha",
+            )
+        lines.append("Energy distribution: " + energy_type)
+    if "/gps/ene/min" in settings and "/gps/ene/max" in settings:
+        lines.append(
+            "Energy range: %s to %s"
+            % (settings["/gps/ene/min"], settings["/gps/ene/max"])
+        )
+    lines.append("Primary-energy bin edges: %i" % energy_count)
     lines.extend(
         (
             "Direction: " + direction,
@@ -597,7 +613,7 @@ def plot_psf_inputs(filename="simulation.psf"):
 
 
 def plot_species_inputs(simname):
-    settings, energy_points = read_macro(simname + ".mac")
+    settings = read_macro(simname + ".mac")
     try:
         energy_bins_file = settings["/atris/energyBinsFile"]
         geometry_file = settings["/atris/geometryFile"]
@@ -613,19 +629,17 @@ def plot_species_inputs(simname):
     species = simname.capitalize()
     figure.suptitle(species + " simulation inputs")
 
-    if energy_points.size:
-        energy_axis.bar(
-            energy_points[:-1, 0],
-            energy_points[1:, 1],
-            width=np.diff(energy_points[:, 0]),
-            align="edge",
-            alpha=0.25,
-            edgecolor="C0",
-            linewidth=0.5,
-        )
-    energy_axis.set_title("Configured energies")
+    if settings.get("/gps/ene/type") == "Pow":
+        minimum = _energy_in_mev(settings["/gps/ene/min"])
+        maximum = _energy_in_mev(settings["/gps/ene/max"])
+        alpha = float(settings["/gps/ene/alpha"])
+        source_energies = np.geomspace(minimum, maximum, 200)
+        source_density = (source_energies / minimum) ** alpha
+        energy_axis.plot(source_energies, source_density)
+        energy_axis.set_yscale("log")
+    energy_axis.set_title("Source energy distribution")
     energy_axis.set_xlabel("Primary kinetic energy [MeV]")
-    energy_axis.set_ylabel("Configured weight")
+    energy_axis.set_ylabel("Relative probability density")
     energy_axis.set_xscale("log")
     energy_axis.minorticks_on()
     energy_axis.grid(alpha=0.25)

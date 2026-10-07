@@ -27,6 +27,7 @@ from .response_histograms import (
     csv_histogram_path,
     response_output_format,
 )
+from .units import energy_to_mev
 
 
 logger = logging.getLogger(__name__)
@@ -55,18 +56,25 @@ def process_psf(filename="simulation.psf"):
 
 
 def _read_macro_configuration(filename):
-    energy_edges = []
+    energy_limits = {}
     event_count = None
     with open(filename) as macro:
         for line in macro:
             fields = line.split()
             if not fields or fields[0].startswith("#"):
                 continue
-            if fields[0] == "/gps/hist/point":
-                energy_edges.append(float(fields[1]))
+            if fields[0] in ("/gps/ene/min", "/gps/ene/max"):
+                unit = fields[2] if len(fields) > 2 else "keV"
+                energy_limits[fields[0]] = energy_to_mev(fields[1], unit)
             elif fields[0] == "/run/beamOn":
                 event_count = int(fields[1])
-    return np.asarray(energy_edges), event_count
+    if len(energy_limits) == 2:
+        energy_range = np.asarray(
+            [energy_limits["/gps/ene/min"], energy_limits["/gps/ene/max"]]
+        )
+    else:
+        energy_range = np.asarray([])
+    return energy_range, event_count
 
 
 def _input_output_warnings(simname, histograms):
@@ -94,13 +102,13 @@ def _input_output_warnings(simname, histograms):
             )
 
     if macro_path.is_file():
-        macro_edges, event_count = _read_macro_configuration(macro_path)
+        macro_range, event_count = _read_macro_configuration(macro_path)
         if input_edges is not None and (
-            macro_edges.shape != input_edges.shape
-            or not np.allclose(macro_edges, input_edges)
+            macro_range.shape != (2,)
+            or not np.allclose(macro_range, input_edges[[0, -1]])
         ):
             warnings.append(
-                "%s: %s energy edges do not match %s"
+                "%s: %s energy range does not match %s"
                 % (simname, macro_path.name, bins_path.name)
             )
         if event_count is not None and not Path("chunks.txt").is_file():
