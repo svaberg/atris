@@ -206,12 +206,13 @@ protection standard.
 ## ROOT output: `<name>.root`
 
 When the simulation argument ends in `.root`, Geant4 writes one ROOT file. It
-contains the response histograms listed above and, in modes `0` and `1`, a
-`metadata` ntuple and the particle ntuples selected by the mode. AtRIS and its
+contains the response histograms listed above, `metadata` and `responses`
+ntuples, and the particle ntuples selected by modes `0` and `1`. AtRIS and its
 Python tools use Uproot, so reading these products does not require a separate
 ROOT installation. ROOT histograms do not retain Geant4's native histogram
-annotations, so `atris-postprocess` reads response factor settings from the
-corresponding species macro. Keep that macro with the ROOT output.
+annotations. AtRIS therefore writes the equivalent response definitions and
+factor settings to the `responses` ntuple; post-processing does not require the
+species macro.
 
 The `metadata` ntuple contains one row for an ordinary run or one row per
 represented chunk in a gathered ROOT file:
@@ -228,8 +229,20 @@ represented chunk in a gathered ROOT file:
 | `random_seed_1`, `random_seed_2` | The two explicit seeds, or zero for runtime defaults. |
 
 Gather concatenates available metadata rows without using them as histogram
-compatibility constraints. It combines only response histograms; the large
-particle ntuples remain in the individual chunk files.
+compatibility constraints. It combines response histograms, retains one copy of
+each distinct response-definition row, and leaves the large particle ntuples in
+the individual chunk files.
+
+The `responses` ntuple contains one row per configured phantom response:
+
+| Field | Meaning |
+| --- | --- |
+| `phantom_stem` | Phantom identity used in histogram and processed-output names. |
+| `response_name` | Response channel name. |
+| `response_file` | Response table supplied to AtRIS. |
+| `scale_by_crossing_energy` | `1` when each table coefficient is multiplied by crossing kinetic energy. |
+| `scale_by_radiation_weight` | `1` when each table coefficient is multiplied by the implemented radiation weight. |
+| `scale_by_inverse_phantom_mass` | `1` when post-processing divides the response by phantom mass. |
 
 ### Interface ntuple: `interfaces`
 
