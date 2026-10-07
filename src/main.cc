@@ -25,7 +25,6 @@ int main(int argc,char** argv){
 		G4cerr << "Usage: " << argv[0] << " <macro-file>" << G4endl;
 		return 1;
 	}
-	G4UImanager* const uiManager = G4UImanager::GetUIpointer();
 	const G4String macroName = argv[1];
 	atris::RunSettings settings;
 	atris::PhantomResponses phantomResponses;
@@ -48,7 +47,7 @@ int main(int argc,char** argv){
 	G4cout << "### AtRIS: executing macro " << macroName << G4endl;
 	G4cout << "### AtRIS: Starting the simulation " << G4endl;
 	const auto macroStart = std::chrono::steady_clock::now();
-	const G4int commandStatus = uiManager->ApplyCommand(command);
+	const G4int commandStatus = G4UImanager::GetUIpointer()->ApplyCommand(command);
 	const auto macroEnd = std::chrono::steady_clock::now();
 	const G4int workerThreads = runManager->GetNumberOfThreads();
 	G4cout << "### AtRIS: simulation used " << workerThreads << " worker thread(s)" << G4endl;
