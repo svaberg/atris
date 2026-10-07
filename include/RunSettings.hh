@@ -16,7 +16,7 @@ struct RunSettings
   G4String outputFileFormat = "csv";
   G4String simulationInputPrefix;
   G4String physicsListName = "FTFP_BERT_HP";
-  G4int outputMode = kInvalidOutputMode;
+  OutputMode outputMode = OutputMode::kInvalid;
   G4int detectorCount = 0;
   std::array<G4long, 2> explicitSeeds = {0, 0};
   std::vector<G4double> energyBins;

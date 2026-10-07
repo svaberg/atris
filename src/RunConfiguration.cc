@@ -23,12 +23,12 @@
 
 namespace {
 
-G4int OutputModeValue(const G4String& name)
+atris::OutputMode OutputModeValue(const G4String& name)
 {
-  if (name == "response") return atris::kResponseOutputMode;
-  if (name == "profile") return atris::kInterfaceOutputMode;
-  if (name == "shower") return atris::kStepOutputMode;
-  return atris::kInvalidOutputMode;
+  if (name == "response") return atris::OutputMode::kResponse;
+  if (name == "profile") return atris::OutputMode::kInterface;
+  if (name == "shower") return atris::OutputMode::kStep;
+  return atris::OutputMode::kInvalid;
 }
 
 G4int CountSensitiveDetectors(const G4GDMLParser& parser)
@@ -279,11 +279,11 @@ void RunConfiguration::Initialize()
          << " energy-bin edges from " << fEnergyBinsFileName << G4endl;
 
   fSettings.outputMode = OutputModeValue(fOutputModeName);
-  if (fSettings.outputMode == kInterfaceOutputMode) {
+  if (fSettings.outputMode == OutputMode::kInterface) {
     G4cout << "### AtRIS: profile mode writes histograms and interface ntuples"
            << G4endl;
   }
-  if (fSettings.outputMode == kStepOutputMode) {
+  if (fSettings.outputMode == OutputMode::kStep) {
     G4cout << "### AtRIS: shower mode writes histograms, interface, and "
               "transport-step ntuples; output may be very large"
            << G4endl;

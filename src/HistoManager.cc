@@ -43,7 +43,10 @@ void AnnotateHistogram(
 	histogram->add_annotation("atris.accumulated_weight", accumulatedWeight);
 	histogram->add_annotation("atris.input_prefix", settings.simulationInputPrefix);
 	histogram->add_annotation("atris.physics_list", settings.physicsListName);
-	histogram->add_annotation("atris.output_mode", std::to_string(settings.outputMode));
+	histogram->add_annotation(
+		"atris.output_mode",
+		std::to_string(static_cast<G4int>(settings.outputMode))
+	);
 	histogram->add_annotation("atris.phantom_count", std::to_string(phantomCount));
 	if (settings.explicitSeeds[0] != 0) {
 		histogram->add_annotation(
@@ -321,7 +324,9 @@ void HistoManager::FillMetadata() const
 		kMetadataNtupleId, kMetadataPhysicsList, fSettings.physicsListName
 	);
 	analysis->FillNtupleIColumn(
-		kMetadataNtupleId, kMetadataOutputMode, fSettings.outputMode
+		kMetadataNtupleId,
+		kMetadataOutputMode,
+		static_cast<G4int>(fSettings.outputMode)
 	);
 	analysis->FillNtupleIColumn(
 		kMetadataNtupleId,

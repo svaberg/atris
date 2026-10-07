@@ -7,19 +7,22 @@ namespace atris {
 
 // Response mode records aggregate histograms. Interface mode also records
 // crossings, and step mode additionally records every transport step.
-constexpr G4int kResponseOutputMode = -1;
-constexpr G4int kInterfaceOutputMode = 0;
-constexpr G4int kStepOutputMode = 1;
-constexpr G4int kInvalidOutputMode = 2;
-
-constexpr G4bool WritesInterfaceNtuple(const G4int outputMode)
+enum class OutputMode : G4int
 {
-	return outputMode == kInterfaceOutputMode || outputMode == kStepOutputMode;
+  kResponse = -1,
+  kInterface = 0,
+  kStep = 1,
+  kInvalid = 2
+};
+
+constexpr G4bool WritesInterfaceNtuple(const OutputMode outputMode)
+{
+	return outputMode == OutputMode::kInterface || outputMode == OutputMode::kStep;
 }
 
-constexpr G4bool WritesStepNtuple(const G4int outputMode)
+constexpr G4bool WritesStepNtuple(const OutputMode outputMode)
 {
-	return outputMode == kStepOutputMode;
+	return outputMode == OutputMode::kStep;
 }
 
 }  // namespace atris
