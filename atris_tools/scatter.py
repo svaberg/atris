@@ -54,6 +54,13 @@ def chunk_macro(source, chunks):
     lines, beam_index, total_events = macro_lines_and_events(source)
 
     events_per_chunk = (total_events + chunks - 1) // chunks
+    if (
+        beam_index > 0
+        and lines[beam_index - 1].lstrip().startswith("# Process ")
+    ):
+        lines[beam_index - 1] = (
+            "# Process %i events in each chunk.\n" % events_per_chunk
+        )
     newline = "\n" if lines[beam_index].endswith("\n") else ""
     stripped_line = lines[beam_index].lstrip()
     indentation_length = len(lines[beam_index]) - len(stripped_line)
@@ -81,8 +88,26 @@ def chunk_macro(source, chunks):
         raise ValueError(
             "%s must contain exactly one /atris/randomSeeds command" % source
         )
-    lines[output_lines[0]] = "/atris/outputFile {ATRIS_OUTPUT_FILE}\n"
-    lines[seed_lines[0]] = "/atris/randomSeeds {ATRIS_SEED_1} {ATRIS_SEED_2}\n"
+    output_index = output_lines[0]
+    if (
+        output_index > 0
+        and lines[output_index - 1].strip()
+        == "# Use this suffix-free name for the simulation output."
+    ):
+        lines[output_index - 1] = (
+            "# atris-run supplies a separate output name for each chunk.\n"
+        )
+    seed_index = seed_lines[0]
+    if (
+        seed_index > 0
+        and lines[seed_index - 1].strip()
+        == "# Set the two random seeds before initialization."
+    ):
+        lines[seed_index - 1] = (
+            "# atris-run supplies two positive random seeds for each chunk.\n"
+        )
+    lines[output_index] = "/atris/outputFile {ATRIS_OUTPUT_FILE}\n"
+    lines[seed_index] = "/atris/randomSeeds {ATRIS_SEED_1} {ATRIS_SEED_2}\n"
     contents = "".join(lines)
     return contents, total_events, events_per_chunk
 

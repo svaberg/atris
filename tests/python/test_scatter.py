@@ -9,10 +9,13 @@ from atris_tools.scatter import chunk_plan, extend_plan, scatter
 
 ORDINARY_MACRO = """/atris/geometryFile {species}.gdml
 /atris/energyBinsFile {species}.bins
+# Use this suffix-free name for the simulation output.
 /atris/outputFile {species}
+# Set the two random seeds before initialization.
 /atris/randomSeeds 123456 654321
 /run/initialize
 /gps/particle {particle}
+# Process 7 events with the configuration above.
 /run/beamOn 7
 """
 
@@ -78,6 +81,15 @@ def test_scatter_preserves_ordinary_macros_and_rounds_chunk_event_count(
         assert "/atris/outputFile %s" % species not in chunk
         assert "/atris/randomSeeds 123456 654321" not in chunk
         assert "/run/beamOn 4" in chunk
+        assert (
+            "# atris-run supplies a separate output name for each chunk.\n"
+            "/atris/outputFile {ATRIS_OUTPUT_FILE}\n" in chunk
+        )
+        assert (
+            "# atris-run supplies two positive random seeds for each chunk.\n"
+            "/atris/randomSeeds {ATRIS_SEED_1} {ATRIS_SEED_2}\n" in chunk
+        )
+        assert "# Process 4 events in each chunk.\n/run/beamOn 4\n" in chunk
 
     assert caplog.messages == [
         "Rounded protons from 7 requested events to 8 across 2 chunks "
