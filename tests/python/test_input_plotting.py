@@ -9,19 +9,19 @@ from atris_tools import input_plotting
 MACRO = """\
 /atris/geometryFile protons.gdml
 /atris/energyBinsFile protons.bins
-/atris/outputFile protons
+/atris/outputStem protons
 /atris/phantom/name test-phantom
-/atris/phantom/response/type energy
+/atris/phantom/response/accumulation energy
 /atris/phantom/response/name dos
-/atris/phantom/response/file test-phantom_response.txt
+/atris/phantom/response/tableFile test-phantom_response.txt
 /atris/phantom/response/add
-/atris/phantom/response/type radiation-weighted-energy
+/atris/phantom/response/accumulation radiation-weighted-energy
 /atris/phantom/response/name equi
-/atris/phantom/response/file test-phantom_response.txt
+/atris/phantom/response/tableFile test-phantom_response.txt
 /atris/phantom/response/add
-/atris/phantom/response/type coefficient
+/atris/phantom/response/accumulation coefficient
 /atris/phantom/response/name rates
-/atris/phantom/response/file test-phantom_counting.txt
+/atris/phantom/response/tableFile test-phantom_counting.txt
 /atris/phantom/response/add
 /gps/particle proton
 /gps/ene/type Pow
@@ -90,7 +90,7 @@ def test_read_macro_phantoms_rejects_incomplete_response(tmp_path):
     macro = tmp_path / "protons.mac"
     macro.write_text(
         "/atris/phantom/name test-phantom\n"
-        "/atris/phantom/response/type energy\n"
+        "/atris/phantom/response/accumulation energy\n"
         "/atris/phantom/response/name dos\n"
         "/atris/phantom/response/add\n"
     )

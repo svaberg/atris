@@ -15,8 +15,8 @@ your source settings. NRLMSIS tables are one optional source for creating a PSF.
 | `<species>.mac` | AtRIS | File selection, Geant4 initialization, source settings, seeds, and event count. |
 | `<species>.bins` | AtRIS | Primary kinetic-energy bin edges, in MeV; the macro names the file explicitly. |
 | `phantoms.txt` | Staging, chunk runner, post-processing, plotting | Selection of named phantom tables, masses, and areas. |
-| `<stem>_response.txt` | AtRIS | Response table named by one or more `/atris/phantom/response/file` properties. |
-| `<stem>_counting.txt` | AtRIS | Counting-response table named by an `/atris/phantom/response/file` property. |
+| `<stem>_response.txt` | AtRIS | Response table named by one or more `/atris/phantom/response/tableFile` properties. |
+| `<stem>_counting.txt` | AtRIS | Counting-response table named by an `/atris/phantom/response/tableFile` property. |
 | `<prefix>.chunk.mac`, `chunks.txt` | Chunk workflow | Shared chunk macro and seed plan; see [Scatter/gather files](chunks.md). |
 
 The Python workflow uses the species names `protons` and `alphas`. The
@@ -196,14 +196,16 @@ per nucleon.
 Generated macros are grouped and commented in execution order. Their headers
 explain that `/atris/` commands configure AtRIS, `/run/` commands control the
 Geant4 run manager, and `/gps/` commands configure Geant4's General Particle
-Source. The macros name their GDML, energy-bin, output, and phantom files with
-`/atris/geometryFile`, `/atris/energyBinsFile`, `/atris/outputFile`, and the
-`/atris/phantom/*File` commands. They record the Geant4 reference physics list
-with `/atris/physicsList`, the named output mode with `/atris/outputMode`, and
-the Geant4 analysis format with `/atris/outputFormat`. Each source histogram
-records its positive azimuth- and cosine-bin counts with separate properties
-under `/atris/directionHistogram/` or `/atris/positionHistogram/`. The macro
-then initializes the run,
+Source. The macros name their GDML and energy-bin files, output stem, and
+phantom response tables with `/atris/geometryFile`,
+`/atris/energyBinsFile`, `/atris/outputStem`, and
+`/atris/phantom/response/tableFile`. They record the Geant4 reference physics
+list with `/atris/physicsList`, the named output mode with
+`/atris/outputMode`, and the Geant4 analysis format with
+`/atris/outputFormat`. Each source histogram records its positive azimuth- and
+cosine-bin counts with separate properties under
+`/atris/directionHistogram/` or `/atris/positionHistogram/`. The macro then
+initializes the run,
 selects a proton or alpha GPS source, records its minimum and maximum energy,
 and selects the `Pow` distribution with index `-1`. It emits one primary per
 event from a spherical surface, uses a cosine angular distribution over 0–90

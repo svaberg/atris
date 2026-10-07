@@ -12,8 +12,8 @@
 /atris/geometryFile alphas.gdml
 # Read output energy-bin edges; GPS source sampling is configured below.
 /atris/energyBinsFile alphas.bins
-# Use this suffix-free name for the simulation output.
-/atris/outputFile alphas
+# Use this filename stem for all simulation output.
+/atris/outputStem alphas
 
 # Physics and output content
 # Choose the Geant4 physics and the amount and format of saved data.
@@ -44,31 +44,31 @@
 
 # Response: dos
 # Multiply the table coefficient by crossing kinetic energy in eV.
-/atris/phantom/response/type energy
+/atris/phantom/response/accumulation energy
 # Use this short response name in output objects and filenames.
 /atris/phantom/response/name dos
 # Read particle- and energy-dependent coefficients from this table.
-/atris/phantom/response/file ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_response.txt
 # Register the response, then clear its three properties.
 /atris/phantom/response/add
 
 # Response: equi
 # Multiply by crossing energy in eV and the radiation weight.
-/atris/phantom/response/type radiation-weighted-energy
+/atris/phantom/response/accumulation radiation-weighted-energy
 # Use this short response name in output objects and filenames.
 /atris/phantom/response/name equi
 # Read particle- and energy-dependent coefficients from this table.
-/atris/phantom/response/file ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_response.txt
 # Register the response, then clear its three properties.
 /atris/phantom/response/add
 
 # Response: rates
 # Accumulate the response-table coefficient directly.
-/atris/phantom/response/type coefficient
+/atris/phantom/response/accumulation coefficient
 # Use this short response name in output objects and filenames.
 /atris/phantom/response/name rates
 # Read particle- and energy-dependent coefficients from this table.
-/atris/phantom/response/file ramona_zero_0.060MeV_detA_counting.txt
+/atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_counting.txt
 # Register the response, then clear its three properties.
 /atris/phantom/response/add
 
@@ -78,31 +78,31 @@
 
 # Response: dos
 # Multiply the table coefficient by crossing kinetic energy in eV.
-/atris/phantom/response/type energy
+/atris/phantom/response/accumulation energy
 # Use this short response name in output objects and filenames.
 /atris/phantom/response/name dos
 # Read particle- and energy-dependent coefficients from this table.
-/atris/phantom/response/file icru_zero_0.000MeV_detAB_response.txt
+/atris/phantom/response/tableFile icru_zero_0.000MeV_detAB_response.txt
 # Register the response, then clear its three properties.
 /atris/phantom/response/add
 
 # Response: equi
 # Multiply by crossing energy in eV and the radiation weight.
-/atris/phantom/response/type radiation-weighted-energy
+/atris/phantom/response/accumulation radiation-weighted-energy
 # Use this short response name in output objects and filenames.
 /atris/phantom/response/name equi
 # Read particle- and energy-dependent coefficients from this table.
-/atris/phantom/response/file icru_zero_0.000MeV_detAB_response.txt
+/atris/phantom/response/tableFile icru_zero_0.000MeV_detAB_response.txt
 # Register the response, then clear its three properties.
 /atris/phantom/response/add
 
 # Response: rates
 # Accumulate the response-table coefficient directly.
-/atris/phantom/response/type coefficient
+/atris/phantom/response/accumulation coefficient
 # Use this short response name in output objects and filenames.
 /atris/phantom/response/name rates
 # Read particle- and energy-dependent coefficients from this table.
-/atris/phantom/response/file icru_zero_0.000MeV_detAB_counting.txt
+/atris/phantom/response/tableFile icru_zero_0.000MeV_detAB_counting.txt
 # Register the response, then clear its three properties.
 /atris/phantom/response/add
 

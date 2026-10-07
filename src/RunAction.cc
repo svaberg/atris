@@ -68,10 +68,10 @@ void RunAction::BeginOfRunAction(const G4Run*)
   if (WritesInterfaceNtuple(fSettings.outputMode)) analysis->SetNtupleMerging(true);
   fHisto = new HistoManager(fSettings, fPhantomResponses);
   if (analysis->IsActive()) {
-    analysis->SetFileName(fSettings.outputFileName);
+    analysis->SetFileName(fSettings.outputStem);
     if (!analysis->OpenFile()) {
       G4ExceptionDescription message;
-      message << "Cannot open analysis output '" << fSettings.outputFileName
+      message << "Cannot open analysis output '" << fSettings.outputStem
               << "'. Its filename extension may not be supported by this "
                  "Geant4 installation.";
       G4Exception(

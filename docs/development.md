@@ -114,17 +114,17 @@ and source table before it is added:
 
 ```text
 /atris/phantom/name ramona_zero_0.060MeV_detA
-/atris/phantom/response/type energy
+/atris/phantom/response/accumulation energy
 /atris/phantom/response/name dos
-/atris/phantom/response/file ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_response.txt
 /atris/phantom/response/add
-/atris/phantom/response/type radiation-weighted-energy
+/atris/phantom/response/accumulation radiation-weighted-energy
 /atris/phantom/response/name equi
-/atris/phantom/response/file ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_response.txt
 /atris/phantom/response/add
-/atris/phantom/response/type coefficient
+/atris/phantom/response/accumulation coefficient
 /atris/phantom/response/name rates
-/atris/phantom/response/file ramona_zero_0.060MeV_detA_counting.txt
+/atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_counting.txt
 /atris/phantom/response/add
 ```
 

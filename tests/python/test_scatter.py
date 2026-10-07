@@ -9,8 +9,8 @@ from atris_tools.scatter import chunk_plan, extend_plan, scatter
 
 ORDINARY_MACRO = """/atris/geometryFile {species}.gdml
 /atris/energyBinsFile {species}.bins
-# Use this suffix-free name for the simulation output.
-/atris/outputFile {species}
+# Use this filename stem for all simulation output.
+/atris/outputStem {species}
 # Set the two random seeds before initialization.
 /atris/randomSeeds 123456 654321
 /run/initialize
@@ -76,14 +76,14 @@ def test_scatter_preserves_ordinary_macros_and_rounds_chunk_event_count(
     for species in ("protons", "alphas"):
         assert (tmp_path / f"{species}.mac").read_text() == originals[species]
         chunk = (tmp_path / f"{species}.chunk.mac").read_text()
-        assert "/atris/outputFile {ATRIS_OUTPUT_FILE}" in chunk
+        assert "/atris/outputStem {ATRIS_OUTPUT_STEM}" in chunk
         assert "/atris/randomSeeds {ATRIS_SEED_1} {ATRIS_SEED_2}" in chunk
-        assert "/atris/outputFile %s" % species not in chunk
+        assert "/atris/outputStem %s" % species not in chunk
         assert "/atris/randomSeeds 123456 654321" not in chunk
         assert "/run/beamOn 4" in chunk
         assert (
-            "# atris-run supplies a separate output name for each chunk.\n"
-            "/atris/outputFile {ATRIS_OUTPUT_FILE}\n" in chunk
+                "# atris-run supplies a separate output stem for each chunk.\n"
+            "/atris/outputStem {ATRIS_OUTPUT_STEM}\n" in chunk
         )
         assert (
             "# atris-run supplies two positive random seeds for each chunk.\n"

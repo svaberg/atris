@@ -55,7 +55,7 @@ Here $N$ is the requested chunk count per species and
 $n_{\mathrm{requested}}$ is the ordinary macro's event count.
 
 The ordinary macro must contain exactly one positive `/run/beamOn` command,
-one `/atris/outputFile` command, and one `/atris/randomSeeds` command. The chunk
+one `/atris/outputStem` command, and one `/atris/randomSeeds` command. The chunk
 macro changes the event count and replaces the output and seed values with
 Geant4 aliases; the ordinary macro remains unchanged. `atris-run` defines those
 aliases in a temporary wrapper for each plan entry. The actual total exceeds

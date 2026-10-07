@@ -72,6 +72,8 @@ def test_macro_generation_is_reproducible_and_preserves_requested_counts(tmp_pat
     assert proton_macro.startswith(expected_header.format(species="protons"))
     assert alpha_macro.startswith(expected_header.format(species="alphas"))
     assert "# Physics and output content\n" in proton_macro
+    assert "/atris/outputStem protons\n" in proton_macro
+    assert "/atris/outputStem alphas\n" in alpha_macro
     assert "/atris/physicsList QGSP_BERT\n" in proton_macro
     assert "/atris/outputMode profile\n" in proton_macro
     assert "/atris/outputFormat root\n" in proton_macro
@@ -147,17 +149,17 @@ def test_macro_names_each_phantom_input_file(tmp_path):
     ramona_start = commands.index("/atris/phantom/name ramona")
     assert commands[ramona_start : ramona_start + 13] == [
         "/atris/phantom/name ramona",
-        "/atris/phantom/response/type energy",
+        "/atris/phantom/response/accumulation energy",
         "/atris/phantom/response/name dos",
-        "/atris/phantom/response/file ramona_response.txt",
+        "/atris/phantom/response/tableFile ramona_response.txt",
         "/atris/phantom/response/add",
-        "/atris/phantom/response/type radiation-weighted-energy",
+        "/atris/phantom/response/accumulation radiation-weighted-energy",
         "/atris/phantom/response/name equi",
-        "/atris/phantom/response/file ramona_response.txt",
+        "/atris/phantom/response/tableFile ramona_response.txt",
         "/atris/phantom/response/add",
-        "/atris/phantom/response/type coefficient",
+        "/atris/phantom/response/accumulation coefficient",
         "/atris/phantom/response/name rates",
-        "/atris/phantom/response/file ramona_counting.txt",
+        "/atris/phantom/response/tableFile ramona_counting.txt",
         "/atris/phantom/response/add",
     ]
     assert commands[ramona_start + 13] == "/atris/phantom/name cell"

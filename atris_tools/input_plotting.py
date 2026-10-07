@@ -203,9 +203,9 @@ def read_macro_phantoms(filename):
     phantom_name = None
     response = {}
     property_commands = {
-        "/atris/phantom/response/type": "accumulation",
+        "/atris/phantom/response/accumulation": "accumulation",
         "/atris/phantom/response/name": "name",
-        "/atris/phantom/response/file": "file",
+        "/atris/phantom/response/tableFile": "file",
     }
     with Path(filename).open() as macro:
         for line_number, line in enumerate(macro, start=1):

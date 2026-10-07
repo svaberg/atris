@@ -49,7 +49,7 @@ def test_run_chunks_executes_plan_and_marks_success(tmp_path, monkeypatch):
     assert calls == [
         (
             "AtRIS",
-            "/control/alias ATRIS_OUTPUT_FILE chunks/protons_111111_222222\n"
+            "/control/alias ATRIS_OUTPUT_STEM chunks/protons_111111_222222\n"
             "/control/alias ATRIS_SEED_1 111111\n"
             "/control/alias ATRIS_SEED_2 222222\n"
             "/control/execute protons.chunk.mac\n",
@@ -60,7 +60,7 @@ def test_run_chunks_executes_plan_and_marks_success(tmp_path, monkeypatch):
         ),
         (
             "AtRIS",
-            "/control/alias ATRIS_OUTPUT_FILE chunks/alphas_333333_444444\n"
+            "/control/alias ATRIS_OUTPUT_STEM chunks/alphas_333333_444444\n"
             "/control/alias ATRIS_SEED_1 333333\n"
             "/control/alias ATRIS_SEED_2 444444\n"
             "/control/execute alphas.chunk.mac\n",

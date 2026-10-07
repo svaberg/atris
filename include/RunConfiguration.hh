@@ -28,7 +28,7 @@ class RunConfiguration
     void InstallUserActionsIfConfigured();
     void SetGeometryFile(G4String requestedFile);
     void SetEnergyBinsFile(G4String requestedFile);
-    void SetOutputFile(G4String requestedFile);
+    void SetOutputStem(G4String requestedStem);
     void SetRandomSeeds(G4long firstSeed, G4long secondSeed);
     void AddPhantomResponse();
     void SetPhysicsList(G4String requestedPhysicsList);
@@ -44,7 +44,7 @@ class RunConfiguration
     G4bool fHasConfiguredOutputFormat = false;
     G4bool fHasConfiguredGeometry = false;
     G4bool fHasConfiguredEnergyBins = false;
-    G4bool fHasConfiguredOutputFile = false;
+    G4bool fHasConfiguredOutputStem = false;
     G4bool fHasConfiguredSeeds = false;
     G4bool fHasUserActions = false;
     G4GenericMessenger fMessenger;
@@ -53,12 +53,12 @@ class RunConfiguration
     G4GenericMessenger fPhantomMessenger;
     G4GenericMessenger fPhantomResponseMessenger;
     G4String fPhantomName;
-    G4String fPhantomResponseType;
+    G4String fPhantomResponseAccumulation;
     G4String fPhantomResponseName;
-    G4String fPhantomResponseFile;
+    G4String fPhantomResponseTableFile;
     G4UIcommand* fGeometryFileCommand = nullptr;
     G4UIcommand* fEnergyBinsFileCommand = nullptr;
-    G4UIcommand* fOutputFileCommand = nullptr;
+    G4UIcommand* fOutputStemCommand = nullptr;
     G4UIcommand* fRandomSeedsCommand = nullptr;
     G4UIcommand* fAddPhantomResponseCommand = nullptr;
     G4UIcommand* fPhysicsListCommand = nullptr;

@@ -30,7 +30,7 @@ def chunk_wrapper(run_directory, species, run_name, first_seed, second_seed):
         delete=False,
     ) as wrapper:
         wrapper.write(
-            "/control/alias ATRIS_OUTPUT_FILE chunks/%s\n"
+            "/control/alias ATRIS_OUTPUT_STEM chunks/%s\n"
             "/control/alias ATRIS_SEED_1 %s\n"
             "/control/alias ATRIS_SEED_2 %s\n"
             "/control/execute %s.chunk.mac\n"

@@ -70,32 +70,32 @@ def chunk_macro(source, chunks):
         events_per_chunk,
         newline,
     )
-    output_lines = [
+    output_stem_lines = [
         index
         for index, line in enumerate(lines)
-        if line.lstrip().startswith("/atris/outputFile ")
+        if line.lstrip().startswith("/atris/outputStem ")
     ]
     seed_lines = [
         index
         for index, line in enumerate(lines)
         if line.lstrip().startswith("/atris/randomSeeds ")
     ]
-    if len(output_lines) != 1:
+    if len(output_stem_lines) != 1:
         raise ValueError(
-            "%s must contain exactly one /atris/outputFile command" % source
+            "%s must contain exactly one /atris/outputStem command" % source
         )
     if len(seed_lines) != 1:
         raise ValueError(
             "%s must contain exactly one /atris/randomSeeds command" % source
         )
-    output_index = output_lines[0]
+    output_stem_index = output_stem_lines[0]
     if (
-        output_index > 0
-        and lines[output_index - 1].strip()
-        == "# Use this suffix-free name for the simulation output."
+        output_stem_index > 0
+        and lines[output_stem_index - 1].strip()
+        == "# Use this filename stem for all simulation output."
     ):
-        lines[output_index - 1] = (
-            "# atris-run supplies a separate output name for each chunk.\n"
+        lines[output_stem_index - 1] = (
+            "# atris-run supplies a separate output stem for each chunk.\n"
         )
     seed_index = seed_lines[0]
     if (
@@ -106,7 +106,7 @@ def chunk_macro(source, chunks):
         lines[seed_index - 1] = (
             "# atris-run supplies two positive random seeds for each chunk.\n"
         )
-    lines[output_index] = "/atris/outputFile {ATRIS_OUTPUT_FILE}\n"
+    lines[output_stem_index] = "/atris/outputStem {ATRIS_OUTPUT_STEM}\n"
     lines[seed_index] = "/atris/randomSeeds {ATRIS_SEED_1} {ATRIS_SEED_2}\n"
     contents = "".join(lines)
     return contents, total_events, events_per_chunk

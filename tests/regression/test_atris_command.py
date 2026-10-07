@@ -119,7 +119,7 @@ def write_macro(
     lines = [
         "/atris/geometryFile " + geometry_file,
         "/atris/energyBinsFile " + energy_bins_file,
-        "/atris/outputFile " + output_file,
+        "/atris/outputStem " + output_file,
     ]
     for stem, response_file, counting_file in phantom_files:
         lines.append("/atris/phantom/name " + stem)
@@ -130,9 +130,9 @@ def write_macro(
         ):
             lines.extend(
                 (
-                    "/atris/phantom/response/type " + response_type,
+                    "/atris/phantom/response/accumulation " + response_type,
                     "/atris/phantom/response/name " + response_name,
-                    "/atris/phantom/response/file " + filename,
+                    "/atris/phantom/response/tableFile " + filename,
                     "/atris/phantom/response/add",
                 )
             )
@@ -819,9 +819,9 @@ def test_macro_accepts_an_additional_named_response(tmp_path, atris_command):
         macro.read_text().replace(
             "/atris/physicsList ",
             "/atris/phantom/name %s\n"
-            "/atris/phantom/response/type coefficient\n"
+            "/atris/phantom/response/accumulation coefficient\n"
             "/atris/phantom/response/name bounting\n"
-            "/atris/phantom/response/file %s\n"
+            "/atris/phantom/response/tableFile %s\n"
             "/atris/phantom/response/add\n"
             "/atris/physicsList " % (RESPONSE_STEM, extra),
         )
@@ -838,7 +838,7 @@ def test_macro_rejects_an_incomplete_phantom_response(tmp_path, atris_command):
     macro = prepare_run(tmp_path)
     macro.write_text(
         macro.read_text().replace(
-            "/atris/phantom/response/file %s_response.txt\n" % RESPONSE_STEM,
+            "/atris/phantom/response/tableFile %s_response.txt\n" % RESPONSE_STEM,
             "",
             1,
         )

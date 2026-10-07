@@ -34,8 +34,8 @@ generated macro can be read without cross-referencing this page. For example:
 /atris/geometryFile protons.gdml
 # Read output energy-bin edges; GPS source sampling is configured below.
 /atris/energyBinsFile protons.bins
-# Use this suffix-free name for the simulation output.
-/atris/outputFile protons
+# Use this filename stem for all simulation output.
+/atris/outputStem protons
 
 # Use this Geant4 reference physics list for particle transport.
 /atris/physicsList FTFP_BERT_HP
@@ -47,11 +47,11 @@ generated macro can be read without cross-referencing this page. For example:
 # Select this phantom for the response definitions below.
 /atris/phantom/name ramona_zero_0.060MeV_detA
 # Multiply the table coefficient by crossing kinetic energy in eV.
-/atris/phantom/response/type energy
+/atris/phantom/response/accumulation energy
 # Use this short response name in output objects and filenames.
 /atris/phantom/response/name dos
 # Read particle- and energy-dependent coefficients from this table.
-/atris/phantom/response/file ramona_zero_0.060MeV_detA_response.txt
+/atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_response.txt
 # Register the configured response, then clear its three properties.
 /atris/phantom/response/add
 
@@ -78,12 +78,12 @@ generated macro can be read without cross-referencing this page. For example:
 
 Geometry, energy bins, output, and phantom tables do not have to share the
 macro's basename. Paths are interpreted relative to the directory in which
-AtRIS is run. `/atris/phantom/name` selects a phantom. Set the response type,
-name, and table path, then use `/atris/phantom/response/add` to register that
-response. The selected phantom remains active, while the three response
-properties are cleared after each successful `add`. A phantom can have any
-number of uniquely named responses. Omit these commands for a run without
-phantom responses.
+AtRIS is run. `/atris/phantom/name` selects a phantom. Set the response
+accumulation rule, name, and table file, then use
+`/atris/phantom/response/add` to register that response. The selected phantom
+remains active, while the three response properties are cleared after each
+successful `add`. A phantom can have any number of uniquely named responses.
+Omit these commands for a run without phantom responses.
 
 The pre-initialization `/atris/` commands must precede `/run/initialize`.
 Initialization makes the `/gps/` source commands available. The final
@@ -104,7 +104,7 @@ is killed; it does not record steps in non-sensitive world space. See
 
 The `/atris/outputFormat` command selects the Geant4 analysis backend. CSV
 response output is written as several files beginning with the configured
-`/atris/outputFile` value. ROOT output is written to that value with a `.root`
+`/atris/outputStem` value. ROOT output is written to that value with a `.root`
 extension. The output's parent directory must already exist.
 
 ## Chunk execution

@@ -122,13 +122,13 @@ RunConfiguration::RunConfiguration(
   energyBinsFileCommand.SetStates(G4State_PreInit);
   fEnergyBinsFileCommand = energyBinsFileCommand.command;
 
-  auto& outputFileCommand = fMessenger.DeclareMethod(
-    "outputFile",
-    &RunConfiguration::SetOutputFile,
-    "Set the analysis output filename."
+  auto& outputStemCommand = fMessenger.DeclareMethod(
+    "outputStem",
+    &RunConfiguration::SetOutputStem,
+    "Set the filename stem shared by the analysis outputs."
   );
-  outputFileCommand.SetStates(G4State_PreInit);
-  fOutputFileCommand = outputFileCommand.command;
+  outputStemCommand.SetStates(G4State_PreInit);
+  fOutputStemCommand = outputStemCommand.command;
 
   auto& randomSeedsCommand = fMessenger.DeclareMethod(
     "randomSeeds",
@@ -148,16 +148,16 @@ RunConfiguration::RunConfiguration(
   );
   phantomNameCommand.SetStates(G4State_PreInit);
 
-  auto& phantomResponseTypeCommand =
+  auto& phantomResponseAccumulationCommand =
     fPhantomResponseMessenger.DeclareProperty(
-      "type",
-      fPhantomResponseType,
+      "accumulation",
+      fPhantomResponseAccumulation,
       "Set how this response is accumulated."
     );
-  phantomResponseTypeCommand.SetCandidates(
+  phantomResponseAccumulationCommand.SetCandidates(
     "coefficient energy radiation-weighted-energy"
   );
-  phantomResponseTypeCommand.SetStates(G4State_PreInit);
+  phantomResponseAccumulationCommand.SetStates(G4State_PreInit);
 
   auto& phantomResponseNameCommand =
     fPhantomResponseMessenger.DeclareProperty(
@@ -167,13 +167,13 @@ RunConfiguration::RunConfiguration(
     );
   phantomResponseNameCommand.SetStates(G4State_PreInit);
 
-  auto& phantomResponseFileCommand =
+  auto& phantomResponseTableFileCommand =
     fPhantomResponseMessenger.DeclareProperty(
-      "file",
-      fPhantomResponseFile,
-      "Set the response-table file."
+      "tableFile",
+      fPhantomResponseTableFile,
+      "Set the particle- and energy-dependent response-table file."
     );
-  phantomResponseFileCommand.SetStates(G4State_PreInit);
+  phantomResponseTableFileCommand.SetStates(G4State_PreInit);
 
   auto& addPhantomResponseCommand = fPhantomResponseMessenger.DeclareMethod(
     "add",
@@ -248,7 +248,7 @@ void RunConfiguration::InstallUserActionsIfConfigured()
     fHasUserActions
     || !fHasConfiguredGeometry
     || !fHasConfiguredEnergyBins
-    || !fHasConfiguredOutputFile
+    || !fHasConfiguredOutputStem
     || fSettings.physicsListName.empty()
     || !fHasConfiguredOutputMode
     || !fHasConfiguredOutputFormat
@@ -334,26 +334,26 @@ void RunConfiguration::SetEnergyBinsFile(G4String requestedFile)
   InstallUserActionsIfConfigured();
 }
 
-void RunConfiguration::SetOutputFile(G4String requestedFile)
+void RunConfiguration::SetOutputStem(G4String requestedStem)
 {
-  if (fHasConfiguredOutputFile) {
-    if (requestedFile == fSettings.outputFileName) return;
+  if (fHasConfiguredOutputStem) {
+    if (requestedStem == fSettings.outputStem) return;
     G4ExceptionDescription message;
-    message << "AtRIS output-file conflict: the run already selects '"
-            << fSettings.outputFileName << "' but the macro later requests '"
-            << requestedFile << "'.";
-    fOutputFileCommand->CommandFailed(message);
+    message << "AtRIS output-stem conflict: the run already selects '"
+            << fSettings.outputStem << "' but the macro later requests '"
+            << requestedStem << "'.";
+    fOutputStemCommand->CommandFailed(message);
     return;
   }
-  if (requestedFile.empty()) {
+  if (requestedStem.empty()) {
     G4ExceptionDescription message;
-    message << "AtRIS output filename cannot be empty.";
-    fOutputFileCommand->CommandFailed(message);
+    message << "AtRIS output stem cannot be empty.";
+    fOutputStemCommand->CommandFailed(message);
     return;
   }
 
-  fSettings.outputFileName = requestedFile;
-  fHasConfiguredOutputFile = true;
+  fSettings.outputStem = requestedStem;
+  fHasConfiguredOutputStem = true;
   InstallUserActionsIfConfigured();
 }
 
@@ -388,9 +388,9 @@ void RunConfiguration::AddPhantomResponse()
 {
   if (
     fPhantomName.empty()
-    || fPhantomResponseType.empty()
+    || fPhantomResponseAccumulation.empty()
     || fPhantomResponseName.empty()
-    || fPhantomResponseFile.empty()
+    || fPhantomResponseTableFile.empty()
   ) {
     G4ExceptionDescription message;
     message << "Set /atris/phantom/name and every "
@@ -402,8 +402,8 @@ void RunConfiguration::AddPhantomResponse()
   if (!fPhantomResponses.Add(
         fPhantomName,
         fPhantomResponseName,
-        fPhantomResponseType,
-        fPhantomResponseFile
+        fPhantomResponseAccumulation,
+        fPhantomResponseTableFile
       )) {
     G4ExceptionDescription message;
     message << "Could not configure response '" << fPhantomResponseName
@@ -411,9 +411,9 @@ void RunConfiguration::AddPhantomResponse()
     fAddPhantomResponseCommand->CommandFailed(message);
     return;
   }
-  fPhantomResponseType.clear();
+  fPhantomResponseAccumulation.clear();
   fPhantomResponseName.clear();
-  fPhantomResponseFile.clear();
+  fPhantomResponseTableFile.clear();
 }
 
 void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)

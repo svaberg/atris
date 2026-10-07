@@ -154,8 +154,8 @@ def genMacro(
             "/atris/energyBinsFile %s.bins" % name,
         ),
         (
-            "Use this suffix-free name for the simulation output.",
-            "/atris/outputFile %s" % name,
+            "Use this filename stem for all simulation output.",
+            "/atris/outputStem %s" % name,
         ),
     )
 
@@ -242,7 +242,7 @@ def genMacro(
                 lines,
                 (
                     accumulation_comment,
-                    "/atris/phantom/response/type %s" % accumulation,
+                    "/atris/phantom/response/accumulation %s" % accumulation,
                 ),
                 (
                     "Use this short response name in output objects and filenames.",
@@ -250,7 +250,7 @@ def genMacro(
                 ),
                 (
                     "Read particle- and energy-dependent coefficients from this table.",
-                    "/atris/phantom/response/file %s" % filename,
+                    "/atris/phantom/response/tableFile %s" % filename,
                 ),
                 (
                     "Register the response, then clear its three properties.",
