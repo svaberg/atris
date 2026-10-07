@@ -26,8 +26,8 @@ namespace {
 atris::OutputMode OutputModeValue(const G4String& name)
 {
   if (name == "response") return atris::OutputMode::kResponse;
-  if (name == "profile") return atris::OutputMode::kInterface;
-  if (name == "shower") return atris::OutputMode::kStep;
+  if (name == "profile") return atris::OutputMode::kProfile;
+  if (name == "shower") return atris::OutputMode::kShower;
   return atris::OutputMode::kInvalid;
 }
 
@@ -279,11 +279,11 @@ void RunConfiguration::Initialize()
          << " energy-bin edges from " << fEnergyBinsFileName << G4endl;
 
   fSettings.outputMode = OutputModeValue(fOutputModeName);
-  if (fSettings.outputMode == OutputMode::kInterface) {
+  if (fSettings.outputMode == OutputMode::kProfile) {
     G4cout << "### AtRIS: profile mode writes histograms and interface ntuples"
            << G4endl;
   }
-  if (fSettings.outputMode == OutputMode::kStep) {
+  if (fSettings.outputMode == OutputMode::kShower) {
     G4cout << "### AtRIS: shower mode writes histograms, interface, and "
               "transport-step ntuples; output may be very large"
            << G4endl;

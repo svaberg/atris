@@ -20,7 +20,7 @@ constexpr G4double kSourceCosineMax = 1.;
 // One primary-energy H1 and four non-phantom H2 histograms are always booked.
 constexpr G4int kBaseHistogramCount = 5;
 // Version of the annotations written into Geant4 CSV histogram headers.
-constexpr G4int kCsvSchemaVersion = 1;
+constexpr G4int kCsvSchemaVersion = 2;
 
 template <typename Histogram>
 void AnnotateHistogram(
@@ -44,8 +44,7 @@ void AnnotateHistogram(
 	histogram->add_annotation("atris.input_prefix", settings.simulationInputPrefix);
 	histogram->add_annotation("atris.physics_list", settings.physicsListName);
 	histogram->add_annotation(
-		"atris.output_mode",
-		std::to_string(static_cast<G4int>(settings.outputMode))
+		"atris.output_mode", atris::OutputModeName(settings.outputMode)
 	);
 	histogram->add_annotation("atris.phantom_count", std::to_string(phantomCount));
 	if (settings.explicitSeeds[0] != 0) {
@@ -243,7 +242,7 @@ void HistoManager::Book() const
 	analysis->CreateNtupleSColumn(id, "atris_version");
 	analysis->CreateNtupleSColumn(id, "input_prefix");
 	analysis->CreateNtupleSColumn(id, "physics_list");
-	analysis->CreateNtupleIColumn(id, "output_mode");
+	analysis->CreateNtupleSColumn(id, "output_mode");
 	analysis->CreateNtupleIColumn(id, "phantom_count");
 	analysis->CreateNtupleIColumn(id, "seeds_explicit");
 	analysis->CreateNtupleIColumn(id, "random_seed_1");
@@ -323,10 +322,10 @@ void HistoManager::FillMetadata() const
 	analysis->FillNtupleSColumn(
 		kMetadataNtupleId, kMetadataPhysicsList, fSettings.physicsListName
 	);
-	analysis->FillNtupleIColumn(
+	analysis->FillNtupleSColumn(
 		kMetadataNtupleId,
 		kMetadataOutputMode,
-		static_cast<G4int>(fSettings.outputMode)
+		OutputModeName(fSettings.outputMode)
 	);
 	analysis->FillNtupleIColumn(
 		kMetadataNtupleId,

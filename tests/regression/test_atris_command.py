@@ -74,11 +74,6 @@ EXPECTED_ROOT_RESPONSE_METADATA = {
     "scale_by_radiation_weight",
     "scale_by_inverse_phantom_mass",
 }
-OUTPUT_MODE_VALUES = {
-    "response": -1,
-    "profile": 0,
-    "shower": 1,
-}
 
 
 @pytest.fixture(scope="session")
@@ -344,8 +339,9 @@ def test_macro_runs_one_worker_and_writes_expected_histograms(
             metadata = root_file["metadata"]
             assert set(metadata.keys()) == EXPECTED_ROOT_METADATA
             assert metadata.num_entries == 1
+            assert metadata["schema"].array(library="np").tolist() == [2]
             assert metadata["output_mode"].array(library="np").tolist() == [
-                OUTPUT_MODE_VALUES[output_mode]
+                output_mode
             ]
             assert metadata["phantom_count"].array(library="np").tolist() == [1]
             responses = root_file["responses"]
@@ -374,12 +370,10 @@ def test_macro_runs_one_worker_and_writes_expected_histograms(
         assert histogram_entries(tmp_path / "protons_h1_h1.1.csv") == 2
         for path in tmp_path.glob("protons_h*.csv"):
             annotations = histogram_annotations(path)
-            assert annotations["atris.csv_schema"] == "1"
+            assert annotations["atris.csv_schema"] == "2"
             assert annotations["atris.input_prefix"] == "planet"
             assert annotations["atris.physics_list"] == "FTFP_BERT_HP"
-            assert annotations["atris.output_mode"] == str(
-                OUTPUT_MODE_VALUES[output_mode]
-            )
+            assert annotations["atris.output_mode"] == output_mode
             assert annotations["atris.random_seed_pairs"] == "123456:654321"
             assert annotations["atris.quantity"]
         for response_name, factors, source_suffix in (
@@ -592,7 +586,7 @@ def test_chunk_runner_supplies_output_and_seeds_to_shared_macro(
     assert (tmp_path / "chunks" / "protons_123456_654321.COMPLETE").is_file()
     with uproot.open(output) as root_file:
         metadata = root_file["metadata"]
-        assert metadata["output_mode"].array(library="np").tolist() == [0]
+        assert metadata["output_mode"].array(library="np").tolist() == ["profile"]
         assert metadata["random_seed_1"].array(library="np").tolist() == [123456]
         assert metadata["random_seed_2"].array(library="np").tolist() == [654321]
 
@@ -727,7 +721,7 @@ def test_repeated_configuration_uses_last_value(tmp_path, atris_command):
     annotations = csv_histogram_annotations(tmp_path / "protons_h1_h1.1.csv")
     assert annotations["atris.input_prefix"] == "planet"
     assert annotations["atris.physics_list"] == "QGSP_BERT"
-    assert annotations["atris.output_mode"] == "-1"
+    assert annotations["atris.output_mode"] == "response"
     assert annotations["atris.random_seed_pairs"] == "123456:654321"
     assert not list(tmp_path.glob("superseded*"))
 
@@ -752,7 +746,7 @@ def test_macro_uses_cpp_configuration_defaults(tmp_path, atris_command):
     annotations = csv_histogram_annotations(tmp_path / "protons_h1_h1.1.csv")
     assert annotations["atris.input_prefix"] == "simulation"
     assert annotations["atris.physics_list"] == "FTFP_BERT_HP"
-    assert annotations["atris.output_mode"] == "-1"
+    assert annotations["atris.output_mode"] == "response"
 
 
 @pytest.mark.regression

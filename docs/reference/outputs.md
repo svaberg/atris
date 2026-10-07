@@ -223,7 +223,7 @@ represented chunk in a gathered ROOT file:
 | `atris_version` | Version compiled into the executable. |
 | `input_prefix` | Species input prefix used for geometry, macro, and bins. |
 | `physics_list` | Geant4 reference physics list. |
-| `output_mode` | Numeric AtRIS output mode. |
+| `output_mode` | AtRIS output mode: `response`, `profile`, or `shower`. |
 | `phantom_count` | Number of distinct phantom stems with loaded responses. |
 | `seeds_explicit` | `1` when the output prefix supplied explicit chunk seeds. |
 | `random_seed_1`, `random_seed_2` | The two explicit seeds, or zero for runtime defaults. |
