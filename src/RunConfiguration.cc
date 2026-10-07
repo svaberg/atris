@@ -448,7 +448,15 @@ void RunConfiguration::SetOutputMode(G4String requestedOutputMode)
 
   fSettings.outputMode = requestedValue;
   InstallUserActionsIfConfigured();
-  ReportOutputMode();
+  if (requestedValue == kInterfaceOutputMode) {
+    G4cout << "### AtRIS: profile mode writes histograms and interface ntuples"
+           << G4endl;
+  }
+  if (requestedValue == kStepOutputMode) {
+    G4cout << "### AtRIS: shower mode writes histograms, interface, and "
+              "transport-step ntuples; output may be very large"
+           << G4endl;
+  }
 }
 
 void RunConfiguration::SetOutputFormat(G4String requestedOutputFormat)
@@ -467,19 +475,6 @@ void RunConfiguration::SetOutputFormat(G4String requestedOutputFormat)
 
   fSettings.outputFileFormat = requestedOutputFormat;
   InstallUserActionsIfConfigured();
-}
-
-void RunConfiguration::ReportOutputMode() const
-{
-  if (fSettings.outputMode == kInterfaceOutputMode) {
-    G4cout << "### AtRIS: profile mode writes histograms and interface ntuples"
-           << G4endl;
-  }
-  if (fSettings.outputMode == kStepOutputMode) {
-    G4cout << "### AtRIS: shower mode writes histograms, interface, and "
-              "transport-step ntuples; output may be very large"
-           << G4endl;
-  }
 }
 
 }  // namespace atris

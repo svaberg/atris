@@ -34,7 +34,6 @@ class RunConfiguration
     void SetPhysicsList(G4String requestedPhysicsList);
     void SetOutputMode(G4String requestedOutputMode);
     void SetOutputFormat(G4String requestedOutputFormat);
-    void ReportOutputMode() const;
 
     G4RunManager* const fRunManager;
     RunSettings& fSettings;
