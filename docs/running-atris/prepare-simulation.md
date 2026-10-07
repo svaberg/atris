@@ -83,7 +83,7 @@ not the existing raw simulation output.
 ## Prepare particle inputs
 
 The standard macro generator prepares separate proton and alpha simulations.
-Choose the energy range, number of energy points, and event counts for your
+Choose the energy range, number of output-bin edges, and event counts for your
 calculation. For example, the following explicitly sets the generator's
 standard sampling values and fixes the seed used to generate macros:
 

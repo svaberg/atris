@@ -185,8 +185,11 @@ A `.bins` file contains whitespace-separated energy edges, without a header,
 in total kinetic energy MeV. Provide increasing edges. With `M` edges there
 are `M-1` interior energy bins, plus underflow and overflow bins in raw output.
 
-The generated grid is `10**linspace(min_power, max_power, energy_points)` for
-protons, and four times that grid for alphas. Alpha energies in the actual
+The generated output-bin grid is
+`10**linspace(min_power, max_power, energy_points)` for protons, and four times
+that grid for alphas. The GPS source is continuous rather than restricted to
+those edges: it uses a power law proportional to $E^{-1}$ between the first and
+last edge, which samples uniformly in $\log E$. Alpha energies in the actual
 `.bins`, `.mac`, and output histograms are total particle energies, not energies
 per nucleon.
 
@@ -198,26 +201,28 @@ the Geant4 analysis format with `/atris/outputFormat`. Each source histogram
 records its positive azimuth- and cosine-bin counts with separate properties
 under `/atris/directionHistogram/` or `/atris/positionHistogram/`. The macro
 then initializes the run,
-selects a proton or alpha GPS source, uses `User` energy histograms, emits one
-primary per event from a spherical surface, uses a cosine angular distribution
-over 0–90 degrees, sets a 100 m production cut, sets two random seeds with
-`/atris/randomSeeds`, and
-issues one `/run/beamOn` command. Histogram point weights are zero for the first
-edge and one for the remaining edges.
+selects a proton or alpha GPS source, records its minimum and maximum energy,
+and selects the `Pow` distribution with index `-1`. It emits one primary per
+event from a spherical surface, uses a cosine angular distribution over 0–90
+degrees, sets a 100 m production cut, sets two random seeds with
+`/atris/randomSeeds`, and issues one `/run/beamOn` command.
 
 Despite its option name, `--particles-per-bin` is multiplied by the number of
-**energy points**, not the number of intervals:
+**output-bin edges**, not the number of intervals:
 
 $$
 N_p=n m,\qquad N_\alpha=\lfloor nf_\alpha\rfloor m.
 $$
 
-Here $n$ is `particles_per_bin`, $m$ is `energy_points`, and
+Here $n$ is `particles_per_bin`, $m$ is `energy_points` (the number of
+output-bin edges), and
 $f_\alpha$ is `alpha_factor`; the floor represents integer truncation for
 nonnegative counts.
 
-The default totals are 363000 protons and 239580 alphas. Actual sampled counts
-in each bin are recorded in the primary histogram and used for normalization.
+The default totals are 363000 protons and 239580 alphas. The continuous
+log-uniform source gives every logarithmic output interval the same expected
+sampling probability. Actual sampled counts fluctuate and are recorded in the
+primary histogram for normalization.
 
 The current generator does not read `.spec` files or fold a physical primary
 spectrum into the results. Such files may be retained as run inputs by

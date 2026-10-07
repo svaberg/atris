@@ -191,8 +191,9 @@ Each species needs three files:
 
 This example requests 363,000 proton events and 239,580 alpha events. Its 121
 energy edges span 1–1,000,000 MeV for protons and 4–4,000,000 MeV for alphas. Despite the option
-name, the generator multiplies `--particles-per-bin` by the number of **energy
-points**, not intervals; see [the exact convention](../reference/inputs.md#energy-bins-and-macros).
+name, the generator multiplies `--particles-per-bin` by the number of
+**output-bin edges**, not intervals; see
+[the exact convention](../reference/inputs.md#energy-bins-and-macros).
 
 The generated `protons.mac` and `alphas.mac` files explicitly name their GDML,
 energy-bin, output, and phantom files. AtRIS runs a species macro directly.
