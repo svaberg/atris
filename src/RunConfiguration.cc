@@ -104,29 +104,23 @@ RunConfiguration::RunConfiguration(
       "One response for the selected phantom."
     )
 {
-  auto& geometryFileCommand = fMessenger.DeclareMethod(
+  fMessenger.DeclareProperty(
     "geometryFile",
-    &RunConfiguration::SetGeometryFile,
+    fGeometryFileName,
     "Read the run geometry from a GDML file."
-  );
-  geometryFileCommand.SetStates(G4State_PreInit);
-  fGeometryFileCommand = geometryFileCommand.command;
+  ).SetStates(G4State_PreInit);
 
-  auto& energyBinsFileCommand = fMessenger.DeclareMethod(
+  fMessenger.DeclareProperty(
     "energyBinsFile",
-    &RunConfiguration::SetEnergyBinsFile,
+    fEnergyBinsFileName,
     "Read the primary-energy histogram edges from a file."
-  );
-  energyBinsFileCommand.SetStates(G4State_PreInit);
-  fEnergyBinsFileCommand = energyBinsFileCommand.command;
+  ).SetStates(G4State_PreInit);
 
-  auto& outputStemCommand = fMessenger.DeclareMethod(
+  fMessenger.DeclareProperty(
     "outputStem",
-    &RunConfiguration::SetOutputStem,
+    fSettings.outputStem,
     "Set the filename stem shared by the analysis outputs."
-  );
-  outputStemCommand.SetStates(G4State_PreInit);
-  fOutputStemCommand = outputStemCommand.command;
+  ).SetStates(G4State_PreInit);
 
   auto& randomSeedsCommand = fMessenger.DeclareMethod(
     "randomSeeds",
@@ -137,7 +131,6 @@ RunConfiguration::RunConfiguration(
   randomSeedsCommand.SetParameterName(G4int{1}, "secondSeed", false);
   randomSeedsCommand.SetRange("firstSeed>0 && secondSeed>0");
   randomSeedsCommand.SetStates(G4State_PreInit);
-  fRandomSeedsCommand = randomSeedsCommand.command;
 
   fPhantomMessenger.DeclareProperty(
     "name", fPhantomName, "Select the phantom receiving subsequent responses."
@@ -179,30 +172,33 @@ RunConfiguration::RunConfiguration(
   addPhantomResponseCommand.SetStates(G4State_PreInit);
   fAddPhantomResponseCommand = addPhantomResponseCommand.command;
 
-  auto& physicsListCommand = fMessenger.DeclareMethod(
+  fMessenger.DeclareProperty(
     "physicsList",
-    &RunConfiguration::SetPhysicsList,
+    fSettings.physicsListName,
     "Set the Geant4 reference physics list."
-  );
-  physicsListCommand.SetStates(G4State_PreInit);
-  fPhysicsListCommand = physicsListCommand.command;
+  ).SetStates(G4State_PreInit);
 
-  auto& outputModeCommand = fMessenger.DeclareMethod(
+  auto& outputModeCommand = fMessenger.DeclareProperty(
     "outputMode",
-    &RunConfiguration::SetOutputMode,
+    fOutputModeName,
     "Set the AtRIS output mode."
   );
   outputModeCommand.SetCandidates("response profile shower");
   outputModeCommand.SetStates(G4State_PreInit);
-  fOutputModeCommand = outputModeCommand.command;
 
-  auto& outputFormatCommand = fMessenger.DeclareMethod(
+  fMessenger.DeclareProperty(
     "outputFormat",
-    &RunConfiguration::SetOutputFormat,
+    fSettings.outputFileFormat,
     "Set the Geant4 analysis output format."
+  ).SetStates(G4State_PreInit);
+
+  auto& initializeCommand = fMessenger.DeclareMethod(
+    "initialize",
+    &RunConfiguration::Initialize,
+    "Apply the final AtRIS configuration and initialize Geant4."
   );
-  outputFormatCommand.SetStates(G4State_PreInit);
-  fOutputFormatCommand = outputFormatCommand.command;
+  initializeCommand.SetStates(G4State_PreInit);
+  fInitializeCommand = initializeCommand.command;
 
   DeclareHistogramBinsProperties(
     fDirectionHistogramMessenger,
@@ -215,141 +211,12 @@ RunConfiguration::RunConfiguration(
 
 }
 
-void RunConfiguration::InstallUserActionsIfConfigured()
-{
-  if (
-    fHasUserActions
-    || fGeometryFileName.empty()
-    || fEnergyBinsFileName.empty()
-    || fSettings.outputStem.empty()
-    || fSettings.physicsListName.empty()
-    || fSettings.outputMode == kInvalidOutputMode
-    || fSettings.outputFileFormat.empty()
-  ) return;
-  fRunManager->SetUserInitialization(
-    new UserActionInitialization(fSettings, fPhantomResponses)
-  );
-  fHasUserActions = true;
-}
-
-void RunConfiguration::SetGeometryFile(G4String requestedFile)
-{
-  if (!fGeometryFileName.empty()) {
-    if (requestedFile == fGeometryFileName) return;
-    G4ExceptionDescription message;
-    message << "AtRIS geometry-file conflict: the run already selects '"
-            << fGeometryFileName << "' but the macro later requests '"
-            << requestedFile << "'.";
-    fGeometryFileCommand->CommandFailed(message);
-    return;
-  }
-
-  std::ifstream geometry(requestedFile);
-  if (!geometry.good()) {
-    G4ExceptionDescription message;
-    message << "Cannot open AtRIS geometry file '" << requestedFile << "'.";
-    fGeometryFileCommand->CommandFailed(message);
-    return;
-  }
-  geometry.close();
-
-  fParser.Read(requestedFile);
-  fGeometryFileName = requestedFile;
-  std::filesystem::path inputPath(requestedFile.c_str());
-  inputPath.replace_extension();
-  fSettings.simulationInputPrefix = inputPath.string();
-  fSettings.detectorCount = CountSensitiveDetectors(fParser);
-  fSettings.detectorBins.clear();
-  fSettings.detectorBins.reserve(fSettings.detectorCount + 1);
-  constexpr G4double detectorBinHalfWidth = 0.5;
-  for (G4int index = 0; index <= fSettings.detectorCount; ++index) {
-    fSettings.detectorBins.push_back(index - detectorBinHalfWidth);
-  }
-  G4cout << "### AtRIS: geometry contains " << fSettings.detectorCount
-         << " sensitive detectors" << G4endl;
-
-  fRunManager->SetUserInitialization(
-    new DetectorConstruction(fParser, fSettings, fPhantomResponses)
-  );
-  InstallUserActionsIfConfigured();
-}
-
-void RunConfiguration::SetEnergyBinsFile(G4String requestedFile)
-{
-  if (!fEnergyBinsFileName.empty()) {
-    if (requestedFile == fEnergyBinsFileName) return;
-    G4ExceptionDescription message;
-    message << "AtRIS energy-bins-file conflict: the run already selects '"
-            << fEnergyBinsFileName << "' but the macro later requests '"
-            << requestedFile << "'.";
-    fEnergyBinsFileCommand->CommandFailed(message);
-    return;
-  }
-
-  std::ifstream input(requestedFile);
-  std::vector<G4double> edges;
-  G4double edge;
-  while (input >> edge) edges.push_back(edge);
-  if (!input.eof() || edges.size() < 2) {
-    G4ExceptionDescription message;
-    message << "AtRIS energy-bin file '" << requestedFile
-            << "' must contain at least two numeric edges.";
-    fEnergyBinsFileCommand->CommandFailed(message);
-    return;
-  }
-
-  fEnergyBinsFileName = requestedFile;
-  fSettings.energyBins = std::move(edges);
-  G4cout << "### AtRIS: read " << fSettings.energyBins.size()
-         << " energy-bin edges from " << requestedFile << G4endl;
-  InstallUserActionsIfConfigured();
-}
-
-void RunConfiguration::SetOutputStem(G4String requestedStem)
-{
-  if (!fSettings.outputStem.empty()) {
-    if (requestedStem == fSettings.outputStem) return;
-    G4ExceptionDescription message;
-    message << "AtRIS output-stem conflict: the run already selects '"
-            << fSettings.outputStem << "' but the macro later requests '"
-            << requestedStem << "'.";
-    fOutputStemCommand->CommandFailed(message);
-    return;
-  }
-  if (requestedStem.empty()) {
-    G4ExceptionDescription message;
-    message << "AtRIS output stem cannot be empty.";
-    fOutputStemCommand->CommandFailed(message);
-    return;
-  }
-
-  fSettings.outputStem = requestedStem;
-  InstallUserActionsIfConfigured();
-}
-
 void RunConfiguration::SetRandomSeeds(
   const G4long firstSeed,
   const G4long secondSeed
 )
 {
-  if (fSettings.explicitSeeds[0] != 0) {
-    if (
-      firstSeed == fSettings.explicitSeeds[0]
-      && secondSeed == fSettings.explicitSeeds[1]
-    ) return;
-    G4ExceptionDescription message;
-    message << "AtRIS random seeds are configured more than once with "
-               "different values.";
-    fRandomSeedsCommand->CommandFailed(message);
-    return;
-  }
-
-  // CLHEP expects two seeds followed by a zero terminator.
-  const std::array<G4long, 3> seeds = {firstSeed, secondSeed, 0};
-  G4Random::setTheSeeds(seeds.data());
   fSettings.explicitSeeds = {firstSeed, secondSeed};
-  G4cout << "### AtRIS: using random seeds " << firstSeed << " and "
-         << secondSeed << G4endl;
 }
 
 void RunConfiguration::AddPhantomResponse()
@@ -387,84 +254,87 @@ void RunConfiguration::AddPhantomResponse()
   fPhantomResponseScaleByInversePhantomMass = false;
 }
 
-void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)
+void RunConfiguration::Initialize()
 {
-  if (!fSettings.physicsListName.empty()) {
-    if (requestedPhysicsList == fSettings.physicsListName) return;
-
+  if (
+    fGeometryFileName.empty()
+    || fEnergyBinsFileName.empty()
+    || fSettings.outputStem.empty()
+    || fSettings.physicsListName.empty()
+    || fOutputModeName.empty()
+    || fSettings.outputFileFormat.empty()
+  ) {
     G4ExceptionDescription message;
-    message << "AtRIS physics-list conflict: the run already selects '"
-            << fSettings.physicsListName << "' but the macro requests '"
-            << requestedPhysicsList << "'.";
-    fPhysicsListCommand->CommandFailed(message);
+    message << "AtRIS initialization requires geometryFile, energyBinsFile, "
+               "outputStem, physicsList, outputMode, and outputFormat.";
+    fInitializeCommand->CommandFailed(message);
     return;
   }
 
-  G4PhysListFactory factory;
-  if (!factory.IsReferencePhysList(requestedPhysicsList)) {
-    G4cout << "### AtRIS: " << requestedPhysicsList
-           << " is not valid! use: " << G4endl;
-    const std::vector<G4String> available = factory.AvailablePhysLists();
-    for (const G4String& availablePhysicsList : available) {
-      G4cout << availablePhysicsList << G4endl;
-    }
+  std::ifstream energyBinsFile(fEnergyBinsFileName);
+  std::vector<G4double> energyBins;
+  G4double energyBinEdge;
+  while (energyBinsFile >> energyBinEdge) energyBins.push_back(energyBinEdge);
+  if (!energyBinsFile.eof() || energyBins.size() < 2) {
     G4ExceptionDescription message;
-    message << "'" << requestedPhysicsList
-            << "' is not a valid Geant4 reference physics list.";
-    fPhysicsListCommand->CommandFailed(message);
+    message << "AtRIS energy-bin file '" << fEnergyBinsFileName
+            << "' must contain at least two numeric edges.";
+    fInitializeCommand->CommandFailed(message);
     return;
   }
+  fSettings.energyBins = std::move(energyBins);
+  G4cout << "### AtRIS: read " << fSettings.energyBins.size()
+         << " energy-bin edges from " << fEnergyBinsFileName << G4endl;
 
-  G4VModularPhysicsList* const physicsList =
-    factory.GetReferencePhysList(requestedPhysicsList);
-  physicsList->RegisterPhysics(new G4StepLimiterPhysics());
-  fRunManager->SetUserInitialization(physicsList);
-  fSettings.physicsListName = requestedPhysicsList;
-  InstallUserActionsIfConfigured();
-}
-
-void RunConfiguration::SetOutputMode(G4String requestedOutputMode)
-{
-  const G4int requestedValue = OutputModeValue(requestedOutputMode);
-  if (fSettings.outputMode != kInvalidOutputMode) {
-    if (requestedValue == fSettings.outputMode) return;
-
-    G4ExceptionDescription message;
-    message << "AtRIS output mode is configured more than once with "
-               "different values.";
-    fOutputModeCommand->CommandFailed(message);
-    return;
-  }
-
-  fSettings.outputMode = requestedValue;
-  InstallUserActionsIfConfigured();
-  if (requestedValue == kInterfaceOutputMode) {
+  fSettings.outputMode = OutputModeValue(fOutputModeName);
+  if (fSettings.outputMode == kInterfaceOutputMode) {
     G4cout << "### AtRIS: profile mode writes histograms and interface ntuples"
            << G4endl;
   }
-  if (requestedValue == kStepOutputMode) {
+  if (fSettings.outputMode == kStepOutputMode) {
     G4cout << "### AtRIS: shower mode writes histograms, interface, and "
               "transport-step ntuples; output may be very large"
            << G4endl;
   }
-}
 
-void RunConfiguration::SetOutputFormat(G4String requestedOutputFormat)
-{
-  if (
-    !fSettings.outputFileFormat.empty()
-    && requestedOutputFormat != fSettings.outputFileFormat
-  ) {
-    G4ExceptionDescription message;
-    message << "AtRIS output-format conflict: the run already selects '"
-            << fSettings.outputFileFormat << "' but the macro later requests '"
-            << requestedOutputFormat << "'.";
-    fOutputFormatCommand->CommandFailed(message);
-    return;
+  fParser.Read(fGeometryFileName);
+  std::filesystem::path inputPath(fGeometryFileName.c_str());
+  inputPath.replace_extension();
+  fSettings.simulationInputPrefix = inputPath.string();
+  fSettings.detectorCount = CountSensitiveDetectors(fParser);
+  fSettings.detectorBins.clear();
+  fSettings.detectorBins.reserve(fSettings.detectorCount + 1);
+  constexpr G4double detectorBinHalfWidth = 0.5;
+  for (G4int index = 0; index <= fSettings.detectorCount; ++index) {
+    fSettings.detectorBins.push_back(index - detectorBinHalfWidth);
   }
+  G4cout << "### AtRIS: geometry contains " << fSettings.detectorCount
+         << " sensitive detectors" << G4endl;
 
-  fSettings.outputFileFormat = requestedOutputFormat;
-  InstallUserActionsIfConfigured();
+  fRunManager->SetUserInitialization(
+    new DetectorConstruction(fParser, fSettings, fPhantomResponses)
+  );
+  G4PhysListFactory factory;
+  G4VModularPhysicsList* const physicsList =
+    factory.GetReferencePhysList(fSettings.physicsListName);
+  physicsList->RegisterPhysics(new G4StepLimiterPhysics());
+  fRunManager->SetUserInitialization(physicsList);
+  fRunManager->SetUserInitialization(
+    new UserActionInitialization(fSettings, fPhantomResponses)
+  );
+
+  if (fSettings.explicitSeeds[0] != 0) {
+    // CLHEP expects two seeds followed by a zero terminator.
+    const std::array<G4long, 3> seeds = {
+      fSettings.explicitSeeds[0],
+      fSettings.explicitSeeds[1],
+      0,
+    };
+    G4Random::setTheSeeds(seeds.data());
+    G4cout << "### AtRIS: using random seeds " << fSettings.explicitSeeds[0]
+           << " and " << fSettings.explicitSeeds[1] << G4endl;
+  }
+  fRunManager->Initialize();
 }
 
 }  // namespace atris

@@ -14,7 +14,10 @@ from atris_tools.atrismacrogen import macroGenManager
 from atris_tools.gather import gather_simulation
 from atris_tools.interface_output import read_root
 from atris_tools.postprocess import process_run
-from atris_tools.response_histograms import ResponseHistogramReader
+from atris_tools.response_histograms import (
+    ResponseHistogramReader,
+    csv_histogram_annotations,
+)
 from atris_tools.root_output import has_ntuple, read_ntuple
 from atris_tools.run_chunks import run_chunks
 from atris_tools.scatter import chunk_macro
@@ -452,7 +455,7 @@ def test_spherical_source_populates_both_angular_hemispheres(
 ):
     prepare_run(tmp_path)
     body = (
-        "/run/initialize\n"
+        "/atris/initialize\n"
         "/gps/particle proton\n"
         "/gps/ene/mono 10 MeV\n"
         "/gps/pos/type Surface\n"
@@ -689,27 +692,44 @@ def test_unsupported_physics_list_exits_nonzero(
     result = run_atris(atris_command, tmp_path)
 
     assert result.returncode != 0
-    assert physics_list + " is not valid" in result.stdout
-    assert "FTFP_BERT_HP" in result.stdout
+    assert "requested physics list " + physics_list in result.stdout + result.stderr
+    assert "NOT available" in result.stdout + result.stderr
     assert not list(tmp_path.glob("protons_*.csv"))
 
 
 @pytest.mark.regression
-def test_conflicting_repeated_configuration_exits_nonzero(tmp_path, atris_command):
+def test_repeated_configuration_uses_last_value(tmp_path, atris_command):
     macro = prepare_run(tmp_path)
-    macro.write_text(
-        macro.read_text().replace(
-            "/atris/physicsList FTFP_BERT_HP\n",
-            "/atris/physicsList FTFP_BERT_HP\n"
-            "/atris/physicsList QGSP_BERT\n",
-        )
-    )
+    text = macro.read_text()
+    for final, earlier in (
+        ("/atris/geometryFile planet.gdml", "/atris/geometryFile missing.gdml"),
+        (
+            "/atris/energyBinsFile primary-energy.bins",
+            "/atris/energyBinsFile missing.bins",
+        ),
+        ("/atris/outputStem protons", "/atris/outputStem superseded"),
+        ("/atris/randomSeeds 123456 654321", "/atris/randomSeeds 111111 222222"),
+        (
+            "/atris/physicsList QGSP_BERT",
+            "/atris/physicsList NOT_A_GEANT4_PHYSICS_LIST",
+        ),
+        ("/atris/outputMode response", "/atris/outputMode shower"),
+        ("/atris/outputFormat csv", "/atris/outputFormat unsupported"),
+    ):
+        if final == "/atris/physicsList QGSP_BERT":
+            text = text.replace("/atris/physicsList FTFP_BERT_HP", final)
+        text = text.replace(final, earlier + "\n" + final)
+    macro.write_text(text)
 
     result = run_atris(atris_command, tmp_path)
 
-    assert result.returncode != 0
-    assert "AtRIS physics-list conflict" in result.stdout + result.stderr
-    assert not list(tmp_path.glob("protons_*.csv"))
+    assert result.returncode == 0, result.stdout + result.stderr
+    annotations = csv_histogram_annotations(tmp_path / "protons_h1_h1.1.csv")
+    assert annotations["atris.input_prefix"] == "planet"
+    assert annotations["atris.physics_list"] == "QGSP_BERT"
+    assert annotations["atris.output_mode"] == "-1"
+    assert annotations["atris.random_seed_pairs"] == "123456:654321"
+    assert not list(tmp_path.glob("superseded*"))
 
 
 @pytest.mark.regression
@@ -876,6 +896,31 @@ def test_macro_accepts_an_additional_named_response(tmp_path, atris_command):
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert (tmp_path / ("protons_h2_h2.%s.bounting.csv" % RESPONSE_STEM)).is_file()
+
+
+@pytest.mark.regression
+def test_repeated_response_identity_uses_last_definition(tmp_path, atris_command):
+    macro = prepare_run(tmp_path)
+    replacement = (
+        "/atris/phantom/name %s\n"
+        "/atris/phantom/response/name dos\n"
+        "/atris/phantom/response/tableFile %s_counting.txt\n"
+        "/atris/phantom/response/scaleByCrossingEnergy false\n"
+        "/atris/phantom/response/scaleByRadiationWeight false\n"
+        "/atris/phantom/response/scaleByInversePhantomMass false\n"
+        "/atris/phantom/response/add\n"
+        "/atris/physicsList "
+    ) % (RESPONSE_STEM, RESPONSE_STEM)
+    macro.write_text(macro.read_text().replace("/atris/physicsList ", replacement))
+
+    result = run_atris(atris_command, tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    path = tmp_path / ("protons_h2_h2.%s.dos.csv" % RESPONSE_STEM)
+    annotations = csv_histogram_annotations(path)
+    assert annotations["atris.response_file"] == RESPONSE_STEM + "_counting.txt"
+    assert annotations["atris.response_scale_by_crossing_energy"] == "false"
+    assert annotations["atris.response_scale_by_inverse_phantom_mass"] == "false"
 
 
 @pytest.mark.regression

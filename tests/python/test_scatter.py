@@ -13,7 +13,7 @@ ORDINARY_MACRO = """/atris/geometryFile {species}.gdml
 /atris/outputStem {species}
 # Set the two random seeds before initialization.
 /atris/randomSeeds 123456 654321
-/run/initialize
+/atris/initialize
 /gps/particle {particle}
 # Process 7 events with the configuration above.
 /run/beamOn 7
@@ -114,7 +114,7 @@ def test_scatter_logs_nothing_when_event_count_divides_evenly(tmp_path, caplog):
 
 def test_scatter_rejects_missing_event_count_before_writing(tmp_path):
     write_ordinary_macros(tmp_path)
-    (tmp_path / "alphas.mac").write_text("/run/initialize\n")
+    (tmp_path / "alphas.mac").write_text("/atris/initialize\n")
 
     with pytest.raises(ValueError, match="exactly one /run/beamOn"):
         scatter(tmp_path, chunks=2, random_seed=17)

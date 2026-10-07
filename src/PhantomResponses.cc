@@ -114,7 +114,7 @@ G4bool PhantomResponses::Add(
   const G4bool scaleByInversePhantomMass
 )
 {
-  const auto duplicate = std::find_if(
+  const auto existing = std::find_if(
     fResponses.begin(),
     fResponses.end(),
     [&](const PhantomResponse& response) {
@@ -122,13 +122,6 @@ G4bool PhantomResponses::Add(
         && response.name == responseName;
     }
   );
-  if (duplicate != fResponses.end()) {
-    G4cerr << "### AtRIS: response '" << responseName
-           << "' is configured more than once for phantom '"
-           << phantomStem << "'" << G4endl;
-    return false;
-  }
-
   auto table = fTables.find(fileName);
   if (table == fTables.end()) {
     G4cout << "### AtRIS: loading response '" << responseName
@@ -153,7 +146,7 @@ G4bool PhantomResponses::Add(
   }
 
   fPhantomStems.insert(phantomStem);
-  fResponses.push_back({
+  const PhantomResponse response = {
     phantomStem,
     responseName,
     fileName,
@@ -161,7 +154,12 @@ G4bool PhantomResponses::Add(
     scaleByRadiationWeight,
     scaleByInversePhantomMass,
     &table->second,
-  });
+  };
+  if (existing == fResponses.end()) {
+    fResponses.push_back(response);
+  } else {
+    *existing = response;
+  }
   return true;
 }
 

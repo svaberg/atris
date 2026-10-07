@@ -7,7 +7,6 @@
 
 #include "G4AnalysisManager.hh"
 #include "G4Exception.hh"
-#include "G4ParticleTable.hh"
 #include "G4Run.hh"
 
 namespace atris {
@@ -22,12 +21,6 @@ RunAction::RunAction(
     fPhantomResponses(phantomResponses)
 {
   SetMaster(role);
-
-  if (!(G4ParticleTable::GetParticleTable()->GetReadiness()))
-  {
-    const G4String msg = " You are instantiating RunAction BEFORE your G4VUserPhysicsList \n";
-    G4Exception("atris::RunAction::RunAction()", "Run0041", FatalException, msg);
-  }
 }
 
 

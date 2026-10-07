@@ -24,15 +24,9 @@ class RunConfiguration
     );
 
   private:
-    void InstallUserActionsIfConfigured();
-    void SetGeometryFile(G4String requestedFile);
-    void SetEnergyBinsFile(G4String requestedFile);
-    void SetOutputStem(G4String requestedStem);
     void SetRandomSeeds(G4long firstSeed, G4long secondSeed);
     void AddPhantomResponse();
-    void SetPhysicsList(G4String requestedPhysicsList);
-    void SetOutputMode(G4String requestedOutputMode);
-    void SetOutputFormat(G4String requestedOutputFormat);
+    void Initialize();
 
     G4RunManager* const fRunManager;
     RunSettings& fSettings;
@@ -40,7 +34,7 @@ class RunConfiguration
     PhantomResponses& fPhantomResponses;
     G4String fGeometryFileName;
     G4String fEnergyBinsFileName;
-    G4bool fHasUserActions = false;
+    G4String fOutputModeName;
     G4GenericMessenger fMessenger;
     G4GenericMessenger fDirectionHistogramMessenger;
     G4GenericMessenger fPositionHistogramMessenger;
@@ -52,14 +46,8 @@ class RunConfiguration
     G4bool fPhantomResponseScaleByCrossingEnergy = false;
     G4bool fPhantomResponseScaleByRadiationWeight = false;
     G4bool fPhantomResponseScaleByInversePhantomMass = false;
-    G4UIcommand* fGeometryFileCommand = nullptr;
-    G4UIcommand* fEnergyBinsFileCommand = nullptr;
-    G4UIcommand* fOutputStemCommand = nullptr;
-    G4UIcommand* fRandomSeedsCommand = nullptr;
     G4UIcommand* fAddPhantomResponseCommand = nullptr;
-    G4UIcommand* fPhysicsListCommand = nullptr;
-    G4UIcommand* fOutputModeCommand = nullptr;
-    G4UIcommand* fOutputFormatCommand = nullptr;
+    G4UIcommand* fInitializeCommand = nullptr;
 };
 
 }  // namespace atris

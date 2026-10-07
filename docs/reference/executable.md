@@ -61,7 +61,7 @@ can therefore be read without cross-referencing this page. For example:
 /atris/randomSeeds 123456 654321
 
 # Initialize Geant4 after all /atris/ configuration is complete.
-/run/initialize
+/atris/initialize
 
 # Generate this particle species.
 /gps/particle proton
@@ -87,12 +87,15 @@ table file, and three `scaleBy` factors, then use
 `/atris/phantom/response/add` to register that response. The selected phantom
 remains active, while the response properties are cleared after each
 successful `add`. A phantom can have any number of uniquely named responses.
+Adding the same response name again for that phantom replaces its earlier
+definition.
 Omit these commands for a run without phantom responses.
 
-The pre-initialization `/atris/` commands must precede `/run/initialize`.
-Initialization makes the `/gps/` source commands available. The final
-`/run/beamOn` starts transport. AtRIS executes the selected macro once and does
-not search the run directory for inputs.
+Configuration commands must precede `/atris/initialize`. Repeating a setting
+before initialization replaces its earlier value. Initialization makes the
+`/gps/` source commands available. The final `/run/beamOn` starts transport.
+AtRIS executes the selected macro once and does not search the run directory
+for inputs.
 
 ## Output modes
 
