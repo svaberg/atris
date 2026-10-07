@@ -244,12 +244,12 @@ void RunConfiguration::InstallUserActionsIfConfigured()
 {
   if (
     fHasUserActions
-    || !fHasConfiguredGeometry
-    || !fHasConfiguredEnergyBins
-    || !fHasConfiguredOutputStem
+    || fGeometryFileName.empty()
+    || fEnergyBinsFileName.empty()
+    || fSettings.outputStem.empty()
     || fSettings.physicsListName.empty()
     || !fHasConfiguredOutputMode
-    || !fHasConfiguredOutputFormat
+    || fSettings.outputFileFormat.empty()
   ) return;
   fRunManager->SetUserInitialization(
     new UserActionInitialization(fSettings, fPhantomResponses)
@@ -259,11 +259,11 @@ void RunConfiguration::InstallUserActionsIfConfigured()
 
 void RunConfiguration::SetGeometryFile(G4String requestedFile)
 {
-  if (fHasConfiguredGeometry) {
-    if (requestedFile == fSettings.geometryFileName) return;
+  if (!fGeometryFileName.empty()) {
+    if (requestedFile == fGeometryFileName) return;
     G4ExceptionDescription message;
     message << "AtRIS geometry-file conflict: the run already selects '"
-            << fSettings.geometryFileName << "' but the macro later requests '"
+            << fGeometryFileName << "' but the macro later requests '"
             << requestedFile << "'.";
     fGeometryFileCommand->CommandFailed(message);
     return;
@@ -279,7 +279,7 @@ void RunConfiguration::SetGeometryFile(G4String requestedFile)
   geometry.close();
 
   fParser.Read(requestedFile);
-  fSettings.geometryFileName = requestedFile;
+  fGeometryFileName = requestedFile;
   std::filesystem::path inputPath(requestedFile.c_str());
   inputPath.replace_extension();
   fSettings.simulationInputPrefix = inputPath.string();
@@ -296,17 +296,16 @@ void RunConfiguration::SetGeometryFile(G4String requestedFile)
   fRunManager->SetUserInitialization(
     new DetectorConstruction(fParser, fSettings, fPhantomResponses)
   );
-  fHasConfiguredGeometry = true;
   InstallUserActionsIfConfigured();
 }
 
 void RunConfiguration::SetEnergyBinsFile(G4String requestedFile)
 {
-  if (fHasConfiguredEnergyBins) {
-    if (requestedFile == fSettings.energyBinsFileName) return;
+  if (!fEnergyBinsFileName.empty()) {
+    if (requestedFile == fEnergyBinsFileName) return;
     G4ExceptionDescription message;
     message << "AtRIS energy-bins-file conflict: the run already selects '"
-            << fSettings.energyBinsFileName << "' but the macro later requests '"
+            << fEnergyBinsFileName << "' but the macro later requests '"
             << requestedFile << "'.";
     fEnergyBinsFileCommand->CommandFailed(message);
     return;
@@ -324,9 +323,8 @@ void RunConfiguration::SetEnergyBinsFile(G4String requestedFile)
     return;
   }
 
-  fSettings.energyBinsFileName = requestedFile;
+  fEnergyBinsFileName = requestedFile;
   fSettings.energyBins = std::move(edges);
-  fHasConfiguredEnergyBins = true;
   G4cout << "### AtRIS: read " << fSettings.energyBins.size()
          << " energy-bin edges from " << requestedFile << G4endl;
   InstallUserActionsIfConfigured();
@@ -334,7 +332,7 @@ void RunConfiguration::SetEnergyBinsFile(G4String requestedFile)
 
 void RunConfiguration::SetOutputStem(G4String requestedStem)
 {
-  if (fHasConfiguredOutputStem) {
+  if (!fSettings.outputStem.empty()) {
     if (requestedStem == fSettings.outputStem) return;
     G4ExceptionDescription message;
     message << "AtRIS output-stem conflict: the run already selects '"
@@ -351,7 +349,6 @@ void RunConfiguration::SetOutputStem(G4String requestedStem)
   }
 
   fSettings.outputStem = requestedStem;
-  fHasConfiguredOutputStem = true;
   InstallUserActionsIfConfigured();
 }
 
@@ -360,7 +357,7 @@ void RunConfiguration::SetRandomSeeds(
   const G4long secondSeed
 )
 {
-  if (fHasConfiguredSeeds) {
+  if (fSettings.hasExplicitSeeds) {
     if (
       firstSeed == fSettings.explicitSeeds[0]
       && secondSeed == fSettings.explicitSeeds[1]
@@ -377,7 +374,6 @@ void RunConfiguration::SetRandomSeeds(
   G4Random::setTheSeeds(seeds.data());
   fSettings.explicitSeeds = {firstSeed, secondSeed};
   fSettings.hasExplicitSeeds = true;
-  fHasConfiguredSeeds = true;
   G4cout << "### AtRIS: using random seeds " << firstSeed << " and "
          << secondSeed << G4endl;
 }
@@ -474,7 +470,6 @@ void RunConfiguration::SetOutputFormat(G4String requestedOutputFormat)
   }
 
   fSettings.outputFileFormat = requestedOutputFormat;
-  fHasConfiguredOutputFormat = true;
   InstallUserActionsIfConfigured();
 }
 

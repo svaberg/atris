@@ -40,12 +40,9 @@ class RunConfiguration
     RunSettings& fSettings;
     ::G4GDMLParser& fParser;
     PhantomResponses& fPhantomResponses;
+    G4String fGeometryFileName;
+    G4String fEnergyBinsFileName;
     G4bool fHasConfiguredOutputMode = false;
-    G4bool fHasConfiguredOutputFormat = false;
-    G4bool fHasConfiguredGeometry = false;
-    G4bool fHasConfiguredEnergyBins = false;
-    G4bool fHasConfiguredOutputStem = false;
-    G4bool fHasConfiguredSeeds = false;
     G4bool fHasUserActions = false;
     G4GenericMessenger fMessenger;
     G4GenericMessenger fDirectionHistogramMessenger;
