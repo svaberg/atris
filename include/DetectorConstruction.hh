@@ -6,7 +6,8 @@
 class G4Material;
 class G4GDMLParser;
 
-namespace atris {
+namespace atris
+{
 
 class PhantomResponses;
 struct RunSettings;
@@ -26,11 +27,8 @@ class DetectorConstruction : public G4VUserDetectorConstruction
 {
   public:
     /// Creates a detector construction backed by an already populated parser.
-    DetectorConstruction(
-      const ::G4GDMLParser& parser,
-      const RunSettings& settings,
-      const PhantomResponses& phantomResponses
-    );
+    DetectorConstruction(const ::G4GDMLParser& parser, const RunSettings& settings,
+                         const PhantomResponses& phantomResponses);
     ~DetectorConstruction() override;
 
     /// Creates and attaches sensitive detectors using GDML auxiliary metadata.

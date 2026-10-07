@@ -3,7 +3,8 @@
 
 #include "G4VUserActionInitialization.hh"
 
-namespace atris {
+namespace atris
+{
 
 class PhantomResponses;
 struct RunSettings;
@@ -19,10 +20,7 @@ struct RunSettings;
 class UserActionInitialization : public G4VUserActionInitialization
 {
   public:
-    UserActionInitialization(
-      const RunSettings& settings,
-      const PhantomResponses& phantomResponses
-    );
+    UserActionInitialization(const RunSettings& settings, const PhantomResponses& phantomResponses);
     ~UserActionInitialization() override;
 
     /// Installs event-generation and run actions for a worker thread.

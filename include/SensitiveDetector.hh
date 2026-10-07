@@ -6,7 +6,8 @@
 
 class G4Step;
 
-namespace atris {
+namespace atris
+{
 
 class PhantomResponses;
 struct RunSettings;
@@ -27,11 +28,8 @@ class SensitiveDetector : public G4VSensitiveDetector, public G4UImessenger
 {
   public:
     /// Creates a detector whose name is the integer sensitive-volume ID.
-    SensitiveDetector(
-      const G4String& name,
-      const RunSettings& settings,
-      const PhantomResponses& phantomResponses
-    );
+    SensitiveDetector(const G4String& name, const RunSettings& settings,
+                      const PhantomResponses& phantomResponses);
     ~SensitiveDetector() override;
 
     /// Records one transport step; returns false for a termination shell.
@@ -40,7 +38,6 @@ class SensitiveDetector : public G4VSensitiveDetector, public G4UImessenger
   private:
     const RunSettings& fSettings;
     const PhantomResponses& fPhantomResponses;
-
 };
 
 }  // namespace atris

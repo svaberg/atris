@@ -5,7 +5,8 @@
 
 class G4Run;
 
-namespace atris {
+namespace atris
+{
 
 class HistoManager;
 class PhantomResponses;
@@ -26,11 +27,7 @@ class RunAction : public ::G4UserRunAction
 {
   public:
     /// Creates a master action when `role` is true, otherwise a worker action.
-    RunAction(
-      G4bool role,
-      const RunSettings& settings,
-      const PhantomResponses& phantomResponses
-    );
+    RunAction(G4bool role, const RunSettings& settings, const PhantomResponses& phantomResponses);
     ~RunAction() override;
 
     /// Creates the Geant4 run object used for event accumulation.

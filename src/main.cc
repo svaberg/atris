@@ -1,7 +1,3 @@
-#include "PhantomResponses.hh"
-#include "RunConfiguration.hh"
-#include "RunSettings.hh"
-
 #include "G4GDMLParser.hh"
 #include "G4MTRunManager.hh"
 #include "G4Threading.hh"
@@ -9,17 +5,23 @@
 #include "G4UImanager.hh"
 #include "Randomize.hh"
 
+#include "PhantomResponses.hh"
+#include "RunConfiguration.hh"
+#include "RunSettings.hh"
+
 #include <chrono>
 #include <cstdlib>
 #include <iomanip>
 
 int main(int argc, char** argv)
 {
-  if (argc == 2 && G4String(argv[1]) == "--version") {
+  if (argc == 2 && G4String(argv[1]) == "--version")
+  {
     G4cout << "AtRIS " << ATRIS_VERSION << G4endl;
     return 0;
   }
-  if (argc != 2) {
+  if (argc != 2)
+  {
     G4cerr << "Usage: " << argv[0] << " <macro-file>" << G4endl;
     return 1;
   }
@@ -36,19 +38,15 @@ int main(int argc, char** argv)
 
   // G4MTRunManager reads this variable in its constructor. Without it,
   // replace Geant4's two-thread default with the available core count.
-  if (std::getenv("G4FORCENUMBEROFTHREADS") == nullptr) {
+  if (std::getenv("G4FORCENUMBEROFTHREADS") == nullptr)
+  {
     runManager->SetNumberOfThreads(G4Threading::G4GetNumberOfCores());
   }
 
   G4GDMLParser parser;
 
   // Keep the command messengers and their backing state alive for the macro.
-  atris::RunConfiguration runConfiguration(
-    runManager,
-    settings,
-    parser,
-    phantomResponses
-  );
+  atris::RunConfiguration runConfiguration(runManager, settings, parser, phantomResponses);
 
   // Execute the selected macro through Geant4's UI manager.
   const G4String command = "/control/execute " + macroName;
@@ -65,35 +63,35 @@ int main(int argc, char** argv)
   const G4bool commandSucceeded = commandStatus == fCommandSucceeded;
   const G4int workerThreads = runManager->GetNumberOfThreads();
 
-  G4cout << "### AtRIS: simulation used " << workerThreads
-         << " worker thread(s)" << G4endl;
-  if (commandSucceeded) {
+  G4cout << "### AtRIS: simulation used " << workerThreads << " worker thread(s)" << G4endl;
+  if (commandSucceeded)
+  {
     G4cout << "### AtRIS: the simulation has completed " << G4endl;
-  } else {
-    G4cerr << "### AtRIS: macro execution failed with Geant4 status "
-           << commandStatus << G4endl;
+  }
+  else
+  {
+    G4cerr << "### AtRIS: macro execution failed with Geant4 status " << commandStatus << G4endl;
   }
 
   // Include Geant4 teardown in the total time, but not in the macro time.
   delete runManager;
 
   const auto totalEnd = std::chrono::steady_clock::now();
-  const double macroSeconds =
-    std::chrono::duration<double>(macroEnd - macroStart).count();
-  const double totalSeconds =
-    std::chrono::duration<double>(totalEnd - totalStart).count();
+  const double macroSeconds = std::chrono::duration<double>(macroEnd - macroStart).count();
+  const double totalSeconds = std::chrono::duration<double>(totalEnd - totalStart).count();
 
   G4cout << std::fixed << std::setprecision(3)
-         << "### AtRIS timing: Geant4 macro wall time: " << macroSeconds
-         << " s using " << workerThreads << " worker thread(s)\n"
-         << "### AtRIS timing: setup/cleanup wall time: "
-         << totalSeconds - macroSeconds << " s\n"
-         << "### AtRIS timing: total wall time: " << totalSeconds << " s"
-         << G4endl;
+         << "### AtRIS timing: Geant4 macro wall time: " << macroSeconds << " s using "
+         << workerThreads << " worker thread(s)\n"
+         << "### AtRIS timing: setup/cleanup wall time: " << totalSeconds - macroSeconds << " s\n"
+         << "### AtRIS timing: total wall time: " << totalSeconds << " s" << G4endl;
 
-  if (commandSucceeded) {
+  if (commandSucceeded)
+  {
     G4cout << "### AtRIS: Run completed successfully." << G4endl;
-  } else {
+  }
+  else
+  {
     G4cerr << "### AtRIS: Run failed." << G4endl;
   }
 

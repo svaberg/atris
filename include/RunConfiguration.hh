@@ -1,16 +1,17 @@
 #ifndef RunConfiguration_hh
 #define RunConfiguration_hh
 
-#include "PhantomResponses.hh"
-
 #include "G4GenericMessenger.hh"
 #include "globals.hh"
+
+#include "PhantomResponses.hh"
 
 class G4RunManager;
 class G4GDMLParser;
 class G4UIcommand;
 
-namespace atris {
+namespace atris
+{
 
 struct RunSettings;
 
@@ -32,12 +33,8 @@ class RunConfiguration
 {
   public:
     /// Registers the AtRIS macro commands against the supplied run state.
-    RunConfiguration(
-      G4RunManager* runManager,
-      RunSettings& settings,
-      ::G4GDMLParser& parser,
-      PhantomResponses& phantomResponses
-    );
+    RunConfiguration(G4RunManager* runManager, RunSettings& settings, ::G4GDMLParser& parser,
+                     PhantomResponses& phantomResponses);
 
   private:
     void SetRandomSeeds(G4long firstSeed, G4long secondSeed);

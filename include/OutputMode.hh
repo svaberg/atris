@@ -3,7 +3,8 @@
 
 #include "globals.hh"
 
-namespace atris {
+namespace atris
+{
 
 /**
  * Selects how much simulation detail AtRIS records.
@@ -24,25 +25,30 @@ enum class OutputMode
 /// Returns the stable name used by macros and output metadata.
 constexpr const char* OutputModeName(const OutputMode outputMode)
 {
-	switch (outputMode) {
-		case OutputMode::kResponse: return "response";
-		case OutputMode::kProfile: return "profile";
-		case OutputMode::kShower: return "shower";
-		case OutputMode::kInvalid: return "invalid";
-	}
-	return "invalid";
+  switch (outputMode)
+  {
+    case OutputMode::kResponse:
+      return "response";
+    case OutputMode::kProfile:
+      return "profile";
+    case OutputMode::kShower:
+      return "shower";
+    case OutputMode::kInvalid:
+      return "invalid";
+  }
+  return "invalid";
 }
 
 /// Returns whether the mode records layer-interface crossings.
 constexpr G4bool WritesInterfaceNtuple(const OutputMode outputMode)
 {
-	return outputMode == OutputMode::kProfile || outputMode == OutputMode::kShower;
+  return outputMode == OutputMode::kProfile || outputMode == OutputMode::kShower;
 }
 
 /// Returns whether the mode records every particle transport step.
 constexpr G4bool WritesStepNtuple(const OutputMode outputMode)
 {
-	return outputMode == OutputMode::kShower;
+  return outputMode == OutputMode::kShower;
 }
 
 }  // namespace atris

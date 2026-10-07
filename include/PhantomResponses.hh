@@ -7,7 +7,8 @@
 #include <set>
 #include <vector>
 
-namespace atris {
+namespace atris
+{
 
 /**
  * Describes one named response channel for one phantom.
@@ -18,26 +19,26 @@ namespace atris {
  */
 struct PhantomResponse
 {
-  /// User-facing phantom identity shared by all of its response channels.
-  G4String phantomStem;
+    /// User-facing phantom identity shared by all of its response channels.
+    G4String phantomStem;
 
-  /// Response channel name used in histogram and metadata names.
-  G4String name;
+    /// Response channel name used in histogram and metadata names.
+    G4String name;
 
-  /// Source table filename recorded in output metadata.
-  G4String fileName;
+    /// Source table filename recorded in output metadata.
+    G4String fileName;
 
-  /// Multiply the table coefficient by the crossing particle's kinetic energy.
-  G4bool scaleByCrossingEnergy = false;
+    /// Multiply the table coefficient by the crossing particle's kinetic energy.
+    G4bool scaleByCrossingEnergy = false;
 
-  /// Multiply by AtRIS's particle-dependent radiation weighting factor.
-  G4bool scaleByRadiationWeight = false;
+    /// Multiply by AtRIS's particle-dependent radiation weighting factor.
+    G4bool scaleByRadiationWeight = false;
 
-  /// Request inverse-mass scaling during Python post-processing.
-  G4bool scaleByInversePhantomMass = false;
+    /// Request inverse-mass scaling during Python post-processing.
+    G4bool scaleByInversePhantomMass = false;
 
-  /// Flattened particle-by-energy response table owned by PhantomResponses.
-  const std::vector<G4double>* values = nullptr;
+    /// Flattened particle-by-energy response table owned by PhantomResponses.
+    const std::vector<G4double>* values = nullptr;
 };
 
 /**
@@ -67,19 +68,13 @@ class PhantomResponses
     const std::vector<PhantomResponse>& GetAll() const { return fResponses; }
 
     /// Returns the number of distinct phantom stems represented by responses.
-    G4int GetPhantomCount() const
-    {
-      return static_cast<G4int>(fPhantomStems.size());
-    }
+    G4int GetPhantomCount() const { return static_cast<G4int>(fPhantomStems.size()); }
 
     /// Returns a particle's row index in every response table, or -1 if absent.
     G4int FindParticleIndex(G4int pdg) const;
 
   private:
-    void ConfigureParticleLookup(
-      const std::vector<G4int>& particleCodes,
-      const G4String& fileName
-    );
+    void ConfigureParticleLookup(const std::vector<G4int>& particleCodes, const G4String& fileName);
 
     std::vector<G4int> fParticleCodes;
     G4String fParticleHeaderFile;

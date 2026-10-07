@@ -7,7 +7,8 @@
 class G4GeneralParticleSource;
 class G4Event;
 
-namespace atris {
+namespace atris
+{
 
 /**
  * Generates primary particles from Geant4's general particle source.

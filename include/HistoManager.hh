@@ -5,7 +5,8 @@
 #include "G4Types.hh"
 #include "globals.hh"
 
-namespace atris {
+namespace atris
+{
 
 class PhantomResponses;
 struct RunSettings;
@@ -24,10 +25,7 @@ class HistoManager
 {
   public:
     /// Books all histograms and ntuples required by the resolved run settings.
-    HistoManager(
-      const RunSettings& settings,
-      const PhantomResponses& phantomResponses
-    );
+    HistoManager(const RunSettings& settings, const PhantomResponses& phantomResponses);
     ~HistoManager();
 
     /// Writes run and response definitions to the metadata ntuples.

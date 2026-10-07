@@ -3,7 +3,8 @@
 
 #include "globals.hh"
 
-namespace atris {
+namespace atris
+{
 
 /**
  * Fixed dimensions and identifiers shared by phantom-table loading and scoring.
