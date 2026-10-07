@@ -1,7 +1,6 @@
 #ifndef SensitiveDetector_hh
 #define SensitiveDetector_hh 1
 
-#include "G4UImessenger.hh"
 #include "G4VSensitiveDetector.hh"
 
 class G4Step;
@@ -24,13 +23,13 @@ struct RunSettings;
  *
  * RunSettings and PhantomResponses are borrowed and must outlive this detector.
  */
-class SensitiveDetector : public G4VSensitiveDetector, public G4UImessenger
+class SensitiveDetector : public G4VSensitiveDetector
 {
   public:
     /// Creates a detector whose name is the integer sensitive-volume ID.
     SensitiveDetector(const G4String& name, const RunSettings& settings,
                       const PhantomResponses& phantomResponses);
-    ~SensitiveDetector() override;
+    ~SensitiveDetector() override = default;
 
     /// Records one transport step; returns false for a termination shell.
     G4bool ProcessHits(G4Step* step, G4TouchableHistory* history) override;

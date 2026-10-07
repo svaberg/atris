@@ -28,10 +28,7 @@ namespace atris
 DetectorConstruction::DetectorConstruction(const ::G4GDMLParser& parser,
                                            const RunSettings& settings,
                                            const PhantomResponses& phantomResponses)
-  : G4VUserDetectorConstruction(),
-    fParser(parser),
-    fSettings(settings),
-    fPhantomResponses(phantomResponses)
+  : fParser(parser), fSettings(settings), fPhantomResponses(phantomResponses)
 {
   G4cout << "### AtRIS: Initialized the DetectorConstruction object." << G4endl;
 }
@@ -48,8 +45,7 @@ void DetectorConstruction::ConstructSDandField()
   G4cout << "### AtRIS: proceeding with detector construction." << G4endl;
   G4SDManager* const sdManager = G4SDManager::GetSDMpointer();
   const G4GDMLAuxMapType* const auxiliaryMap = fParser.GetAuxMap();
-  // We now generate the sensitive detectors and assign them to the proper volumes
-  // We also count the number of generated sensitive detectors
+  // Attach one SensitiveDetector to each GDML volume marked SensDet.
   for (auto volume = auxiliaryMap->begin(); volume != auxiliaryMap->end(); ++volume)
   {
     for (auto auxiliary = volume->second.begin(); auxiliary != volume->second.end(); ++auxiliary)
@@ -70,7 +66,6 @@ void DetectorConstruction::ConstructSDandField()
         {
           G4LogicalVolume* const logicalVolume = volume->first;
           logicalVolume->SetSensitiveDetector(detector);
-          // At this point we implement the calculation of volume, mass, surface
           const G4double mass = logicalVolume->GetMass();
           G4VSolid* const solid = logicalVolume->GetSolid();
           const G4double surface = solid->GetSurfaceArea();
@@ -79,7 +74,6 @@ void DetectorConstruction::ConstructSDandField()
           // Print detector ID, mass, surface area, volume, and density.
           G4cout << "SDIDr: " << detectorId << ", " << mass / kg << ", " << surface / cm2 << ", "
                  << solidVolume / cm3 << ", " << density / (g / cm3) << G4endl;
-          // populating the dictionaries
         }
         else
         {
@@ -89,16 +83,10 @@ void DetectorConstruction::ConstructSDandField()
     }
   }
 
-  // Debugging: printout the new vector data:
   G4cout << "### AtRIS: printing detailed information about all materials" << G4endl;
   if (kAtrisVerbose) G4cout << *(G4Material::GetMaterialTable()) << G4endl;
   G4cout << "### AtRIS: gdml construction complete. In total we have " << fSettings.detectorCount
          << " sensitive detectors" << G4endl;
-}
-
-DetectorConstruction::~DetectorConstruction()
-{
-  ;
 }
 
 }  // namespace atris

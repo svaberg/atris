@@ -21,7 +21,7 @@ class UserActionInitialization : public G4VUserActionInitialization
 {
   public:
     UserActionInitialization(const RunSettings& settings, const PhantomResponses& phantomResponses);
-    ~UserActionInitialization() override;
+    ~UserActionInitialization() override = default;
 
     /// Installs event-generation and run actions for a worker thread.
     void Build() const override;

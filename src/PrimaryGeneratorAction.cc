@@ -6,7 +6,6 @@
 #include "G4PhysicalConstants.hh"
 #include "G4SystemOfUnits.hh"
 
-#include <chrono>
 #include <ctime>
 
 namespace atris
@@ -33,13 +32,13 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
 
 PrimaryGeneratorAction::~PrimaryGeneratorAction()
 {
-  ;
+  delete fParticleGenerator;
 }
 
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
   G4AnalysisManager* const analysis = G4AnalysisManager::Instance();
-  fParticleGenerator->GeneratePrimaryVertex(anEvent);  // We generate the primary particle
+  fParticleGenerator->GeneratePrimaryVertex(anEvent);
 
   const G4int current = anEvent->GetEventID();
   if (current % kProgressEventInterval == 0)
@@ -47,7 +46,7 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
     if (current != 0)
     {
       const G4int elapsed = static_cast<G4int>(std::time(nullptr)) - fStartTime;
-      const G4double speed = (G4double)current / (G4double)elapsed;
+      const G4double speed = static_cast<G4double>(current) / static_cast<G4double>(elapsed);
       G4cout << "Processing event: " << current << ", " << elapsed
              << " seconds have passed. We are processing " << speed << " primaries per second."
              << G4endl;
@@ -57,24 +56,20 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
       G4cout << "Starting primary particle generation" << G4endl;
     }
   }
-  // Calculate direction
-  const G4ThreeVector dir = fParticleGenerator->GetParticleMomentumDirection();
-  const G4double directionTheta = dir.theta();
-  G4double directionPhi = dir.phi();
+  const G4ThreeVector direction = fParticleGenerator->GetParticleMomentumDirection();
+  const G4double directionTheta = direction.theta();
+  G4double directionPhi = direction.phi();
   if (directionPhi < 0.) directionPhi += twopi;
   const G4double directionCosine = std::cos(directionTheta);
 
-  // Get kinetic energy
   const G4double primaryVertexEnergy = fParticleGenerator->GetParticleEnergy();
 
-  // Calculate position
-  const G4ThreeVector pos = fParticleGenerator->GetParticlePosition();
-  const G4double positionTheta = pos.theta();
-  G4double positionPhi = pos.phi();
+  const G4ThreeVector position = fParticleGenerator->GetParticlePosition();
+  const G4double positionTheta = position.theta();
+  G4double positionPhi = position.phi();
   if (positionPhi < 0.) positionPhi += twopi;
   const G4double positionCosine = std::cos(positionTheta);
 
-  // now we fil the histograms
   // Unit weights preserve per-energy primary counts in CSV and ROOT output.
   analysis->FillH1(kPrimaryEnergyHistogramId, primaryVertexEnergy);
   analysis->FillH2(kSourceDirectionHistogramId, directionPhi, directionCosine);

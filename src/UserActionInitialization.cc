@@ -15,8 +15,6 @@ UserActionInitialization::UserActionInitialization(const RunSettings& settings,
   : fSettings(settings), fPhantomResponses(phantomResponses)
 {}
 
-UserActionInitialization::~UserActionInitialization() {}
-
 void UserActionInitialization::BuildForMaster() const
 {
   auto* const runAction = new RunAction(true, fSettings, fPhantomResponses);

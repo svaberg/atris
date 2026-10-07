@@ -12,11 +12,11 @@
 namespace atris
 {
 
-RunAction::RunAction(G4bool role, const RunSettings& settings,
+RunAction::RunAction(G4bool isMaster, const RunSettings& settings,
                      const PhantomResponses& phantomResponses)
   : fHisto(nullptr), fSettings(settings), fPhantomResponses(phantomResponses)
 {
-  SetMaster(role);
+  SetMaster(isMaster);
 }
 
 RunAction::~RunAction()
@@ -25,7 +25,6 @@ RunAction::~RunAction()
   {
     G4cout << "### AtRIS: now writing out histograms... " << G4endl;
     G4cout << "=== MASTER: " << IsMaster() << G4endl;
-    // At this point we implement the scaling according to mass, volume, surface area
   }
   delete fHisto;
 }

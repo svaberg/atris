@@ -91,10 +91,10 @@ void HistoManager::Book() const
   const G4int phantomCount = fPhantomResponses.GetPhantomCount();
   const auto& responses = fPhantomResponses.GetAll();
   const G4bool writesRootMetadata = fSettings.outputFileFormat == "root";
-  // This code replaces the HistoManager.cc
   G4cout << "### AtRIS: configuring analysis histograms. " << G4endl;
   analysis->SetVerboseLevel(0);
-  analysis->SetActivation(true);  // enable inactivation of histos, nTuples
+  // Allow individual analysis objects to be activated or deactivated.
+  analysis->SetActivation(true);
   G4int id = analysis->CreateH1("h1.1", "Primary kinetic energy", fSettings.energyBins, "MeV");
   auto* const primaryEnergy = analysis->GetH1(id);
   AnnotateHistogram(primaryEnergy, "h1.1", "primary kinetic energy distribution",
@@ -102,7 +102,6 @@ void HistoManager::Book() const
   analysis->SetH1XAxisTitle(id, "Primary kinetic energy [MeV]");
   analysis->SetH1YAxisTitle(id, "Accumulated primary kinetic energy [MeV]");
   analysis->SetH1Activation(id, true);
-  // This is the direction histogram
   id = analysis->CreateH2("h2.dir", "Primary source direction", fSettings.directionHistogramBins[0],
                           kSourceAzimuthMin, kSourceAzimuthMax, fSettings.directionHistogramBins[1],
                           kSourceCosineMin, kSourceCosineMax);
@@ -112,7 +111,6 @@ void HistoManager::Book() const
   analysis->SetH2YAxisTitle(id, "Cosine of global polar angle");
   analysis->SetH2ZAxisTitle(id, "Primary count");
   analysis->SetH2Activation(id, true);
-  // This is the position histogram.
   id = analysis->CreateH2("h2.pos", "Primary source position", fSettings.positionHistogramBins[0],
                           kSourceAzimuthMin, kSourceAzimuthMax, fSettings.positionHistogramBins[1],
                           kSourceCosineMin, kSourceCosineMax);
@@ -122,7 +120,6 @@ void HistoManager::Book() const
   analysis->SetH2YAxisTitle(id, "Cosine of global polar angle");
   analysis->SetH2ZAxisTitle(id, "Primary count");
   analysis->SetH2Activation(id, true);
-  // This is the new ionization energy histogram, it gets the ID 2
   id = analysis->CreateH2("h2.ion", "Ionizing energy deposition", fSettings.energyBins,
                           fSettings.detectorBins, "MeV", "none", "none", "none");
   AnnotateHistogram(analysis->GetH2(id), "h2.ion", "ionizing energy deposition",

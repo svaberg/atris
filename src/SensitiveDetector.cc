@@ -72,8 +72,6 @@ SensitiveDetector::SensitiveDetector(const G4String& name, const RunSettings& se
   : G4VSensitiveDetector(name), fSettings(settings), fPhantomResponses(phantomResponses)
 {}
 
-SensitiveDetector::~SensitiveDetector() {}
-
 G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*)
 {
   G4Track* const track = step->GetTrack();
@@ -83,7 +81,7 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*)
   const G4double primaryEnergy = source->GetParticleEnergy();
   G4AnalysisManager* const analysis = G4AnalysisManager::Instance();
 
-  const G4int detectorId = std::stoi(this->GetName());
+  const G4int detectorId = std::stoi(GetName());
   const G4double nonionizingEnergyDeposit = step->GetNonIonizingEnergyDeposit();
   if (WritesStepNtuple(fSettings.outputMode))
   {
@@ -140,11 +138,10 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*)
   analysis->FillH2(kIonizingEnergyHistogramId, primaryEnergy, detectorId,
                    ionizingEnergyDeposit / MeV);
   analysis->FillH2(kTotalEnergyHistogramId, primaryEnergy, detectorId, energyDeposit / MeV);
-  // before the step, the particle should have been at the boundary.
   const G4StepPoint* const preStepPoint = step->GetPreStepPoint();
   if (preStepPoint->GetStepStatus() == fGeomBoundary)
   {
-    // Let's check which sdid we have:
+    // Score particles entering this sensitive volume through a geometry boundary.
     const G4double kineticEnergy = preStepPoint->GetKineticEnergy();
     const G4ThreeVector position = preStepPoint->GetPosition().unit();
     const G4ThreeVector direction = preStepPoint->GetMomentumDirection();

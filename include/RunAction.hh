@@ -26,8 +26,9 @@ struct RunSettings;
 class RunAction : public ::G4UserRunAction
 {
   public:
-    /// Creates a master action when `role` is true, otherwise a worker action.
-    RunAction(G4bool role, const RunSettings& settings, const PhantomResponses& phantomResponses);
+    /// Creates a master action when `isMaster` is true, otherwise a worker action.
+    RunAction(G4bool isMaster, const RunSettings& settings,
+              const PhantomResponses& phantomResponses);
     ~RunAction() override;
 
     /// Creates the Geant4 run object used for event accumulation.

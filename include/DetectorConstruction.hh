@@ -3,7 +3,6 @@
 
 #include "G4VUserDetectorConstruction.hh"
 
-class G4Material;
 class G4GDMLParser;
 
 namespace atris
@@ -29,7 +28,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     /// Creates a detector construction backed by an already populated parser.
     DetectorConstruction(const ::G4GDMLParser& parser, const RunSettings& settings,
                          const PhantomResponses& phantomResponses);
-    ~DetectorConstruction() override;
+    ~DetectorConstruction() override = default;
 
     /// Creates and attaches sensitive detectors using GDML auxiliary metadata.
     void ConstructSDandField() override;
