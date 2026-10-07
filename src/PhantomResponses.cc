@@ -11,6 +11,8 @@
 
 namespace {
 
+constexpr G4int kMissingParticleIndex = -1;
+
 struct ResponseTable
 {
   std::vector<G4int> pdgs;
@@ -46,13 +48,14 @@ G4bool ReadResponseTable(const G4String& fileName, ResponseTable& table)
 
 G4bool ValidateValueCount(
   const G4String& fileName,
-  const ResponseTable& table,
-  const G4int expectedValueCount
+  const ResponseTable& table
 )
 {
+  const std::size_t expectedValueCount =
+    atris::kPhantomResponseEnergyBins * table.pdgs.size();
   G4cout << "### AtRIS: found " << table.values.size()
          << " out of expected " << expectedValueCount << G4endl;
-  if (table.values.size() == static_cast<std::size_t>(expectedValueCount)) {
+  if (table.values.size() == expectedValueCount) {
     return true;
   }
   G4cerr << "### AtRIS: response value count mismatch in "
@@ -71,10 +74,10 @@ void PhantomResponses::ConfigureParticleLookup(
 {
   fParticleCodes = particleCodes;
   fParticleHeaderFile = fileName;
-  fExpectedValueCount = static_cast<G4int>(
-    kPhantomResponseEnergyBins * particleCodes.size()
+  fLightParticleIndices.assign(
+    kLightParticleLookupSize,
+    kMissingParticleIndex
   );
-  fLightParticleIndices.assign(kLightParticleLookupSize, 0);
   fIonIndices.clear();
   for (std::size_t particleIndex = 0;
        particleIndex < particleCodes.size();
@@ -97,7 +100,8 @@ void PhantomResponses::ConfigureParticleLookup(
   G4cout << "total" << particleCodes.size() << G4endl;
   G4cout << " ### AtRIS: nricrubins is:" << kPhantomResponseEnergyBins
          << " and nrpdgs is : " << particleCodes.size()
-         << ". We are expecting: " << fExpectedValueCount
+         << ". We are expecting: "
+         << kPhantomResponseEnergyBins * particleCodes.size()
          << " data points in each phantom file." << G4endl;
 }
 
@@ -139,7 +143,7 @@ G4bool PhantomResponses::Add(
              << " does not match " << fParticleHeaderFile << G4endl;
       return false;
     }
-    if (!ValidateValueCount(fileName, loaded, fExpectedValueCount)) {
+    if (!ValidateValueCount(fileName, loaded)) {
       return false;
     }
     table = fTables.emplace(
@@ -163,14 +167,13 @@ G4bool PhantomResponses::Add(
 
 G4int PhantomResponses::FindParticleIndex(const G4int pdg) const
 {
-  if (fResponses.empty()) return -1;
+  if (fResponses.empty()) return kMissingParticleIndex;
   if (std::abs(pdg) < kLightParticlePDGLimit) {
-    const G4int index = fLightParticleIndices[pdg + kLightParticlePDGOffset];
-    return index != 0 || pdg == kPhotonPDG ? index : -1;
+    return fLightParticleIndices[pdg + kLightParticlePDGOffset];
   }
-  if (pdg < kFirstSupportedIonPDG) return -1;
+  if (pdg < kFirstSupportedIonPDG) return kMissingParticleIndex;
   const auto found = fIonIndices.find(pdg);
-  return found == fIonIndices.end() ? -1 : found->second;
+  return found == fIonIndices.end() ? kMissingParticleIndex : found->second;
 }
 
 }  // namespace atris

@@ -47,7 +47,6 @@ class PhantomResponses
 
     std::vector<G4int> fParticleCodes;
     G4String fParticleHeaderFile;
-    G4int fExpectedValueCount = 0;
     std::vector<G4int> fLightParticleIndices;
     std::map<G4int, G4int> fIonIndices;
     std::set<G4String> fPhantomStems;

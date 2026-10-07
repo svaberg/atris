@@ -22,7 +22,6 @@ constexpr G4int kLightParticleLookupSize = 2 * kLightParticlePDGOffset + 1;
 // code 2212 and are handled by the dense light-particle lookup above.
 constexpr G4int kFirstSupportedIonPDG = 1000010020;
 
-constexpr G4int kPhotonPDG = 22;
 constexpr G4int kNeutralPionPDG = 111;
 constexpr G4int kNeutronPDG = 2112;
 constexpr G4int kProtonPDG = 2212;
