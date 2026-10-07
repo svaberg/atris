@@ -24,7 +24,6 @@ class RunConfiguration
     );
 
   private:
-    G4bool InstallPhysicsList(const G4String& requestedPhysicsList);
     void InstallUserActionsIfConfigured();
     void SetGeometryFile(G4String requestedFile);
     void SetEnergyBinsFile(G4String requestedFile);

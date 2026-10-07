@@ -215,29 +215,6 @@ RunConfiguration::RunConfiguration(
 
 }
 
-G4bool RunConfiguration::InstallPhysicsList(
-  const G4String& requestedPhysicsList
-)
-{
-  G4PhysListFactory factory;
-  if (!factory.IsReferencePhysList(requestedPhysicsList)) {
-    G4cout << "### AtRIS: " << requestedPhysicsList
-           << " is not valid! use: " << G4endl;
-    const std::vector<G4String> available = factory.AvailablePhysLists();
-    for (const G4String& availablePhysicsList : available) {
-      G4cout << availablePhysicsList << G4endl;
-    }
-    return false;
-  }
-
-  G4VModularPhysicsList* const physicsList =
-    factory.GetReferencePhysList(requestedPhysicsList);
-  physicsList->RegisterPhysics(new G4StepLimiterPhysics());
-  fRunManager->SetUserInitialization(physicsList);
-  fSettings.physicsListName = requestedPhysicsList;
-  return true;
-}
-
 void RunConfiguration::InstallUserActionsIfConfigured()
 {
   if (
@@ -423,13 +400,26 @@ void RunConfiguration::SetPhysicsList(G4String requestedPhysicsList)
     return;
   }
 
-  if (!InstallPhysicsList(requestedPhysicsList)) {
+  G4PhysListFactory factory;
+  if (!factory.IsReferencePhysList(requestedPhysicsList)) {
+    G4cout << "### AtRIS: " << requestedPhysicsList
+           << " is not valid! use: " << G4endl;
+    const std::vector<G4String> available = factory.AvailablePhysLists();
+    for (const G4String& availablePhysicsList : available) {
+      G4cout << availablePhysicsList << G4endl;
+    }
     G4ExceptionDescription message;
     message << "'" << requestedPhysicsList
             << "' is not a valid Geant4 reference physics list.";
     fPhysicsListCommand->CommandFailed(message);
     return;
   }
+
+  G4VModularPhysicsList* const physicsList =
+    factory.GetReferencePhysList(requestedPhysicsList);
+  physicsList->RegisterPhysics(new G4StepLimiterPhysics());
+  fRunManager->SetUserInitialization(physicsList);
+  fSettings.physicsListName = requestedPhysicsList;
   InstallUserActionsIfConfigured();
 }
 
