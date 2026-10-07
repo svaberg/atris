@@ -21,20 +21,24 @@ SPECIES = ("protons", "alphas")
 logger = logging.getLogger(__name__)
 
 
+def command_index(lines, source, command):
+    """Return the index of the macro's single occurrence of command."""
+    indices = [
+        index
+        for index, line in enumerate(lines)
+        if line.lstrip().startswith(command + " ")
+    ]
+    if len(indices) != 1:
+        raise ValueError(
+            "%s must contain exactly one %s command" % (source, command)
+        )
+    return indices[0]
+
+
 def macro_lines_and_events(source):
     """Return macro lines, the beam command index, and its event count."""
     lines = source.read_text().splitlines(keepends=True)
-    beam_lines = [
-        index
-        for index, line in enumerate(lines)
-        if line.lstrip().startswith("/run/beamOn ")
-    ]
-    if len(beam_lines) != 1:
-        raise ValueError(
-            "%s must contain exactly one /run/beamOn command" % source
-        )
-
-    beam_index = beam_lines[0]
+    beam_index = command_index(lines, source, "/run/beamOn")
     fields = lines[beam_index].split()
     if len(fields) != 2:
         raise ValueError("Invalid /run/beamOn command in %s" % source)
@@ -70,25 +74,7 @@ def chunk_macro(source, chunks):
         events_per_chunk,
         newline,
     )
-    output_stem_lines = [
-        index
-        for index, line in enumerate(lines)
-        if line.lstrip().startswith("/atris/outputStem ")
-    ]
-    seed_lines = [
-        index
-        for index, line in enumerate(lines)
-        if line.lstrip().startswith("/atris/randomSeeds ")
-    ]
-    if len(output_stem_lines) != 1:
-        raise ValueError(
-            "%s must contain exactly one /atris/outputStem command" % source
-        )
-    if len(seed_lines) != 1:
-        raise ValueError(
-            "%s must contain exactly one /atris/randomSeeds command" % source
-        )
-    output_stem_index = output_stem_lines[0]
+    output_stem_index = command_index(lines, source, "/atris/outputStem")
     if (
         output_stem_index > 0
         and lines[output_stem_index - 1].strip()
@@ -97,7 +83,7 @@ def chunk_macro(source, chunks):
         lines[output_stem_index - 1] = (
             "# atris-run supplies a separate output stem for each chunk.\n"
         )
-    seed_index = seed_lines[0]
+    seed_index = command_index(lines, source, "/atris/randomSeeds")
     if (
         seed_index > 0
         and lines[seed_index - 1].strip()
