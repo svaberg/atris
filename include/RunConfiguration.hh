@@ -67,11 +67,25 @@ class RunConfiguration
     G4String fGeometryFileName = "simulation.gdml";
     G4String fEnergyBinsFileName = "simulation.bins";
     G4String fOutputModeName = "response";
+
+    // Each messenger owns the commands registered in one Geant4 UI directory.
+    // Keeping these members alive keeps the complete AtRIS command tree
+    // available while Geant4 interprets the run macro.
+    /// Owns the commands directly under `/atris/`.
     G4GenericMessenger fMessenger;
+
+    /// Owns the `/atris/directionHistogram/` commands.
     G4GenericMessenger fDirectionHistogramMessenger;
+
+    /// Owns the `/atris/positionHistogram/` commands.
     G4GenericMessenger fPositionHistogramMessenger;
+
+    /// Owns the `/atris/phantom/` commands.
     G4GenericMessenger fPhantomMessenger;
+
+    /// Owns the `/atris/phantom/response/` commands.
     G4GenericMessenger fPhantomResponseMessenger;
+
     SelectedPhantom fSelectedPhantom;
     G4UIcommand* fAddPhantomResponseCommand = nullptr;
     G4UIcommand* fInitializeCommand = nullptr;
