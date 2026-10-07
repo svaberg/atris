@@ -9,10 +9,8 @@
 #include "G4AnalysisManager.hh"
 #include "G4Event.hh"
 #include "G4GeneralParticleSourceData.hh"
-#include "G4HCofThisEvent.hh"
 #include "G4PhysicalConstants.hh"
 #include "G4RunManager.hh"
-#include "G4SDManager.hh"
 #include "G4Step.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4ThreeVector.hh"
@@ -73,42 +71,18 @@ G4double AccumulatedResponse(
 
 }  // namespace
 
-G4Allocator<SDHit>* SDHit::fgAllocator = nullptr;
-
-
-SDHit::SDHit()
-	: G4VHit()
-{}
-
-SDHit::~SDHit() {}
-
-void SDHit::Print() {}
-
-
 SensitiveDetector::SensitiveDetector(
 	const G4String& name,
 	const RunSettings& settings,
 	const PhantomResponses& phantomResponses
 )
 	: G4VSensitiveDetector(name),
-	fHitsCollection(nullptr),
 	fSettings(settings),
 	fPhantomResponses(phantomResponses)
-{
-	collectionName.insert(name);
-}
+{}
 
 SensitiveDetector::~SensitiveDetector()
 {}
-
-void SensitiveDetector::Initialize(G4HCofThisEvent* hce){
-	// Create hits collection
-	fHitsCollection	= new SDHitsCollection(SensitiveDetectorName, collectionName[0]);
-	// Add this collection in hce
-	const G4int hitsCollectionId =
-		G4SDManager::GetSDMpointer()->GetCollectionID(collectionName[0]);
-	hce->AddHitsCollection(hitsCollectionId, fHitsCollection);
-}
 
 G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*){
 	G4Track* const track = step->GetTrack();
