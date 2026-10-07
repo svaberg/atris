@@ -30,7 +30,8 @@ int main(int argc,char** argv){
 	// Set the master random engine before the run manager captures it for workers.
 	G4Random::setTheEngine(new CLHEP::MTwistEngine);
 	G4MTRunManager* const runManager = new G4MTRunManager;
-	// Respect an explicit thread override; otherwise use all available cores.
+	// G4MTRunManager reads this variable in its constructor. Without it,
+	// replace Geant4's two-thread default with the available core count.
 	if (std::getenv("G4FORCENUMBEROFTHREADS") == nullptr) {
 		runManager->SetNumberOfThreads(G4Threading::G4GetNumberOfCores());
 	}
