@@ -12,7 +12,6 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
-#include <sstream>
 #include <string>
 
 int main(int argc,char** argv){
@@ -62,14 +61,13 @@ int main(int argc,char** argv){
 		std::chrono::duration<double>(macroEnd - macroStart).count();
 	const double totalSeconds =
 		std::chrono::duration<double>(totalEnd - totalStart).count();
-	std::ostringstream timingOutput;
-	timingOutput << std::fixed << std::setprecision(3)
+	G4cout << std::fixed << std::setprecision(3)
 		<< "### AtRIS timing: Geant4 macro wall time: " << macroSeconds
 		<< " s using " << workerThreads << " worker thread(s)\n"
 		<< "### AtRIS timing: setup/cleanup wall time: "
 		<< totalSeconds - macroSeconds << " s\n"
-		<< "### AtRIS timing: total wall time: " << totalSeconds << " s";
-	G4cout << timingOutput.str() << G4endl;
+		<< "### AtRIS timing: total wall time: " << totalSeconds << " s"
+		<< G4endl;
 	if (commandStatus == 0) {
 		G4cout << "### AtRIS: Run completed successfully." << G4endl;
 	} else {
