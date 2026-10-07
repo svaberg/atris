@@ -21,9 +21,10 @@ the same phases in which Geant4 consumes them:
 3. General Particle Source particle, energy, position, and direction settings.
 4. The final event-processing command.
 
-The file begins with a guide to its three command namespaces. Every executable
-command has an immediately preceding comment explaining its effect, so a
-generated macro can be read without cross-referencing this page. For example:
+The file begins with a guide to its three command namespaces. Comments explain
+each setting where it first appears; repeating phantom blocks share one guide
+instead of repeating the same comments for every phantom. A generated macro
+can therefore be read without cross-referencing this page. For example:
 
 ```text
 # /atris/ configures AtRIS inputs, scoring, and output.
@@ -44,15 +45,14 @@ generated macro can be read without cross-referencing this page. For example:
 # Write analysis data using Geant4's csv backend.
 /atris/outputFormat csv
 
-# Select this phantom for the response definitions below.
+# accumulation chooses the calculation; name labels the output, tableFile
+# supplies coefficients, and add registers the response.
+# Phantom: ramona_zero_0.060MeV_detA
 /atris/phantom/name ramona_zero_0.060MeV_detA
-# Multiply the table coefficient by crossing kinetic energy in eV.
+# Response: dos
 /atris/phantom/response/accumulation energy
-# Use this short response name in output objects and filenames.
 /atris/phantom/response/name dos
-# Read particle- and energy-dependent coefficients from this table.
 /atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_response.txt
-# Register the configured response, then clear its three properties.
 /atris/phantom/response/add
 
 # Set the two random seeds before initialization.
@@ -74,6 +74,8 @@ generated macro can be read without cross-referencing this page. For example:
 
 # Process the requested events with the configuration above.
 /run/beamOn 363000
+
+# End of AtRIS simulation macro.
 ```
 
 Geometry, energy bins, output, and phantom tables do not have to share the

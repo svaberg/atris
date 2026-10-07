@@ -125,8 +125,12 @@ def test_macro_generation_is_reproducible_and_preserves_requested_counts(tmp_pat
     assert section_positions == sorted(section_positions)
 
     for line_number, line in enumerate(proton_lines):
-        if line.startswith("/"):
+        if line.startswith("/") and not line.startswith("/atris/phantom/"):
             assert proton_lines[line_number - 1].startswith("# ")
+
+    assert proton_macro.count("# accumulation chooses the calculation:") == 1
+    assert proton_macro.endswith("# End of AtRIS simulation macro.\n")
+    assert alpha_macro.endswith("# End of AtRIS simulation macro.\n")
 
     np.testing.assert_allclose(np.loadtxt(first / "protons.bins"), [1, 10, 100])
     np.testing.assert_allclose(np.loadtxt(first / "alphas.bins"), [4, 40, 400])

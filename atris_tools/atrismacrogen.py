@@ -207,7 +207,16 @@ def genMacro(
     _add_section(
         lines,
         "Phantom response scoring",
-        "Each response maps a crossing particle to one scored quantity.",
+        "Each phantom block selects a name and registers one or more responses.",
+    )
+    lines.extend(
+        (
+            "# accumulation chooses the calculation: coefficient uses the table",
+            "# value directly; energy multiplies it by crossing energy in eV;",
+            "# radiation-weighted-energy also applies the radiation weight.",
+            "# name labels the output, tableFile supplies coefficients, and add",
+            "# registers the response and clears those three response properties.",
+        )
     )
     phantoms = read_phantoms(output_dir)
     if not phantoms:
@@ -215,47 +224,23 @@ def genMacro(
     for phantom in phantoms:
         response, counting = configured_phantom_files(output_dir, phantom)
         stem = os.path.basename(phantom["stem"])
-        lines.extend(("", "# Phantom: " + stem))
-        _add_commands(
-            lines,
-            (
-                "Select this phantom for the response definitions below.",
-                "/atris/phantom/name %s" % stem,
-            ),
+        lines.extend(
+            ("", "# Phantom: " + stem, "/atris/phantom/name %s" % stem)
         )
         for response_name, accumulation, filename in (
             ("dos", "energy", response.name),
             ("equi", "radiation-weighted-energy", response.name),
             ("rates", "coefficient", counting.name),
         ):
-            lines.extend(("", "# Response: " + response_name))
-            accumulation_comment = {
-                "coefficient": "Accumulate the response-table coefficient directly.",
-                "energy": (
-                    "Multiply the table coefficient by crossing kinetic energy in eV."
-                ),
-                "radiation-weighted-energy": (
-                    "Multiply by crossing energy in eV and the radiation weight."
-                ),
-            }[accumulation]
-            _add_commands(
-                lines,
+            lines.extend(
                 (
-                    accumulation_comment,
+                    "",
+                    "# Response: " + response_name,
                     "/atris/phantom/response/accumulation %s" % accumulation,
-                ),
-                (
-                    "Use this short response name in output objects and filenames.",
                     "/atris/phantom/response/name %s" % response_name,
-                ),
-                (
-                    "Read particle- and energy-dependent coefficients from this table.",
                     "/atris/phantom/response/tableFile %s" % filename,
-                ),
-                (
-                    "Register the response, then clear its three properties.",
                     "/atris/phantom/response/add",
-                ),
+                )
             )
 
     _add_section(
@@ -353,6 +338,7 @@ def genMacro(
             "/run/beamOn %i" % N,
         ),
     )
+    lines.extend(("", "# End of AtRIS simulation macro."))
     return "\n".join(lines) + "\n"
 
 
