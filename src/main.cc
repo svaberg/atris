@@ -14,7 +14,6 @@
 #include <iomanip>
 
 int main(int argc,char** argv){
-	const auto totalStart = std::chrono::steady_clock::now();
 	if (argc == 2 && G4String(argv[1]) == "--version") {
 		G4cout << "AtRIS " << ATRIS_VERSION << G4endl;
 		return 0;
@@ -23,6 +22,7 @@ int main(int argc,char** argv){
 		G4cerr << "Usage: " << argv[0] << " <macro-file>" << G4endl;
 		return 1;
 	}
+	const auto totalStart = std::chrono::steady_clock::now();
 	const G4String macroName = argv[1];
 	atris::RunSettings settings;
 	atris::PhantomResponses phantomResponses;
