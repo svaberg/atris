@@ -11,13 +11,11 @@
 #include <chrono>
 #include <cstdlib>
 #include <iomanip>
-#include <iostream>
-#include <string>
 
 int main(int argc,char** argv){
 	const auto totalStart = std::chrono::steady_clock::now();
-	if (argc == 2 && std::string(argv[1]) == "--version") {
-		std::cout << "AtRIS " << ATRIS_VERSION << '\n';
+	if (argc == 2 && G4String(argv[1]) == "--version") {
+		G4cout << "AtRIS " << ATRIS_VERSION << G4endl;
 		return 0;
 	}
 	if (argc != 2){
