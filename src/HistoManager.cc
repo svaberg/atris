@@ -1,27 +1,15 @@
 #include "HistoManager.hh"
 
-#include "DetectorConstruction.hh"
 #include "NtupleSchema.hh"
 #include "OutputMode.hh"
-#include "PhantomResponseSchema.hh"
 #include "PhantomResponses.hh"
 #include "RunSettings.hh"
 
 #include "G4AnalysisManager.hh"
 #include "G4PhysicalConstants.hh"
-#include "G4SDManager.hh"
-#include "G4SystemOfUnits.hh"
 #include "G4Threading.hh"
-#include "G4UnitsTable.hh"
 
-#include <algorithm>
-#include <array>
-#include <fstream>
-#include <iostream>
-#include <iterator>
-#include <math.h>
 #include <string>
-#include <vector>
 
 namespace {
 

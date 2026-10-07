@@ -4,19 +4,15 @@
 #include "RunSettings.hh"
 #include "SensitiveDetector.hh"
 
-#include "G4ApplicationState.hh"
-#include "G4Element.hh"
 #include "G4GDMLParser.hh"
-#include "G4GenericMessenger.hh"
-#include "G4Isotope.hh"
+#include "G4LogicalVolume.hh"
 #include "G4Material.hh"
 #include "G4PhysicalConstants.hh"
 #include "G4SDManager.hh"
 #include "G4SystemOfUnits.hh"
-#include "G4UnitsTable.hh"
+#include "G4VSolid.hh"
 
-#include <map>
-#include <vector>
+#include <string>
 
 namespace {
 
