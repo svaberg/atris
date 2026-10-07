@@ -109,6 +109,7 @@ void HistoManager::Book() const
 	G4AnalysisManager* const analysis = G4AnalysisManager::Instance();
 	const G4int phantomCount = fPhantomResponses.GetPhantomCount();
 	const auto& responses = fPhantomResponses.GetAll();
+	const G4bool writesRootMetadata = fSettings.outputFileFormat == "root";
 	// This code replaces the HistoManager.cc
 	G4cout << "### AtRIS: configuring analysis histograms. " << G4endl;
 	analysis->SetVerboseLevel(0);
@@ -244,7 +245,7 @@ void HistoManager::Book() const
 		analysis->SetH2Activation(id,true);
 	}
 
-	if (!WritesInterfaceNtuple(fSettings.outputMode)) return;
+	if (!writesRootMetadata && !WritesInterfaceNtuple(fSettings.outputMode)) return;
 
 	id = analysis->CreateNtuple("metadata", "AtRIS output metadata");
 	analysis->CreateNtupleIColumn(id, "schema");
@@ -257,47 +258,63 @@ void HistoManager::Book() const
 	analysis->CreateNtupleIColumn(id, "random_seed_1");
 	analysis->CreateNtupleIColumn(id, "random_seed_2");
 	analysis->FinishNtuple(id);
-	id = analysis->CreateNtuple(
-		"interfaces",
-		"Particle crossings at layer interfaces"
-	);
-	analysis->CreateNtupleIColumn(id, "pdg");
-	analysis->CreateNtupleIColumn(id, "interface_id");
-	analysis->CreateNtupleIColumn(id, "angle_degrees");
-	analysis->CreateNtupleDColumn(id, "kinetic_energy_MeV");
-	analysis->CreateNtupleDColumn(id, "primary_energy_MeV");
-	analysis->FinishNtuple(id);
-	if (!WritesStepNtuple(fSettings.outputMode)) return;
-
-	id = analysis->CreateNtuple("steps", "Particle transport steps");
-	analysis->CreateNtupleIColumn(id, "event_id");
-	analysis->CreateNtupleIColumn(id, "track_id");
-	analysis->CreateNtupleIColumn(id, "parent_id");
-	analysis->CreateNtupleIColumn(id, "step_id");
-	analysis->CreateNtupleIColumn(id, "pdg");
-	analysis->CreateNtupleIColumn(id, "detector_id");
-	analysis->CreateNtupleDColumn(id, "pre_x_km");
-	analysis->CreateNtupleDColumn(id, "pre_y_km");
-	analysis->CreateNtupleDColumn(id, "pre_z_km");
-	analysis->CreateNtupleDColumn(id, "post_x_km");
-	analysis->CreateNtupleDColumn(id, "post_y_km");
-	analysis->CreateNtupleDColumn(id, "post_z_km");
-	analysis->CreateNtupleDColumn(id, "pre_kinetic_energy_MeV");
-	analysis->CreateNtupleDColumn(id, "post_kinetic_energy_MeV");
-	analysis->CreateNtupleDColumn(id, "energy_deposit_MeV");
-	analysis->CreateNtupleDColumn(id, "nonionizing_energy_deposit_MeV");
-	analysis->CreateNtupleDColumn(id, "step_length_m");
-	analysis->CreateNtupleDColumn(id, "global_time_ns");
-	analysis->CreateNtupleDColumn(id, "primary_energy_MeV");
-	analysis->CreateNtupleSColumn(id, "creator_process");
-	analysis->CreateNtupleSColumn(id, "step_process");
-	analysis->FinishNtuple(id);
+	if (WritesInterfaceNtuple(fSettings.outputMode)) {
+		id = analysis->CreateNtuple(
+			"interfaces",
+			"Particle crossings at layer interfaces"
+		);
+		analysis->CreateNtupleIColumn(id, "pdg");
+		analysis->CreateNtupleIColumn(id, "interface_id");
+		analysis->CreateNtupleIColumn(id, "angle_degrees");
+		analysis->CreateNtupleDColumn(id, "kinetic_energy_MeV");
+		analysis->CreateNtupleDColumn(id, "primary_energy_MeV");
+		analysis->FinishNtuple(id);
+	}
+	if (WritesStepNtuple(fSettings.outputMode)) {
+		id = analysis->CreateNtuple("steps", "Particle transport steps");
+		analysis->CreateNtupleIColumn(id, "event_id");
+		analysis->CreateNtupleIColumn(id, "track_id");
+		analysis->CreateNtupleIColumn(id, "parent_id");
+		analysis->CreateNtupleIColumn(id, "step_id");
+		analysis->CreateNtupleIColumn(id, "pdg");
+		analysis->CreateNtupleIColumn(id, "detector_id");
+		analysis->CreateNtupleDColumn(id, "pre_x_km");
+		analysis->CreateNtupleDColumn(id, "pre_y_km");
+		analysis->CreateNtupleDColumn(id, "pre_z_km");
+		analysis->CreateNtupleDColumn(id, "post_x_km");
+		analysis->CreateNtupleDColumn(id, "post_y_km");
+		analysis->CreateNtupleDColumn(id, "post_z_km");
+		analysis->CreateNtupleDColumn(id, "pre_kinetic_energy_MeV");
+		analysis->CreateNtupleDColumn(id, "post_kinetic_energy_MeV");
+		analysis->CreateNtupleDColumn(id, "energy_deposit_MeV");
+		analysis->CreateNtupleDColumn(id, "nonionizing_energy_deposit_MeV");
+		analysis->CreateNtupleDColumn(id, "step_length_m");
+		analysis->CreateNtupleDColumn(id, "global_time_ns");
+		analysis->CreateNtupleDColumn(id, "primary_energy_MeV");
+		analysis->CreateNtupleSColumn(id, "creator_process");
+		analysis->CreateNtupleSColumn(id, "step_process");
+		analysis->FinishNtuple(id);
+	}
+	if (writesRootMetadata) {
+		id = analysis->CreateNtuple(
+			"responses",
+			"AtRIS phantom response definitions"
+		);
+		analysis->CreateNtupleSColumn(id, "phantom_stem");
+		analysis->CreateNtupleSColumn(id, "response_name");
+		analysis->CreateNtupleSColumn(id, "response_file");
+		analysis->CreateNtupleIColumn(id, "scale_by_crossing_energy");
+		analysis->CreateNtupleIColumn(id, "scale_by_radiation_weight");
+		analysis->CreateNtupleIColumn(id, "scale_by_inverse_phantom_mass");
+		analysis->FinishNtuple(id);
+	}
 
 }
 
 void HistoManager::FillMetadata() const
 {
-	if (!WritesInterfaceNtuple(fSettings.outputMode)) return;
+	const G4bool writesRootMetadata = fSettings.outputFileFormat == "root";
+	if (!writesRootMetadata && !WritesInterfaceNtuple(fSettings.outputMode)) return;
 	// One worker records the shared run metadata while Geant4 merges all ntuples.
 	if (G4Threading::G4GetThreadId() != 0) return;
 	auto* const analysis = G4AnalysisManager::Instance();
@@ -333,6 +350,36 @@ void HistoManager::FillMetadata() const
 		kMetadataNtupleId, kMetadataRandomSeed2, fSettings.explicitSeeds[1]
 	);
 	analysis->AddNtupleRow(kMetadataNtupleId);
+
+	if (!writesRootMetadata) return;
+	const G4int responseNtupleId = ResponseNtupleId(fSettings.outputMode);
+	for (const PhantomResponse& response : fPhantomResponses.GetAll()) {
+		analysis->FillNtupleSColumn(
+			responseNtupleId, kResponsePhantomStem, response.phantomStem
+		);
+		analysis->FillNtupleSColumn(
+			responseNtupleId, kResponseName, response.name
+		);
+		analysis->FillNtupleSColumn(
+			responseNtupleId, kResponseFile, response.fileName
+		);
+		analysis->FillNtupleIColumn(
+			responseNtupleId,
+			kResponseScaleByCrossingEnergy,
+			response.scaleByCrossingEnergy
+		);
+		analysis->FillNtupleIColumn(
+			responseNtupleId,
+			kResponseScaleByRadiationWeight,
+			response.scaleByRadiationWeight
+		);
+		analysis->FillNtupleIColumn(
+			responseNtupleId,
+			kResponseScaleByInversePhantomMass,
+			response.scaleByInversePhantomMass
+		);
+		analysis->AddNtupleRow(responseNtupleId);
+	}
 }
 
 }  // namespace atris

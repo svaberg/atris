@@ -63,6 +63,14 @@ EXPECTED_ROOT_METADATA = {
     "random_seed_1",
     "random_seed_2",
 }
+EXPECTED_ROOT_RESPONSE_METADATA = {
+    "phantom_stem",
+    "response_name",
+    "response_file",
+    "scale_by_crossing_energy",
+    "scale_by_radiation_weight",
+    "scale_by_inverse_phantom_mass",
+}
 OUTPUT_MODE_VALUES = {
     "response": -1,
     "profile": 0,
@@ -323,22 +331,37 @@ def test_macro_runs_one_worker_and_writes_expected_histograms(
         with uproot.open(root_path) as root_file:
             object_names = set(root_file.keys(cycle=False))
             expected_objects = set(EXPECTED_ROOT_HISTOGRAMS)
+            expected_objects.update(("metadata", "responses"))
             if output_mode in ("profile", "shower"):
-                expected_objects.update(("metadata", "interfaces"))
+                expected_objects.add("interfaces")
             if creates_steps:
                 expected_objects.add("steps")
             assert object_names == expected_objects
             assert int(root_file["h1.1"].member("fEntries")) == 2
-            if output_mode in ("profile", "shower"):
-                metadata = root_file["metadata"]
-                assert set(metadata.keys()) == EXPECTED_ROOT_METADATA
-                assert metadata.num_entries == 1
-                assert metadata["output_mode"].array(library="np").tolist() == [
-                    OUTPUT_MODE_VALUES[output_mode]
-                ]
-                assert metadata["phantom_count"].array(library="np").tolist() == [
-                    1
-                ]
+            metadata = root_file["metadata"]
+            assert set(metadata.keys()) == EXPECTED_ROOT_METADATA
+            assert metadata.num_entries == 1
+            assert metadata["output_mode"].array(library="np").tolist() == [
+                OUTPUT_MODE_VALUES[output_mode]
+            ]
+            assert metadata["phantom_count"].array(library="np").tolist() == [1]
+            responses = root_file["responses"]
+            assert set(responses.keys()) == EXPECTED_ROOT_RESPONSE_METADATA
+            assert responses.num_entries == 3
+            assert responses["response_name"].array(library="np").tolist() == [
+                "dos",
+                "equi",
+                "rates",
+            ]
+            assert responses["scale_by_crossing_energy"].array(
+                library="np"
+            ).tolist() == [1, 1, 0]
+            assert responses["scale_by_radiation_weight"].array(
+                library="np"
+            ).tolist() == [0, 1, 0]
+            assert responses["scale_by_inverse_phantom_mass"].array(
+                library="np"
+            ).tolist() == [1, 1, 0]
     else:
         written_suffixes = {
             path.name[len("protons") :]
@@ -577,6 +600,7 @@ def test_csv_and_root_response_histograms_gather_equivalently(
     atris_command,
 ):
     outputs = {}
+    response_definitions = {}
     entry = ("protons", "123456", "654321")
     run_name = "protons_123456_654321"
     for output_format in ("csv", "root"):
@@ -595,8 +619,13 @@ def test_csv_and_root_response_histograms_gather_equivalently(
         assert result.returncode == 0, result.stdout + result.stderr
         (run_directory / "chunks" / (run_name + ".COMPLETE")).touch()
         gather_simulation(run_directory, [entry], "protons")
+        if output_format == "root":
+            (run_directory / "protons.mac").unlink()
 
         with ResponseHistogramReader(run_directory / "protons") as histograms:
+            response_definitions[output_format] = (
+                histograms.response_definitions()
+            )
             outputs[output_format] = {
                 name: (histograms.axes(name), histograms.values(name))
                 for name in histograms.names()
@@ -609,6 +638,7 @@ def test_csv_and_root_response_histograms_gather_equivalently(
         for csv_axis, root_axis in zip(csv_axes, root_axes):
             np.testing.assert_allclose(csv_axis, root_axis, rtol=1e-6)
         np.testing.assert_allclose(csv_data, root_data)
+    assert response_definitions["csv"] == response_definitions["root"]
 
 
 @pytest.mark.regression
@@ -882,6 +912,8 @@ def test_postprocess_writes_stem_named_phantom_outputs(
     (tmp_path / "simulation.psf").write_text(psf)
     result = run_atris(atris_command, tmp_path)
     assert result.returncode == 0, result.stdout + result.stderr
+    if output_format == "root":
+        (tmp_path / "protons.mac").unlink()
     monkeypatch.chdir(tmp_path)
 
     process_run("protons")

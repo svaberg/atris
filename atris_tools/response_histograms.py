@@ -30,6 +30,14 @@ _RESPONSE_ANNOTATIONS = {
         "scale_by_inverse_phantom_mass"
     ),
 }
+_ROOT_RESPONSE_FIELDS = (
+    "phantom_stem",
+    "response_name",
+    "response_file",
+    "scale_by_crossing_energy",
+    "scale_by_radiation_weight",
+    "scale_by_inverse_phantom_mass",
+)
 
 
 @dataclass(frozen=True)
@@ -79,6 +87,57 @@ def _response_definition(values, source):
             values["scale_by_inverse_phantom_mass"], source
         ),
     )
+
+
+def _root_text(value):
+    if isinstance(value, bytes):
+        return value.decode()
+    return str(value)
+
+
+def _root_boolean(value, field, source):
+    value = int(value)
+    if value not in (0, 1):
+        raise ValueError("Expected 0 or 1 for %s in %s" % (field, source))
+    return bool(value)
+
+
+def _root_response_definitions(root_file):
+    source = Path(root_file.file_path).name
+    if "responses" not in root_file:
+        raise ValueError(source + " does not contain the responses ntuple")
+    tree = root_file["responses"]
+    missing = [field for field in _ROOT_RESPONSE_FIELDS if field not in tree]
+    if missing:
+        raise ValueError(
+            "responses ntuple is missing columns: " + ", ".join(missing)
+        )
+    arrays = tree.arrays(_ROOT_RESPONSE_FIELDS, library="np")
+    responses = []
+    for index in range(len(arrays[_ROOT_RESPONSE_FIELDS[0]])):
+        responses.append(
+            ResponseDefinition(
+                phantom_stem=_root_text(arrays["phantom_stem"][index]),
+                name=_root_text(arrays["response_name"][index]),
+                file=Path(_root_text(arrays["response_file"][index])),
+                scale_by_crossing_energy=_root_boolean(
+                    arrays["scale_by_crossing_energy"][index],
+                    "scale_by_crossing_energy",
+                    source,
+                ),
+                scale_by_radiation_weight=_root_boolean(
+                    arrays["scale_by_radiation_weight"][index],
+                    "scale_by_radiation_weight",
+                    source,
+                ),
+                scale_by_inverse_phantom_mass=_root_boolean(
+                    arrays["scale_by_inverse_phantom_mass"][index],
+                    "scale_by_inverse_phantom_mass",
+                    source,
+                ),
+            )
+        )
+    return responses
 
 
 def read_macro_responses(filename):
@@ -326,9 +385,7 @@ class ResponseHistogramReader:
             return []
 
         if self.format == "root":
-            configured = read_macro_responses(
-                self.prefix.with_name(self.prefix.name + ".mac")
-            )
+            configured = _root_response_definitions(self._root())
         else:
             configured = []
             for histogram_name in output_names:
@@ -344,9 +401,15 @@ class ResponseHistogramReader:
                     _response_definition(values, histogram_name)
                 )
 
-        by_histogram = {
-            response.histogram_name: response for response in configured
-        }
+        by_histogram = {}
+        for response in configured:
+            previous = by_histogram.get(response.histogram_name)
+            if previous is not None and previous != response:
+                raise ValueError(
+                    "Conflicting response configuration for "
+                    + response.histogram_name
+                )
+            by_histogram[response.histogram_name] = response
         missing = output_names - by_histogram.keys()
         if missing:
             raise ValueError(

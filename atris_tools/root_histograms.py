@@ -1,4 +1,4 @@
-"""Combine ROOT response histograms without merging their ntuples."""
+"""Combine ROOT response histograms and their small metadata ntuples."""
 
 import os
 from pathlib import Path
@@ -23,10 +23,10 @@ ROOT_STATISTICS = (
 )
 
 
-def _read_metadata(root_file):
-    if "metadata" not in root_file:
+def _read_tree(root_file, name):
+    if name not in root_file:
         return None
-    tree = root_file["metadata"]
+    tree = root_file[name]
     arrays = tree.arrays(library="np")
     metadata = {}
     for name in tree.keys():
@@ -73,12 +73,13 @@ def read_root_file(path):
                     )
                 },
             }
-        metadata = _read_metadata(root_file)
+        metadata = _read_tree(root_file, "metadata")
+        responses = _read_tree(root_file, "responses")
     if PRIMARY_HISTOGRAM not in histograms:
         raise ValueError(
             "%s does not contain %s" % (Path(path).name, PRIMARY_HISTOGRAM)
         )
-    return histograms, metadata
+    return histograms, metadata, responses
 
 
 def _validate_histograms(reference, current, path):
@@ -105,15 +106,40 @@ def _validate_histograms(reference, current, path):
                 )
 
 
+def _combine_records(records, *, unique=False):
+    if not records:
+        return None
+    fields = set.intersection(*(set(record) for record in records))
+    if not fields:
+        return None
+    combined = {
+        name: np.concatenate([record[name] for record in records])
+        for name in sorted(fields)
+    }
+    if not unique or not combined:
+        return combined
+
+    keep = []
+    seen = set()
+    for index in range(len(next(iter(combined.values())))):
+        row = tuple(combined[name][index].item() for name in combined)
+        if row in seen:
+            continue
+        seen.add(row)
+        keep.append(index)
+    return {name: values[keep] for name, values in combined.items()}
+
+
 def combine_root_histograms(source_paths, observe=None):
-    """Add compatible ROOT histograms and concatenate available metadata."""
-    total, metadata = read_root_file(source_paths[0])
+    """Add compatible ROOT histograms and preserve their metadata."""
+    total, metadata, responses = read_root_file(source_paths[0])
     metadata_records = [] if metadata is None else [metadata]
+    response_records = [] if responses is None else [responses]
     if observe is not None:
         observe(1, total, total)
 
     for count, path in enumerate(source_paths[1:], start=2):
-        current, metadata = read_root_file(path)
+        current, metadata, responses = read_root_file(path)
         _validate_histograms(total, current, path)
         for name, histogram in current.items():
             combined = total[name]
@@ -124,19 +150,16 @@ def combine_root_histograms(source_paths, observe=None):
                 combined["statistics"][statistic] += value
         if metadata is not None:
             metadata_records.append(metadata)
+        if responses is not None:
+            response_records.append(responses)
         if observe is not None:
             observe(count, current, total)
 
-    if not metadata_records:
-        return total, None
-    fields = set.intersection(*(set(record) for record in metadata_records))
-    if not fields:
-        return total, None
-    combined_metadata = {
-        name: np.concatenate([record[name] for record in metadata_records])
-        for name in sorted(fields)
-    }
-    return total, combined_metadata
+    return (
+        total,
+        _combine_records(metadata_records),
+        _combine_records(response_records, unique=True),
+    )
 
 
 def _root_axis(axis, name):
@@ -180,7 +203,7 @@ def _writable_histogram(histogram):
     )
 
 
-def write_root_histograms(path, histograms, metadata=None):
+def write_root_histograms(path, histograms, metadata=None, responses=None):
     """Write response histograms to one ROOT file atomically."""
     path = Path(path)
     descriptor, temporary_name = tempfile.mkstemp(
@@ -195,6 +218,8 @@ def write_root_histograms(path, histograms, metadata=None):
                 root_file[name] = _writable_histogram(histogram)
             if metadata:
                 root_file["metadata"] = metadata
+            if responses:
+                root_file["responses"] = responses
         os.replace(temporary_name, path)
     finally:
         if os.path.exists(temporary_name):

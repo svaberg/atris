@@ -616,7 +616,7 @@ def gather_root_simulation(
             total[IONIZATION_HISTOGRAM]["values"],
         )
 
-    histograms, metadata = combine_root_histograms(
+    histograms, metadata, responses = combine_root_histograms(
         source_paths, observe=observe
     )
     primary = histograms[PRIMARY_HISTOGRAM]
@@ -631,6 +631,7 @@ def gather_root_simulation(
         run_directory / (simulation + ".root"),
         histograms,
         metadata,
+        responses,
     )
     logger.info(
         "Gathered %i completed %s runs containing %i primary events",

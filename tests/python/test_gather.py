@@ -53,7 +53,9 @@ def write_histogram(
     Path(path).write_text("\n".join(lines) + "\n")
 
 
-def write_root_histograms(path, primary, direction, ionization=None):
+def write_root_histograms(
+    path, primary, direction, ionization=None, responses=None
+):
     energy_edges = np.array([1.0, 10.0, 100.0])
     phi_edges = np.array([0.0, 1.0, 2.0])
     cosine_edges = np.array([0.0, 0.5, 1.0])
@@ -71,6 +73,8 @@ def write_root_histograms(path, primary, direction, ionization=None):
                 np.array([-0.5, 0.5, 1.5, 2.5]),
             )
         root_file["interfaces"] = {"event_id": np.array([1], dtype=np.int32)}
+        if responses is not None:
+            root_file["responses"] = responses
 
 
 def test_read_chunk_plan_reports_malformed_line_number(tmp_path):
@@ -453,15 +457,25 @@ def test_gather_simulation_combines_root_response_histograms_only(tmp_path):
     ]
     first = chunks / "protons_111111_222222"
     second = chunks / "protons_333333_444444"
+    responses = {
+        "phantom_stem": np.array(["body"]),
+        "response_name": np.array(["dos"]),
+        "response_file": np.array(["body_response.txt"]),
+        "scale_by_crossing_energy": np.array([1], dtype=np.int32),
+        "scale_by_radiation_weight": np.array([0], dtype=np.int32),
+        "scale_by_inverse_phantom_mass": np.array([1], dtype=np.int32),
+    }
     write_root_histograms(
         Path(str(first) + ".root"),
         [2, 3],
         [[1, 2], [3, 4]],
+        responses=responses,
     )
     write_root_histograms(
         Path(str(second) + ".root"),
         [5, 7],
         [[10, 20], [30, 40]],
+        responses=responses,
     )
     Path(str(first) + ".COMPLETE").touch()
     Path(str(second) + ".COMPLETE").touch()
@@ -469,13 +483,22 @@ def test_gather_simulation_combines_root_response_histograms_only(tmp_path):
     assert gather_simulation(tmp_path, entries, "protons") == 2
 
     with uproot.open(tmp_path / "protons.root") as root_file:
-        assert set(root_file.keys(cycle=False)) == {"h1.1", "h2.dir"}
+        assert set(root_file.keys(cycle=False)) == {
+            "h1.1",
+            "h2.dir",
+            "responses",
+        }
         np.testing.assert_array_equal(root_file["h1.1"].values(), [7, 10])
         np.testing.assert_array_equal(
             root_file["h2.dir"].values(),
             [[11, 22], [33, 44]],
         )
         assert root_file["h1.1"].member("fEntries") == 17
+        response_metadata = root_file["responses"]
+        assert response_metadata.num_entries == 1
+        assert response_metadata["phantom_stem"].array(library="np").tolist() == [
+            "body"
+        ]
 
 
 def test_gather_simulation_rejects_mixed_response_formats(tmp_path):

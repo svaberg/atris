@@ -5,8 +5,8 @@
 
 namespace atris {
 
-// Response mode writes histograms only. Interface mode adds crossing and
-// metadata ntuples; step mode also records every transport step.
+// Response mode records aggregate histograms. Interface mode also records
+// crossings, and step mode additionally records every transport step.
 constexpr G4int kResponseOutputMode = -1;
 constexpr G4int kInterfaceOutputMode = 0;
 constexpr G4int kStepOutputMode = 1;
