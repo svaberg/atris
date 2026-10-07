@@ -11,7 +11,7 @@
 namespace atris {
 
 /**
- * Resolved settings shared by the Geant4 objects participating in one run.
+ * Configuration and derived state shared by the objects participating in one run.
  *
  * RunConfiguration begins with the defaults declared here, applies commands
  * from the selected macro, and derives geometry-dependent values during
@@ -20,6 +20,12 @@ namespace atris {
  */
 struct RunSettings
 {
+  /// GDML geometry file read when AtRIS initializes the run.
+  G4String geometryFileName = "simulation.gdml";
+
+  /// File containing the primary-energy histogram edges.
+  G4String energyBinsFileName = "simulation.bins";
+
   /// Filename stem passed to the Geant4 analysis manager.
   G4String outputStem;
 
@@ -33,7 +39,7 @@ struct RunSettings
   G4String physicsListName = "FTFP_BERT_HP";
 
   /// Amount of event-level detail written by the simulation.
-  OutputMode outputMode = OutputMode::kInvalid;
+  OutputMode outputMode = OutputMode::kResponse;
 
   /// Number of sensitive volumes found in the GDML auxiliary metadata.
   G4int detectorCount = 0;

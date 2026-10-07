@@ -106,13 +106,13 @@ RunConfiguration::RunConfiguration(
 {
   fMessenger.DeclareProperty(
     "geometryFile",
-    fGeometryFileName,
+    fSettings.geometryFileName,
     "Read the run geometry from a GDML file."
   ).SetStates(G4State_PreInit);
 
   fMessenger.DeclareProperty(
     "energyBinsFile",
-    fEnergyBinsFileName,
+    fSettings.energyBinsFileName,
     "Read the primary-energy histogram edges from a file."
   ).SetStates(G4State_PreInit);
 
@@ -182,9 +182,9 @@ RunConfiguration::RunConfiguration(
     "Set the Geant4 reference physics list."
   ).SetStates(G4State_PreInit);
 
-  auto& outputModeCommand = fMessenger.DeclareProperty(
+  auto& outputModeCommand = fMessenger.DeclareMethod(
     "outputMode",
-    fOutputModeName,
+    &RunConfiguration::SetOutputMode,
     "Set the AtRIS output mode."
   );
   outputModeCommand.SetCandidates("response profile shower");
@@ -221,6 +221,11 @@ void RunConfiguration::SetRandomSeeds(
 )
 {
   fSettings.explicitSeeds = {firstSeed, secondSeed};
+}
+
+void RunConfiguration::SetOutputMode(G4String outputModeName)
+{
+  fSettings.outputMode = OutputModeValue(outputModeName);
 }
 
 void RunConfiguration::AddPhantomResponse()
@@ -264,22 +269,21 @@ void RunConfiguration::Initialize()
     return;
   }
 
-  std::ifstream energyBinsFile(fEnergyBinsFileName);
+  std::ifstream energyBinsFile(fSettings.energyBinsFileName);
   std::vector<G4double> energyBins;
   G4double energyBinEdge;
   while (energyBinsFile >> energyBinEdge) energyBins.push_back(energyBinEdge);
   if (!energyBinsFile.eof() || energyBins.size() < 2) {
     G4ExceptionDescription message;
-    message << "AtRIS energy-bin file '" << fEnergyBinsFileName
+    message << "AtRIS energy-bin file '" << fSettings.energyBinsFileName
             << "' must contain at least two numeric edges.";
     fInitializeCommand->CommandFailed(message);
     return;
   }
   fSettings.energyBins = std::move(energyBins);
   G4cout << "### AtRIS: read " << fSettings.energyBins.size()
-         << " energy-bin edges from " << fEnergyBinsFileName << G4endl;
+         << " energy-bin edges from " << fSettings.energyBinsFileName << G4endl;
 
-  fSettings.outputMode = OutputModeValue(fOutputModeName);
   if (fSettings.outputMode == OutputMode::kProfile) {
     G4cout << "### AtRIS: profile mode writes histograms and interface ntuples"
            << G4endl;
@@ -290,8 +294,8 @@ void RunConfiguration::Initialize()
            << G4endl;
   }
 
-  fParser.Read(fGeometryFileName);
-  std::filesystem::path inputPath(fGeometryFileName.c_str());
+  fParser.Read(fSettings.geometryFileName);
+  std::filesystem::path inputPath(fSettings.geometryFileName.c_str());
   inputPath.replace_extension();
   fSettings.simulationInputPrefix = inputPath.string();
   fSettings.detectorCount = CountSensitiveDetectors(fParser);

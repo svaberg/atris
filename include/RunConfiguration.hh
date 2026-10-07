@@ -57,6 +57,7 @@ class RunConfiguration
     };
 
     void SetRandomSeeds(G4long firstSeed, G4long secondSeed);
+    void SetOutputMode(G4String outputModeName);
     void AddPhantomResponse();
     void Initialize();
 
@@ -64,9 +65,6 @@ class RunConfiguration
     RunSettings& fSettings;
     ::G4GDMLParser& fParser;
     PhantomResponses& fPhantomResponses;
-    G4String fGeometryFileName = "simulation.gdml";
-    G4String fEnergyBinsFileName = "simulation.bins";
-    G4String fOutputModeName = "response";
 
     // Each messenger owns the commands registered in one Geant4 UI directory.
     // Keeping these members alive keeps the complete AtRIS command tree
