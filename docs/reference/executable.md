@@ -49,7 +49,7 @@ can therefore be read without cross-referencing this page. For example:
 # supplies coefficients, and add registers the response.
 # Phantom: ramona_zero_0.060MeV_detA
 /atris/phantom/name ramona_zero_0.060MeV_detA
-# Response: dos
+# Response: absorbed dose (name: dos)
 /atris/phantom/response/accumulation energy
 /atris/phantom/response/name dos
 /atris/phantom/response/tableFile ramona_zero_0.060MeV_detA_response.txt

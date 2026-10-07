@@ -149,6 +149,9 @@ def test_macro_names_each_phantom_input_file(tmp_path):
     macroGenManager(2, output_dir=tmp_path, energy_points=3)
 
     macro = (tmp_path / "protons.mac").read_text()
+    assert "# Response: absorbed dose (name: dos)\n" in macro
+    assert "# Response: equivalent dose (name: equi)\n" in macro
+    assert "# Response: counting response (name: rates)\n" in macro
     commands = [line for line in macro.splitlines() if line.startswith("/")]
     ramona_start = commands.index("/atris/phantom/name ramona")
     assert commands[ramona_start : ramona_start + 13] == [

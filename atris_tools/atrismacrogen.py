@@ -227,15 +227,21 @@ def genMacro(
         lines.extend(
             ("", "# Phantom: " + stem, "/atris/phantom/name %s" % stem)
         )
-        for response_name, accumulation, filename in (
-            ("dos", "energy", response.name),
-            ("equi", "radiation-weighted-energy", response.name),
-            ("rates", "coefficient", counting.name),
+        for response_name, response_description, accumulation, filename in (
+            ("dos", "absorbed dose", "energy", response.name),
+            (
+                "equi",
+                "equivalent dose",
+                "radiation-weighted-energy",
+                response.name,
+            ),
+            ("rates", "counting response", "coefficient", counting.name),
         ):
             lines.extend(
                 (
                     "",
-                    "# Response: " + response_name,
+                    "# Response: %s (name: %s)"
+                    % (response_description, response_name),
                     "/atris/phantom/response/accumulation %s" % accumulation,
                     "/atris/phantom/response/name %s" % response_name,
                     "/atris/phantom/response/tableFile %s" % filename,
