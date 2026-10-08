@@ -19,8 +19,7 @@ Both families also have response/counting pairs with the shielding labels
 `five`, `ten`, `fifteen`, and `twenty` for 5, 10, 15, and 20 mm of aluminium.
 RAMONA pairs are supplied for both `0.000MeV` and `0.060MeV` thresholds;
 the ICRU pairs use `0.000MeV`. Other variants and historical files are also
-present in the archive. Establish their geometry and normalization before
-substituting them for the documented examples.
+present in the archive.
 
 ## Select and stage tables
 
