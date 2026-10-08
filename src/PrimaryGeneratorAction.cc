@@ -27,7 +27,7 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
   : fParticleGenerator(new G4GeneralParticleSource),
     fStartTime(static_cast<G4int>(std::time(nullptr)))
 {
-  G4cout << "### AtRIS: Created the particle gun." << G4endl;
+  G4debug << "### AtRIS: Created the particle gun." << G4endl;
 }
 
 PrimaryGeneratorAction::~PrimaryGeneratorAction()

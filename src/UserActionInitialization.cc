@@ -23,11 +23,11 @@ void UserActionInitialization::BuildForMaster() const
 
 void UserActionInitialization::Build() const
 {
-  G4cout << "Starting build of UserActionInitialization for workers" << G4endl;
+  G4debug << "Starting build of UserActionInitialization for workers" << G4endl;
   auto* const runAction = new RunAction(false, fSettings, fPhantomResponses);
   SetUserAction(runAction);
 
-  G4cout << "Proceeding with build of UserActionInitialization for workers" << G4endl;
+  G4debug << "Proceeding with build of UserActionInitialization for workers" << G4endl;
   auto* const primary = new PrimaryGeneratorAction();
   SetUserAction(primary);
 }

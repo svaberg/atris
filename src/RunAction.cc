@@ -23,23 +23,23 @@ RunAction::~RunAction()
 {
   if (IsMaster())
   {
-    G4cout << "### AtRIS: now writing out histograms... " << G4endl;
-    G4cout << "=== MASTER: " << IsMaster() << G4endl;
+    G4debug << "### AtRIS: now writing out histograms... " << G4endl;
+    G4debug << "=== MASTER: " << IsMaster() << G4endl;
   }
   delete fHisto;
 }
 
 G4Run* RunAction::GenerateRun()
 {
-  G4cout << "### AtRIS: executing GenerateRun" << G4endl;
-  G4cout << "=== MASTER: " << IsMaster() << G4endl;
+  G4debug << "### AtRIS: executing GenerateRun" << G4endl;
+  G4debug << "=== MASTER: " << IsMaster() << G4endl;
   return new G4Run;
 }
 
 void RunAction::BeginOfRunAction(const G4Run*)
 {
-  G4cout << "### AtRIS: executing BeginOfRunAction" << G4endl;
-  G4cout << "=== MASTER: " << IsMaster() << G4endl;
+  G4debug << "### AtRIS: executing BeginOfRunAction" << G4endl;
+  G4debug << "=== MASTER: " << IsMaster() << G4endl;
   G4AnalysisManager* const analysis = G4AnalysisManager::Instance();
   analysis->SetDefaultFileType(fSettings.outputFileFormat);
   if (fSettings.outputFileFormat == "root" || WritesInterfaceNtuple(fSettings.outputMode))
@@ -65,7 +65,7 @@ void RunAction::BeginOfRunAction(const G4Run*)
 
 void RunAction::EndOfRunAction(const G4Run*)
 {
-  G4cout << "### AtRIS: executing EndOfRunAction" << G4endl;
+  G4debug << "### AtRIS: executing EndOfRunAction" << G4endl;
   auto* const analysis = G4AnalysisManager::Instance();
   if (analysis->IsActive())
   {

@@ -54,8 +54,8 @@ G4bool ReadResponseTable(const G4String& fileName, ResponseTable& table)
 G4bool ValidateValueCount(const G4String& fileName, const ResponseTable& table)
 {
   const std::size_t expectedValueCount = atris::kPhantomResponseEnergyBins * table.pdgs.size();
-  G4cout << "### AtRIS: found " << table.values.size() << " out of expected " << expectedValueCount
-         << G4endl;
+  G4debug << "### AtRIS: found " << table.values.size() << " out of expected " << expectedValueCount
+          << G4endl;
   if (table.values.size() == expectedValueCount)
   {
     return true;
@@ -84,22 +84,28 @@ void PhantomResponses::ConfigureParticleLookup(const std::vector<G4int>& particl
     if (std::abs(pdg) < kLightParticlePDGLimit)
     {
       const G4int lookupIndex = pdg + kLightParticlePDGOffset;
-      G4cout << particleIndex << " adding sensitivity for light particle with PDG= " << pdg
-             << " at index " << lookupIndex << G4endl;
+      if constexpr (ATRIS_DEBUG_LOGGING)
+      {
+        G4debug << particleIndex << " adding sensitivity for light particle with PDG= " << pdg
+                << " at index " << lookupIndex << G4endl;
+      }
       fLightParticleIndices[lookupIndex] = static_cast<G4int>(particleIndex);
     }
     else
     {
-      G4cout << "Added sensitivity for heavy particle with PDG= " << pdg
-             << " under the index j=" << particleIndex << G4endl;
+      if constexpr (ATRIS_DEBUG_LOGGING)
+      {
+        G4debug << "Added sensitivity for heavy particle with PDG= " << pdg
+                << " under the index j=" << particleIndex << G4endl;
+      }
       fIonIndices[pdg] = static_cast<G4int>(particleIndex);
     }
   }
-  G4cout << "total" << particleCodes.size() << G4endl;
-  G4cout << " ### AtRIS: nricrubins is:" << kPhantomResponseEnergyBins
-         << " and nrpdgs is : " << particleCodes.size()
-         << ". We are expecting: " << kPhantomResponseEnergyBins * particleCodes.size()
-         << " data points in each phantom file." << G4endl;
+  G4debug << "total" << particleCodes.size() << G4endl;
+  G4debug << " ### AtRIS: nricrubins is:" << kPhantomResponseEnergyBins
+          << " and nrpdgs is : " << particleCodes.size()
+          << ". We are expecting: " << kPhantomResponseEnergyBins * particleCodes.size()
+          << " data points in each phantom file." << G4endl;
 }
 
 G4bool PhantomResponses::Add(PhantomResponse response)

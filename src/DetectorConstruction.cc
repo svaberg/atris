@@ -30,10 +30,7 @@ DetectorConstruction::DetectorConstruction(const ::G4GDMLParser& parser,
                                            const PhantomResponses& phantomResponses)
   : fParser(parser), fSettings(settings), fPhantomResponses(phantomResponses)
 {
-  if constexpr (kDebugLogging)
-  {
-    G4debug << "### AtRIS: Initialized the DetectorConstruction object." << G4endl;
-  }
+  G4debug << "### AtRIS: Initialized the DetectorConstruction object." << G4endl;
 }
 
 G4VPhysicalVolume* DetectorConstruction::Construct()
@@ -42,13 +39,10 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 }
 void DetectorConstruction::ConstructSDandField()
 {
-  if constexpr (kDebugLogging)
-  {
-    G4debug.precision(kDiagnosticPrecision);
-    G4debug << "### AtRIS: increased precision to " << kDiagnosticPrecision
-            << ", printing pi=" << pi << G4endl;
-    G4debug << "### AtRIS: proceeding with detector construction." << G4endl;
-  }
+  G4debug.precision(kDiagnosticPrecision);
+  G4debug << "### AtRIS: increased precision to " << kDiagnosticPrecision << ", printing pi=" << pi
+          << G4endl;
+  G4debug << "### AtRIS: proceeding with detector construction." << G4endl;
   G4SDManager* const sdManager = G4SDManager::GetSDMpointer();
   const G4GDMLAuxMapType* const auxiliaryMap = fParser.GetAuxMap();
   // Attach one SensitiveDetector to each GDML volume marked SensDet.

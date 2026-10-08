@@ -82,7 +82,7 @@ HistoManager::HistoManager(const RunSettings& settings, const PhantomResponses& 
 
 HistoManager::~HistoManager()
 {
-  G4cout << "HistoManager deleted." << G4endl;
+  G4debug << "HistoManager deleted." << G4endl;
 }
 
 void HistoManager::Book() const
@@ -91,7 +91,7 @@ void HistoManager::Book() const
   const G4int phantomCount = fPhantomResponses.GetPhantomCount();
   const auto& responses = fPhantomResponses.GetAll();
   const G4bool writesRootMetadata = fSettings.outputFileFormat == "root";
-  G4cout << "### AtRIS: configuring analysis histograms. " << G4endl;
+  G4debug << "### AtRIS: configuring analysis histograms. " << G4endl;
   analysis->SetVerboseLevel(0);
   // Allow individual analysis objects to be activated or deactivated.
   analysis->SetActivation(true);
