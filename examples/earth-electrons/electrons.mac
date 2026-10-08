@@ -1,0 +1,65 @@
+# Energetic electrons incident on the Earth atmosphere.
+# Commands execute in order. /atris/ configures AtRIS, /gps/ configures
+# Geant4's General Particle Source, and /run/ controls transport.
+
+# Input files and output identity
+# Read the geometry converted from the supplied Earth simulation.psf.
+/atris/geometryFile electrons.gdml
+# Use these kinetic-energy edges for the output histograms (MeV).
+/atris/energyBinsFile electrons.bins
+# Use this filename stem for all simulation output.
+/atris/outputStem electrons
+
+# Physics and output
+# FTFP_BERT includes electron, positron, and photon electromagnetic transport.
+/atris/physicsList FTFP_BERT
+# Record aggregate source and energy-deposition histograms, without phantoms.
+/atris/outputMode response
+# Save the histograms and run metadata in ROOT format.
+/atris/outputFormat root
+# Set the two random seeds before initialization.
+/atris/randomSeeds 123456 654321
+
+# Initialization and secondary production
+# Build the geometry and physics after applying the AtRIS settings above.
+/atris/initialize
+# Keep Geant4's run-manager output quiet; atris-run reports chunk progress.
+/run/verbose 0
+# Set a 1 m range cut for producing secondaries, not a tracking energy cutoff.
+/run/setCut 1 m
+
+# Primary particle and energy
+# Generate electrons rather than the proton or alpha of the other examples.
+/gps/particle e-
+# Sample a power law in primary kinetic energy.
+/gps/ene/type Pow
+# Set the lower kinetic-energy limit.
+/gps/ene/min 1 MeV
+# Set the upper kinetic-energy limit.
+/gps/ene/max 100 MeV
+# Sample uniformly in log energy; this is not a measured electron spectrum.
+/gps/ene/alpha -1
+
+# Primary position and direction
+# Sample source positions on a surface.
+/gps/pos/type Surface
+# Use a sphere surrounding the planet.
+/gps/pos/shape Sphere
+# Center it at the origin of the Earth model.
+/gps/pos/centre 0 0 0 km
+# Start 1 m beyond the last atmosphere shell, whose outer radius is 6472 km.
+/gps/pos/radius 6472.001 km
+# Sample cosine-law incidence about the inward surface normal.
+/gps/ang/type cos
+# Include directions along that normal.
+/gps/ang/mintheta 0 deg
+# Limit directions to the inward hemisphere.
+/gps/ang/maxtheta 90 deg
+# Create one primary electron per event.
+/gps/number 1
+
+# Particle transport
+# Process 500 events with the configuration above.
+/run/beamOn 500
+
+# End of the electron simulation macro.
