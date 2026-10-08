@@ -35,7 +35,10 @@ class SensitiveDetector : public G4VSensitiveDetector
     G4bool ProcessHits(G4Step* step, G4TouchableHistory* history) override;
 
   private:
+    /// Appends one transport step to the detailed step ntuple.
     void RecordStep(const G4Step& step, G4int detectorId, G4double primaryEnergy) const;
+
+    /// Scores one particle entering a sensitive volume through an interface.
     void ScoreBoundaryCrossing(const G4Step& step, G4int detectorId, G4double primaryEnergy) const;
 
     const RunSettings& fSettings;

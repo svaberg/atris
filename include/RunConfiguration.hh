@@ -37,14 +37,31 @@ class RunConfiguration
                      PhantomResponses& phantomResponses);
 
   private:
+    /// Stores the two random seeds supplied by the run macro.
     void SetRandomSeeds(G4long firstSeed, G4long secondSeed);
+
+    /// Converts a user-facing output-mode name to its internal value.
     void SetOutputMode(G4String outputModeName);
+
+    /// Loads and appends the phantom response currently described by the macro.
     void AddPhantomResponse();
+
+    /// Reads configured energy-bin edges; returns false after reporting failure.
     G4bool ReadEnergyBins();
+
+    /// Reports which output products the selected mode will write.
     void DescribeOutputMode() const;
+
+    /// Reads the GDML geometry and derives its sensitive-detector dimensions.
     void PrepareGeometry();
+
+    /// Installs detector construction, physics, and user actions in Geant4.
     void InstallRunComponents();
+
+    /// Applies configured random seeds to Geant4 when they were supplied.
     void ApplyRandomSeeds() const;
+
+    /// Completes configuration and initializes the Geant4 run manager.
     void Initialize();
 
     G4RunManager* const fRunManager;
