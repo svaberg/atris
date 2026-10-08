@@ -17,7 +17,6 @@
 namespace
 {
 
-constexpr G4bool kDebugLogging = ATRIS_DEBUG_LOGGING;
 constexpr G4int kDiagnosticPrecision = 15;
 
 }  // namespace
@@ -62,7 +61,7 @@ void DetectorConstruction::ConstructSDandField()
         {
           G4LogicalVolume* const logicalVolume = volume->first;
           logicalVolume->SetSensitiveDetector(detector);
-          if constexpr (kDebugLogging)
+          if constexpr (ATRIS_DEBUG_LOGGING)
           {
             const G4double mass = logicalVolume->GetMass();
             G4VSolid* const solid = logicalVolume->GetSolid();
@@ -83,7 +82,7 @@ void DetectorConstruction::ConstructSDandField()
     }
   }
 
-  if constexpr (kDebugLogging)
+  if constexpr (ATRIS_DEBUG_LOGGING)
   {
     G4debug << "### AtRIS: detailed information about all materials" << G4endl;
     G4debug << *(G4Material::GetMaterialTable()) << G4endl;
