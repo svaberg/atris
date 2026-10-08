@@ -35,6 +35,9 @@ class SensitiveDetector : public G4VSensitiveDetector
     G4bool ProcessHits(G4Step* step, G4TouchableHistory* history) override;
 
   private:
+    void RecordStep(const G4Step& step, G4int detectorId, G4double primaryEnergy) const;
+    void ScoreBoundaryCrossing(const G4Step& step, G4int detectorId, G4double primaryEnergy) const;
+
     const RunSettings& fSettings;
     const PhantomResponses& fPhantomResponses;
 };
