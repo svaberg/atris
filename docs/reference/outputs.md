@@ -196,6 +196,9 @@ literally, including the placement of the square inside the logarithm; they
 are not a statement that the implementation matches a particular radiation
 protection standard.
 
+The differences from the ICRP prescription are recorded as a
+[possible radiation-weighting bug](../known-bugs.md#possible-radiation-weighting-bug).
+
 (output-metadata)=
 
 ## Output metadata ntuples
