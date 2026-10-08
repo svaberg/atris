@@ -40,6 +40,11 @@ class RunConfiguration
     void SetRandomSeeds(G4long firstSeed, G4long secondSeed);
     void SetOutputMode(G4String outputModeName);
     void AddPhantomResponse();
+    G4bool ReadEnergyBins();
+    void DescribeOutputMode() const;
+    void PrepareGeometry();
+    void InstallRunComponents();
+    void ApplyRandomSeeds() const;
     void Initialize();
 
     G4RunManager* const fRunManager;

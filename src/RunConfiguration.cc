@@ -199,16 +199,8 @@ void RunConfiguration::AddPhantomResponse()
   fPendingResponse.phantomStem = phantomStem;
 }
 
-void RunConfiguration::Initialize()
+G4bool RunConfiguration::ReadEnergyBins()
 {
-  if (fSettings.outputStem.empty())
-  {
-    G4ExceptionDescription message;
-    message << "AtRIS initialization requires outputStem.";
-    fInitializeCommand->CommandFailed(message);
-    return;
-  }
-
   std::ifstream energyBinsFile(fSettings.energyBinsFileName);
   std::vector<G4double> energyBins;
   G4double energyBinEdge;
@@ -220,12 +212,16 @@ void RunConfiguration::Initialize()
     message << "AtRIS energy-bin file '" << fSettings.energyBinsFileName
             << "' must contain at least two numeric edges.";
     fInitializeCommand->CommandFailed(message);
-    return;
+    return false;
   }
   fSettings.energyBins = std::move(energyBins);
   G4cout << "### AtRIS: read " << fSettings.energyBins.size() << " energy-bin edges from "
          << fSettings.energyBinsFileName << G4endl;
+  return true;
+}
 
+void RunConfiguration::DescribeOutputMode() const
+{
   if (fSettings.outputMode == OutputMode::kProfile)
   {
     G4cout << "### AtRIS: profile mode writes histograms and interface ntuples" << G4endl;
@@ -236,7 +232,10 @@ void RunConfiguration::Initialize()
               "transport-step ntuples; output may be very large"
            << G4endl;
   }
+}
 
+void RunConfiguration::PrepareGeometry()
+{
   fParser.Read(fSettings.geometryFileName);
   std::filesystem::path inputPath(fSettings.geometryFileName.c_str());
   inputPath.replace_extension();
@@ -251,7 +250,10 @@ void RunConfiguration::Initialize()
   }
   G4cout << "### AtRIS: geometry contains " << fSettings.detectorCount << " sensitive detectors"
          << G4endl;
+}
 
+void RunConfiguration::InstallRunComponents()
+{
   fRunManager->SetUserInitialization(
     new DetectorConstruction(fParser, fSettings, fPhantomResponses));
   G4PhysListFactory factory;
@@ -260,7 +262,10 @@ void RunConfiguration::Initialize()
   physicsList->RegisterPhysics(new G4StepLimiterPhysics());
   fRunManager->SetUserInitialization(physicsList);
   fRunManager->SetUserInitialization(new UserActionInitialization(fSettings, fPhantomResponses));
+}
 
+void RunConfiguration::ApplyRandomSeeds() const
+{
   if (fSettings.explicitSeeds[0] != 0)
   {
     // CLHEP expects two seeds followed by a zero terminator.
@@ -273,6 +278,23 @@ void RunConfiguration::Initialize()
     G4cout << "### AtRIS: using random seeds " << fSettings.explicitSeeds[0] << " and "
            << fSettings.explicitSeeds[1] << G4endl;
   }
+}
+
+void RunConfiguration::Initialize()
+{
+  if (fSettings.outputStem.empty())
+  {
+    G4ExceptionDescription message;
+    message << "AtRIS initialization requires outputStem.";
+    fInitializeCommand->CommandFailed(message);
+    return;
+  }
+  if (!ReadEnergyBins()) return;
+
+  DescribeOutputMode();
+  PrepareGeometry();
+  InstallRunComponents();
+  ApplyRandomSeeds();
   fRunManager->Initialize();
 }
 
