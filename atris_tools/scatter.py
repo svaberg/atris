@@ -90,11 +90,11 @@ def chunk_macro(source, chunks):
     return contents, total_events, events_per_chunk
 
 
-def chunk_plan(chunks, rng, used_pairs=()):
+def chunk_plan(chunks, rng, used_pairs=(), simulations=SPECIES):
     """Return new plan lines whose seed pairs do not occur in used_pairs."""
     used_pairs = set(used_pairs)
     lines = []
-    for species in SPECIES:
+    for species in simulations:
         for _ in range(chunks):
             while True:
                 seeds = (rng.randint(31, 999999), rng.randint(31, 999999))
@@ -115,10 +115,6 @@ def existing_plan(plan_path):
         if len(fields) != 3:
             raise ValueError("Invalid chunks.txt line %i" % line_number)
         species, seed1_text, seed2_text = fields
-        if species not in SPECIES:
-            raise ValueError(
-                "Invalid particle species on chunks.txt line %i" % line_number
-            )
         try:
             seeds = (int(seed1_text), int(seed2_text))
         except ValueError as error:
@@ -138,10 +134,6 @@ def existing_plan(plan_path):
 
     if not entries:
         raise ValueError("Chunk plan is empty: " + str(plan_path))
-    counts = Counter(species for species, _, _ in entries)
-    missing = [species for species in SPECIES if not counts[species]]
-    if missing:
-        raise ValueError("Chunk plan has no %s entries" % " or ".join(missing))
     return entries, used_pairs, original
 
 
@@ -168,7 +160,7 @@ def replace_plan(plan_path, original, new_lines):
             os.unlink(temporary_name)
 
 
-def scatter(run_directory, chunks, random_seed=None):
+def scatter(run_directory, chunks, random_seed=None, simulations=SPECIES):
     if chunks < 1:
         raise ValueError("chunks must be at least 1")
 
@@ -192,7 +184,7 @@ def scatter(run_directory, chunks, random_seed=None):
 
     chunk_macros = {}
     rounded_totals = []
-    for species in SPECIES:
+    for species in simulations:
         source = run_directory / (species + ".mac")
         destination = run_directory / (species + ".chunk.mac")
         if not source.is_file():
@@ -208,7 +200,7 @@ def scatter(run_directory, chunks, random_seed=None):
             )
 
     rng = random.Random(random_seed)
-    plan_lines = chunk_plan(chunks, rng)
+    plan_lines = chunk_plan(chunks, rng, simulations=simulations)
     chunks_directory.mkdir(exist_ok=True)
     for destination, contents in chunk_macros.items():
         destination.write_text(contents)
@@ -250,17 +242,19 @@ def extend_plan(run_directory, chunks, random_seed=None):
     entries, used_pairs, original = existing_plan(plan_path)
     existing_counts = Counter(species for species, _, _ in entries)
     events_per_chunk = {}
-    for species in SPECIES:
+    for species in existing_counts:
         macro = run_directory / (species + ".chunk.mac")
         if not macro.is_file():
             raise FileNotFoundError("Chunk macro does not exist: " + str(macro))
         _, _, events_per_chunk[species] = macro_lines_and_events(macro)
 
-    new_lines = chunk_plan(chunks, random.Random(random_seed), used_pairs)
+    new_lines = chunk_plan(
+        chunks, random.Random(random_seed), used_pairs, simulations=existing_counts
+    )
     replace_plan(plan_path, original, new_lines)
     logger.debug("Appended %i entries to %s", len(new_lines), plan_path)
 
-    for species in SPECIES:
+    for species in existing_counts:
         old_count = existing_counts[species]
         new_count = old_count + chunks
         per_chunk = events_per_chunk[species]
@@ -282,17 +276,18 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=HelpFormatter,
         description=(
-            "Split the proton and alpha event totals in ordinary AtRIS macros "
+            "Split event totals in ordinary AtRIS macros "
             "into independently seeded, restartable chunks."
         ),
         epilog=(
-            "The initial operation reads protons.mac and alphas.mac, leaves "
-            "them unchanged, and writes chunks.txt, protons.chunk.mac, "
-            "alphas.chunk.mac, and an empty chunks directory. Each species is "
-            "split separately; --chunks N therefore creates 2N plan entries. "
+            "The initial operation reads each selected SIMULATION.mac, leaves "
+            "it unchanged, and writes chunks.txt, SIMULATION.chunk.mac, and an "
+            "empty chunks directory. Each simulation is split separately; "
+            "the default protons and alphas therefore produce 2N plan entries. "
             "If an event total is not divisible by N, each chunk receives the "
             "rounded-up count and the resulting small increase is reported. "
-            "--extend adds new events using the established per-chunk size; it "
+            "--extend adds chunks for all simulations in the existing plan "
+            "using the established per-chunk size; it "
             "does not repartition existing work. This command does not run or "
             "gather any chunks."
         ),
@@ -304,12 +299,19 @@ def main():
         metavar="RUN_DIRECTORY",
         help="Prepared run directory (default: current directory).",
     )
+    parser.add_argument(
+        "simulations",
+        nargs="*",
+        default=SPECIES,
+        metavar="SIMULATION",
+        help="Macro filename stems to split (default: protons alphas).",
+    )
     operation = parser.add_mutually_exclusive_group(required=True)
     operation.add_argument(
         "--chunks",
         type=int,
         metavar="COUNT",
-        help=("Create a new plan with COUNT proton chunks and COUNT alpha " "chunks."),
+        help="Create a new plan with COUNT chunks for each selected simulation.",
     )
     operation.add_argument(
         "--extend",
@@ -335,12 +337,14 @@ def main():
     configure_logging(args.log_level)
 
     if args.chunks is not None:
-        run_directory = scatter(args.run_directory, args.chunks, args.random_seed)
+        run_directory = scatter(
+            args.run_directory, args.chunks, args.random_seed, args.simulations
+        )
         logger.info(
-            "Created %i proton chunks and %i alpha chunks (%i total) in %s",
+            "Created %i chunks for each of %s (%i total) in %s",
             args.chunks,
-            args.chunks,
-            args.chunks * 2,
+            ", ".join(args.simulations),
+            args.chunks * len(args.simulations),
             run_directory,
         )
     else:
@@ -349,13 +353,7 @@ def main():
             args.extend,
             args.random_seed,
         )
-        logger.info(
-            "Added %i proton chunks and %i alpha chunks (%i total) to %s",
-            args.extend,
-            args.extend,
-            args.extend * 2,
-            run_directory,
-        )
+        logger.info("Extended chunk plan in %s", run_directory)
 
 
 if __name__ == "__main__":

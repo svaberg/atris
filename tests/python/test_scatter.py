@@ -228,3 +228,26 @@ def test_extend_plan_rejects_duplicate_existing_seed_pairs(tmp_path):
 def test_extend_plan_rejects_zero_chunks(tmp_path):
     with pytest.raises(ValueError, match="at least 1"):
         extend_plan(tmp_path, chunks=0)
+
+
+def test_scatter_and_extend_electrons_without_proton_or_alpha_macros(tmp_path):
+    original = ORDINARY_MACRO.format(species="electrons", particle="e-")
+    macro = tmp_path / "electrons.mac"
+    macro.write_text(original)
+
+    scatter(tmp_path, chunks=2, random_seed=42, simulations=("electrons",))
+    first_plan = (tmp_path / "chunks.txt").read_text()
+    chunk_macro = (tmp_path / "electrons.chunk.mac").read_text()
+    assert len(first_plan.splitlines()) == 2
+    assert all(line.startswith("electrons ") for line in first_plan.splitlines())
+    assert "/gps/particle e-" in chunk_macro
+    assert "/run/beamOn 4" in chunk_macro
+
+    extend_plan(tmp_path, chunks=1, random_seed=42)
+    extended = (tmp_path / "chunks.txt").read_text()
+    assert extended.startswith(first_plan)
+    assert len(extended.splitlines()) == 3
+    assert all(line.startswith("electrons ") for line in extended.splitlines())
+    assert len({tuple(line.split()[1:]) for line in extended.splitlines()}) == 3
+    assert macro.read_text() == original
+    assert (tmp_path / "electrons.chunk.mac").read_text() == chunk_macro

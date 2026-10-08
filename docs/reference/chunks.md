@@ -43,15 +43,17 @@ seeds from the output basename.
 
 ## Creation and extension
 
-`atris-scatter --chunks N` creates `N` entries per species, or `2N` total,
-with all proton entries followed by all alpha entries. For each species:
+`atris-scatter --chunks N` creates `N` entries per selected simulation.
+The default is `2N` total, with all proton entries followed by all alpha entries.
+For another macro stem, use, for example, `atris-scatter . electrons --chunks N`.
+For each simulation:
 
 $$
 n_{\mathrm{chunk}}=\left\lceil\frac{n_{\mathrm{requested}}}{N}\right\rceil,
 \qquad n_{\mathrm{actual}}=N n_{\mathrm{chunk}}.
 $$
 
-Here $N$ is the requested chunk count per species and
+Here $N$ is the requested chunk count per simulation and
 $n_{\mathrm{requested}}$ is the ordinary macro's event count.
 
 The ordinary macro must contain exactly one positive `/run/beamOn` command,
@@ -64,7 +66,8 @@ the requested total by fewer than `N` events when rounding is necessary.
 Creation refuses an existing plan, an existing chunk macro, or a nonempty
 `chunks/`. It permits an already existing empty `chunks/` directory.
 
-`--extend N` appends `N` entries per species with new unique seed pairs. It
+`--extend N` appends `N` entries for each simulation already in the plan,
+with new unique seed pairs. It
 preserves the existing chunk macros and their event counts. The plan is
 replaced atomically after writing the appended version. Active workers keep
 using the plan they read at startup; newly appended entries become available

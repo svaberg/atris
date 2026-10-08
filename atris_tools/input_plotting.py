@@ -690,11 +690,11 @@ def plot_phantom_inputs(
     return filename
 
 
-def plot_inputs():
+def plot_inputs(simulations=("protons", "alphas")):
     filenames = []
     errors = []
     configured_phantoms = {}
-    for simname in ("protons", "alphas"):
+    for simname in simulations:
         macro = Path(simname + ".mac")
         if macro.is_file():
             try:

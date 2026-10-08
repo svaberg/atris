@@ -489,7 +489,9 @@ def write_convergence(path, rows):
 def log_ionization_change(simulation, row):
     """Report the final ionization convergence row."""
     completed_count, _, comparison_chunks, comparison_percent, change = row[:5]
-    species = {"protons": "Proton", "alphas": "Alpha"}[simulation]
+    species = {"protons": "Proton", "alphas": "Alpha"}.get(
+        simulation, simulation.capitalize()
+    )
     logger.info(
         "%s ionization change after final %i of %i completed chunks "
         "(%.1f%%): %.2f%%",

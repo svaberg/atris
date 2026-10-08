@@ -3,6 +3,7 @@ import sys
 
 from matplotlib.colors import LogNorm
 import numpy as np
+import pytest
 import uproot
 
 from atris_tools import plotting
@@ -170,7 +171,11 @@ def test_angular_plot_uses_linear_counts_and_global_angle_labels():
     plotting.plt.close(figure)
 
 
-def test_plot_convergence_writes_png_from_one_comparison(tmp_path, monkeypatch):
+@pytest.mark.filterwarnings("error:Attempting to set identical")
+@pytest.mark.parametrize("planned_chunks", (2, 20))
+def test_plot_convergence_writes_png_from_one_comparison(
+    tmp_path, monkeypatch, planned_chunks
+):
     (tmp_path / "protons.convergence.csv").write_text(
         "completed_chunks,primary_events,comparison_chunks,"
         "comparison_percent,ionization_change_percent,"
@@ -178,7 +183,7 @@ def test_plot_convergence_writes_png_from_one_comparison(tmp_path, monkeypatch):
         "cell_relative_se_p50_percent,cell_relative_se_p90_percent\n"
         "2,600,1,50,12.5,8,25,15,40\n"
     )
-    (tmp_path / "chunks.txt").write_text("protons 111111 222222\n" * 20)
+    (tmp_path / "chunks.txt").write_text("protons 111111 222222\n" * planned_chunks)
     monkeypatch.chdir(tmp_path)
 
     filename = plotting.plot_convergence("protons")
@@ -279,3 +284,21 @@ def test_main_skips_species_without_processed_output(tmp_path, monkeypatch, capl
     assert (
         "Skipping alphas response plots: processed output not found" in caplog.messages
     )
+
+
+def test_main_plots_selected_simulation(tmp_path, monkeypatch):
+    selected = []
+    plotted = []
+    monkeypatch.setattr(sys, "argv", ["atris-plot", str(tmp_path), "electrons"])
+    monkeypatch.setattr(
+        plotting, "plot_inputs", lambda names: (selected.extend(names) or [], [])
+    )
+    monkeypatch.setattr(plotting, "_has_processed_output", lambda name: True)
+    monkeypatch.setattr(
+        plotting, "plot_run", lambda name: (plotted.append(name) or [], [])
+    )
+
+    plotting.main()
+
+    assert selected == ["electrons"]
+    assert plotted == ["electrons"]

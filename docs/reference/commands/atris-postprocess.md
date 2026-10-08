@@ -4,11 +4,13 @@ Normalize canonical raw histograms into response tables.
 
 ```bash
 atris-postprocess .
+atris-postprocess . electrons
 ```
 
-The directory defaults to the current directory. Both `protons` and `alphas`
-are attempted, and a species without its primary histogram is skipped. There
-is no positional species filter.
+The directory defaults to the current directory. By default, both `protons`
+and `alphas` are attempted. List other simulation filename stems after the
+directory to select them instead. A simulation without its primary histogram
+is skipped.
 
 **Inputs:** canonical histogram CSV or ROOT files, `simulation.psf`, and phantom
 mass/area metadata from `phantoms.txt` when phantom products are present.
@@ -34,7 +36,8 @@ formulas, geometry assumptions, and empty-bin handling.
 The following is the command's `--help` output for this revision.
 
 ```text
-usage: atris-postprocess [-h] [-q | -v] [--version] [RUN_DIRECTORY]
+usage: atris-postprocess [-h] [-q | -v] [--version]
+                         [RUN_DIRECTORY] [SIMULATION ...]
 
 Scale canonical AtRIS CSV or ROOT histograms into altitude- and
 energy-dependent atmospheric energy-deposition and phantom response tables.
@@ -42,6 +45,7 @@ energy-dependent atmospheric energy-deposition and phantom response tables.
 positional arguments:
   RUN_DIRECTORY  Run directory containing canonical response output (default:
                  current directory).
+  SIMULATION     Simulation prefixes to process (default: protons alphas).
 
 options:
   -h, --help     show this help message and exit
@@ -50,7 +54,7 @@ options:
                  progress.
   --version      Show the AtRIS and atris-tools versions and exit.
 
-The command processes the protons and alphas prefixes when their primary
+The command processes the selected simulation prefixes when their primary
 histogram files are present. It reads simulation.psf and, for phantom
 responses, phantoms.txt; it writes .ioni, .edep when total-deposition input is
 present, and one stem- and response-named file per phantom response, replacing

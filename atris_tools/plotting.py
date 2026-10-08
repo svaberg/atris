@@ -421,7 +421,9 @@ def plot_convergence(simname):
             names=True,
         )
     )
-    species = {"protons": "Proton", "alphas": "Alpha"}[simname]
+    species = {"protons": "Proton", "alphas": "Alpha"}.get(
+        simname, simname.capitalize()
+    )
     planned_chunks = _planned_chunks(simname)
     figure, axes = plt.subplots(nrows=2, figsize=(8, 8), sharex=True)
     change_series = (
@@ -502,7 +504,8 @@ def plot_convergence(simname):
         axis.set_yticks(minor_ticks, minor=True)
         axis.set_yticklabels([], minor=True)
     axes[1].set_xscale("log")
-    axes[1].set_xlim(data["completed_chunks"][0], planned_chunks)
+    if planned_chunks > data["completed_chunks"][0]:
+        axes[1].set_xlim(data["completed_chunks"][0], planned_chunks)
     for axis in axes:
         axis.tick_params(axis="x", which="minor", length=4, width=0.8)
     figure.suptitle(species + " ionization convergence")
@@ -645,7 +648,7 @@ def main():
         epilog=(
             "Recognized products include prepared macros and geometry, ROOT "
             "interface and step records, convergence "
-            "tables, and post-processed proton and alpha responses. Missing "
+            "tables, and post-processed responses. Missing "
             "product groups are skipped so partial runs can still be inspected. "
             "Existing PNG files with the generated names are replaced. This "
             "command does not run AtRIS, gather chunks, or post-process raw "
@@ -659,6 +662,13 @@ def main():
         default=Path.cwd(),
         metavar="RUN_DIRECTORY",
         help="Run directory to inspect (default: current directory).",
+    )
+    parser.add_argument(
+        "simulations",
+        nargs="*",
+        default=("protons", "alphas"),
+        metavar="SIMULATION",
+        help="Simulation prefixes to plot (default: protons alphas).",
     )
     add_logging_arguments(parser)
     add_version_argument(parser)
@@ -677,11 +687,11 @@ def main():
     try:
         os.chdir(run_directory)
         try:
-            input_plots, input_errors = plot_inputs()
+            input_plots, input_errors = plot_inputs(args.simulations)
             errors.extend(input_errors)
         except Exception as error:
             errors.append("inputs: " + str(error))
-        for simulation in ("protons", "alphas"):
+        for simulation in args.simulations:
             root_path = Path(simulation + ".root")
             root_interfaces = False
             root_steps = False

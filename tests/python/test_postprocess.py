@@ -234,15 +234,17 @@ def test_main_accepts_directory_without_simulation_output(
     assert "No requested simulation output found" in caplog.text
 
 
-def test_main_rejects_species_argument(tmp_path, monkeypatch):
+def test_main_processes_selected_simulation(tmp_path, monkeypatch):
+    (tmp_path / "electrons_h1_h1.1.csv").write_text("present\n")
+    processed = []
+    monkeypatch.setattr(postprocess, "process_run", processed.append)
     monkeypatch.setattr(
         sys,
         "argv",
-        ["atris-postprocess", str(tmp_path), "protons"],
+        ["atris-postprocess", str(tmp_path), "electrons"],
     )
-
-    with pytest.raises(SystemExit):
-        postprocess.main()
+    postprocess.main()
+    assert processed == ["electrons"]
 
 
 def test_postprocess_reads_root_response_histograms(tmp_path, monkeypatch):

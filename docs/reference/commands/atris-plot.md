@@ -4,6 +4,7 @@ Create PNG diagnostics for available input and output groups.
 
 ```bash
 atris-plot .
+atris-plot . electrons
 ```
 
 The directory defaults to the current directory. Install the `plot` extra to
@@ -11,8 +12,9 @@ provide Matplotlib (`python -m pip install -e ".[plot]"`).
 
 **Inputs:** prepared species macros/geometry/bins, staged phantom tables,
 processed responses and their raw diagnostics, convergence CSVs, interface
-and step ntuples in ROOT output, as available. It discovers the
-canonical prefixes `protons` and `alphas`. **Outputs:** the
+and step ntuples in ROOT output, as available. It uses the
+canonical prefixes `protons` and `alphas` by default. List other simulation
+filename stems after the directory to select them instead. **Outputs:** the
 [PNG products](../outputs.md#plots-and-chunk-metadata), replacing existing images.
 
 Absent product groups are skipped. Errors in individual groups are reported
@@ -55,25 +57,27 @@ linear axes. The altitude range focuses on the interaction region.
 The following is the command's `--help` output for this revision.
 
 ```text
-usage: atris-plot [-h] [-q | -v] [--version] [RUN_DIRECTORY]
+usage: atris-plot [-h] [-q | -v] [--version] [RUN_DIRECTORY] [SIMULATION ...]
 
-Create quick-look PNG plots from the AtRIS inputs and result products already present
-in a run directory.
+Create quick-look PNG plots from the AtRIS inputs and result products already
+present in a run directory.
 
 positional arguments:
   RUN_DIRECTORY  Run directory to inspect (default: current directory).
+  SIMULATION     Simulation prefixes to plot (default: protons alphas).
 
-optional arguments:
+options:
   -h, --help     show this help message and exit
   -q, --quiet    Suppress normal progress; show warnings and errors only.
-  -v, --verbose  Include detailed per-file, per-request, or per-chunk progress.
+  -v, --verbose  Include detailed per-file, per-request, or per-chunk
+                 progress.
   --version      Show the AtRIS and atris-tools versions and exit.
 
-Recognized products include prepared macros and geometry, ROOT interface and step
-records, convergence tables, and post-processed proton
-and alpha responses. Missing product groups are skipped so partial runs can still be
-inspected. Existing PNG files with the generated names are replaced. This command does
-not run AtRIS, gather chunks, or post-process raw histograms.
+Recognized products include prepared macros and geometry, ROOT interface and
+step records, convergence tables, and post-processed responses. Missing
+product groups are skipped so partial runs can still be inspected. Existing
+PNG files with the generated names are replaced. This command does not run
+AtRIS, gather chunks, or post-process raw histograms.
 ```
 
 Implementation: `atris_tools/plotting.py`.

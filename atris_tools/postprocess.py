@@ -333,7 +333,7 @@ def main():
             "response tables."
         ),
         epilog=(
-            "The command processes the protons and alphas prefixes when their "
+            "The command processes the selected simulation prefixes when their "
             "primary histogram files are present. It reads simulation.psf and, "
             "for phantom responses, phantoms.txt; it writes .ioni, .edep when "
             "total-deposition input is present, and one stem- and response-named "
@@ -350,6 +350,13 @@ def main():
         metavar="RUN_DIRECTORY",
         help="Run directory containing canonical response output (default: current directory).",
     )
+    parser.add_argument(
+        "simulations",
+        nargs="*",
+        default=("protons", "alphas"),
+        metavar="SIMULATION",
+        help="Simulation prefixes to process (default: protons alphas).",
+    )
     add_logging_arguments(parser)
     add_version_argument(parser)
     args = parser.parse_args()
@@ -364,7 +371,7 @@ def main():
     logger.info("Starting post-processing in %s", run_directory)
     try:
         os.chdir(run_directory)
-        for simulation in ("protons", "alphas"):
+        for simulation in args.simulations:
             if response_output_format(simulation) is None:
                 logger.info("Skipping %s: output not found", simulation)
                 continue
