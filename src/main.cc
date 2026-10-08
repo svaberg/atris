@@ -28,7 +28,7 @@ int main(int argc, char** argv)
 
   const auto totalStart = std::chrono::steady_clock::now();
   const G4String macroName = argv[1];
-  atris::RunSettings settings;
+  atris::RunSettings runSettings;
   atris::PhantomResponses phantomResponses;
 
   // Configure Geant4 for this process.
@@ -43,10 +43,10 @@ int main(int argc, char** argv)
     runManager->SetNumberOfThreads(G4Threading::G4GetNumberOfCores());
   }
 
-  G4GDMLParser parser;
+  G4GDMLParser gdmlParser;
 
   // Keep the command messengers and their backing state alive for the macro.
-  atris::RunConfiguration runConfiguration(runManager, settings, parser, phantomResponses);
+  atris::RunConfiguration runConfiguration(runManager, runSettings, gdmlParser, phantomResponses);
 
   // Execute the selected macro through Geant4's UI manager.
   const G4String command = "/control/execute " + macroName;

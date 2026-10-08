@@ -33,7 +33,7 @@ class RunConfiguration
 {
   public:
     /// Registers the AtRIS macro commands against the supplied run state.
-    RunConfiguration(G4RunManager* runManager, RunSettings& settings, ::G4GDMLParser& parser,
+    RunConfiguration(G4RunManager* runManager, RunSettings& runSettings, ::G4GDMLParser& gdmlParser,
                      PhantomResponses& phantomResponses);
 
   private:
@@ -65,15 +65,15 @@ class RunConfiguration
     void Initialize();
 
     G4RunManager* const fRunManager;
-    RunSettings& fSettings;
-    ::G4GDMLParser& fParser;
+    RunSettings& fRunSettings;
+    ::G4GDMLParser& fGDMLParser;
     PhantomResponses& fPhantomResponses;
 
     // Each messenger owns the commands registered in one Geant4 UI directory.
     // Keeping these members alive keeps the complete AtRIS command tree
     // available while Geant4 interprets the run macro.
     /// Owns the commands directly under `/atris/`.
-    G4GenericMessenger fMessenger;
+    G4GenericMessenger fRunMessenger;
 
     /// Owns the `/atris/directionHistogram/` commands.
     G4GenericMessenger fDirectionHistogramMessenger;

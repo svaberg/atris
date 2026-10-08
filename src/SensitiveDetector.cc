@@ -67,53 +67,54 @@ G4double AccumulatedResponse(const PhantomResponse& response, const G4int respon
 
 }  // namespace
 
-SensitiveDetector::SensitiveDetector(const G4String& name, const RunSettings& settings,
+SensitiveDetector::SensitiveDetector(const G4String& name, const RunSettings& runSettings,
                                      const PhantomResponses& phantomResponses)
-  : G4VSensitiveDetector(name), fSettings(settings), fPhantomResponses(phantomResponses)
+  : G4VSensitiveDetector(name), fRunSettings(runSettings), fPhantomResponses(phantomResponses)
 {}
 
 void SensitiveDetector::RecordStep(const G4Step& step, const G4int detectorId,
                                    const G4double primaryEnergy) const
 {
   G4Track* const track = step.GetTrack();
-  G4AnalysisManager* const analysis = G4AnalysisManager::Instance();
+  G4AnalysisManager* const analysisManager = G4AnalysisManager::Instance();
   const G4Event* const event = G4RunManager::GetRunManager()->GetCurrentEvent();
-  const G4StepPoint* const prePoint = step.GetPreStepPoint();
-  const G4StepPoint* const postPoint = step.GetPostStepPoint();
-  const G4ThreeVector& prePosition = prePoint->GetPosition();
-  const G4ThreeVector& postPosition = postPoint->GetPosition();
+  const G4StepPoint* const preStepPoint = step.GetPreStepPoint();
+  const G4StepPoint* const postStepPoint = step.GetPostStepPoint();
+  const G4ThreeVector& prePosition = preStepPoint->GetPosition();
+  const G4ThreeVector& postPosition = postStepPoint->GetPosition();
   const G4VProcess* const creatorProcess = track->GetCreatorProcess();
-  const G4VProcess* const definingProcess = postPoint->GetProcessDefinedStep();
+  const G4VProcess* const definingProcess = postStepPoint->GetProcessDefinedStep();
   const G4String creatorName = creatorProcess ? creatorProcess->GetProcessName() : "primary";
   const G4String stepProcessName = definingProcess ? definingProcess->GetProcessName() : "none";
 
-  analysis->FillNtupleIColumn(kStepNtupleId, kStepEventId, event ? event->GetEventID() : -1);
-  analysis->FillNtupleIColumn(kStepNtupleId, kStepTrackId, track->GetTrackID());
-  analysis->FillNtupleIColumn(kStepNtupleId, kStepParentId, track->GetParentID());
-  analysis->FillNtupleIColumn(kStepNtupleId, kStepId, track->GetCurrentStepNumber());
-  analysis->FillNtupleIColumn(kStepNtupleId, kStepPDG,
-                              track->GetParticleDefinition()->GetPDGEncoding());
-  analysis->FillNtupleIColumn(kStepNtupleId, kStepDetectorId, detectorId);
-  analysis->FillNtupleDColumn(kStepNtupleId, kStepPreXKm, prePosition.x() / km);
-  analysis->FillNtupleDColumn(kStepNtupleId, kStepPreYKm, prePosition.y() / km);
-  analysis->FillNtupleDColumn(kStepNtupleId, kStepPreZKm, prePosition.z() / km);
-  analysis->FillNtupleDColumn(kStepNtupleId, kStepPostXKm, postPosition.x() / km);
-  analysis->FillNtupleDColumn(kStepNtupleId, kStepPostYKm, postPosition.y() / km);
-  analysis->FillNtupleDColumn(kStepNtupleId, kStepPostZKm, postPosition.z() / km);
-  analysis->FillNtupleDColumn(kStepNtupleId, kStepPreKineticEnergyMeV,
-                              prePoint->GetKineticEnergy() / MeV);
-  analysis->FillNtupleDColumn(kStepNtupleId, kStepPostKineticEnergyMeV,
-                              postPoint->GetKineticEnergy() / MeV);
-  analysis->FillNtupleDColumn(kStepNtupleId, kStepEnergyDepositMeV,
-                              step.GetTotalEnergyDeposit() / MeV);
-  analysis->FillNtupleDColumn(kStepNtupleId, kStepNonionizingEnergyDepositMeV,
-                              step.GetNonIonizingEnergyDeposit() / MeV);
-  analysis->FillNtupleDColumn(kStepNtupleId, kStepLengthM, step.GetStepLength() / m);
-  analysis->FillNtupleDColumn(kStepNtupleId, kStepGlobalTimeNs, postPoint->GetGlobalTime() / ns);
-  analysis->FillNtupleDColumn(kStepNtupleId, kStepPrimaryEnergyMeV, primaryEnergy / MeV);
-  analysis->FillNtupleSColumn(kStepNtupleId, kStepCreatorProcess, creatorName);
-  analysis->FillNtupleSColumn(kStepNtupleId, kStepProcess, stepProcessName);
-  analysis->AddNtupleRow(kStepNtupleId);
+  analysisManager->FillNtupleIColumn(kStepNtupleId, kStepEventId, event ? event->GetEventID() : -1);
+  analysisManager->FillNtupleIColumn(kStepNtupleId, kStepTrackId, track->GetTrackID());
+  analysisManager->FillNtupleIColumn(kStepNtupleId, kStepParentId, track->GetParentID());
+  analysisManager->FillNtupleIColumn(kStepNtupleId, kStepId, track->GetCurrentStepNumber());
+  analysisManager->FillNtupleIColumn(kStepNtupleId, kStepPDG,
+                                     track->GetParticleDefinition()->GetPDGEncoding());
+  analysisManager->FillNtupleIColumn(kStepNtupleId, kStepDetectorId, detectorId);
+  analysisManager->FillNtupleDColumn(kStepNtupleId, kStepPreXKm, prePosition.x() / km);
+  analysisManager->FillNtupleDColumn(kStepNtupleId, kStepPreYKm, prePosition.y() / km);
+  analysisManager->FillNtupleDColumn(kStepNtupleId, kStepPreZKm, prePosition.z() / km);
+  analysisManager->FillNtupleDColumn(kStepNtupleId, kStepPostXKm, postPosition.x() / km);
+  analysisManager->FillNtupleDColumn(kStepNtupleId, kStepPostYKm, postPosition.y() / km);
+  analysisManager->FillNtupleDColumn(kStepNtupleId, kStepPostZKm, postPosition.z() / km);
+  analysisManager->FillNtupleDColumn(kStepNtupleId, kStepPreKineticEnergyMeV,
+                                     preStepPoint->GetKineticEnergy() / MeV);
+  analysisManager->FillNtupleDColumn(kStepNtupleId, kStepPostKineticEnergyMeV,
+                                     postStepPoint->GetKineticEnergy() / MeV);
+  analysisManager->FillNtupleDColumn(kStepNtupleId, kStepEnergyDepositMeV,
+                                     step.GetTotalEnergyDeposit() / MeV);
+  analysisManager->FillNtupleDColumn(kStepNtupleId, kStepNonionizingEnergyDepositMeV,
+                                     step.GetNonIonizingEnergyDeposit() / MeV);
+  analysisManager->FillNtupleDColumn(kStepNtupleId, kStepLengthM, step.GetStepLength() / m);
+  analysisManager->FillNtupleDColumn(kStepNtupleId, kStepGlobalTimeNs,
+                                     postStepPoint->GetGlobalTime() / ns);
+  analysisManager->FillNtupleDColumn(kStepNtupleId, kStepPrimaryEnergyMeV, primaryEnergy / MeV);
+  analysisManager->FillNtupleSColumn(kStepNtupleId, kStepCreatorProcess, creatorName);
+  analysisManager->FillNtupleSColumn(kStepNtupleId, kStepProcess, stepProcessName);
+  analysisManager->AddNtupleRow(kStepNtupleId);
 }
 
 void SensitiveDetector::ScoreBoundaryCrossing(const G4Step& step, const G4int detectorId,
@@ -133,7 +134,7 @@ void SensitiveDetector::ScoreBoundaryCrossing(const G4Step& step, const G4int de
   const G4int responseEnergyBin =
     std::max(0, static_cast<G4int>(std::log10(kineticEnergy / eV) / kPhantomResponseLogEnergyStep));
   const G4int particleIndex = fPhantomResponses.FindParticleIndex(particlePDG);
-  G4AnalysisManager* const analysis = G4AnalysisManager::Instance();
+  G4AnalysisManager* const analysisManager = G4AnalysisManager::Instance();
   if (particleIndex >= 0)
   {
     const G4int tableIndex = particleIndex * kPhantomResponseEnergyBins + responseEnergyBin;
@@ -141,23 +142,23 @@ void SensitiveDetector::ScoreBoundaryCrossing(const G4Step& step, const G4int de
     for (std::size_t responseIndex = 0; responseIndex < responses.size(); ++responseIndex)
     {
       const PhantomResponse& response = responses[responseIndex];
-      analysis->FillH2(kFirstResponseHistogramId + static_cast<G4int>(responseIndex), primaryEnergy,
-                       interfaceId,
-                       AccumulatedResponse(response, tableIndex, particlePDG, kineticEnergy));
+      analysisManager->FillH2(
+        kFirstResponseHistogramId + static_cast<G4int>(responseIndex), primaryEnergy, interfaceId,
+        AccumulatedResponse(response, tableIndex, particlePDG, kineticEnergy));
     }
   }
 
-  if (WritesInterfaceNtuple(fSettings.outputMode))
+  if (WritesInterfaceNtuple(fRunSettings.outputMode))
   {
-    analysis->FillNtupleIColumn(kInterfaceNtupleId, kInterfacePDG, particlePDG);
-    analysis->FillNtupleIColumn(kInterfaceNtupleId, kInterfaceId, interfaceId);
-    analysis->FillNtupleIColumn(kInterfaceNtupleId, kInterfaceAngleDegrees,
-                                static_cast<G4int>(std::round(inclination / deg)));
-    analysis->FillNtupleDColumn(kInterfaceNtupleId, kInterfaceKineticEnergyMeV,
-                                preStepPoint->GetKineticEnergy() / MeV);
-    analysis->FillNtupleDColumn(kInterfaceNtupleId, kInterfacePrimaryEnergyMeV,
-                                primaryEnergy / MeV);
-    analysis->AddNtupleRow(kInterfaceNtupleId);
+    analysisManager->FillNtupleIColumn(kInterfaceNtupleId, kInterfacePDG, particlePDG);
+    analysisManager->FillNtupleIColumn(kInterfaceNtupleId, kInterfaceId, interfaceId);
+    analysisManager->FillNtupleIColumn(kInterfaceNtupleId, kInterfaceAngleDegrees,
+                                       static_cast<G4int>(std::round(inclination / deg)));
+    analysisManager->FillNtupleDColumn(kInterfaceNtupleId, kInterfaceKineticEnergyMeV,
+                                       preStepPoint->GetKineticEnergy() / MeV);
+    analysisManager->FillNtupleDColumn(kInterfaceNtupleId, kInterfacePrimaryEnergyMeV,
+                                       primaryEnergy / MeV);
+    analysisManager->AddNtupleRow(kInterfaceNtupleId);
   }
 }
 
@@ -169,26 +170,26 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*)
   const G4double primaryEnergy = source->GetParticleEnergy();
 
   const G4int detectorId = std::stoi(GetName());
-  if (WritesStepNtuple(fSettings.outputMode))
+  if (WritesStepNtuple(fRunSettings.outputMode))
   {
     RecordStep(*step, detectorId, primaryEnergy);
   }
 
   // The first and last sensitive volumes are termination shells. Particles
   // reaching either edge have left the simulated region and are discarded.
-  if (detectorId == 0 || detectorId == (fSettings.detectorCount - 1))
+  if (detectorId == 0 || detectorId == (fRunSettings.detectorCount - 1))
   {
     track->SetTrackStatus(fStopAndKill);
     return false;
   }
 
-  G4AnalysisManager* const analysis = G4AnalysisManager::Instance();
+  G4AnalysisManager* const analysisManager = G4AnalysisManager::Instance();
   const G4double energyDeposit = step->GetTotalEnergyDeposit();
   const G4double nonionizingEnergyDeposit = step->GetNonIonizingEnergyDeposit();
   const G4double ionizingEnergyDeposit = energyDeposit - nonionizingEnergyDeposit;
-  analysis->FillH2(kIonizingEnergyHistogramId, primaryEnergy, detectorId,
-                   ionizingEnergyDeposit / MeV);
-  analysis->FillH2(kTotalEnergyHistogramId, primaryEnergy, detectorId, energyDeposit / MeV);
+  analysisManager->FillH2(kIonizingEnergyHistogramId, primaryEnergy, detectorId,
+                          ionizingEnergyDeposit / MeV);
+  analysisManager->FillH2(kTotalEnergyHistogramId, primaryEnergy, detectorId, energyDeposit / MeV);
 
   if (step->GetPreStepPoint()->GetStepStatus() == fGeomBoundary)
   {

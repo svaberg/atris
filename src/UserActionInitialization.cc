@@ -10,26 +10,26 @@
 namespace atris
 {
 
-UserActionInitialization::UserActionInitialization(const RunSettings& settings,
+UserActionInitialization::UserActionInitialization(const RunSettings& runSettings,
                                                    const PhantomResponses& phantomResponses)
-  : fSettings(settings), fPhantomResponses(phantomResponses)
+  : fRunSettings(runSettings), fPhantomResponses(phantomResponses)
 {}
 
 void UserActionInitialization::BuildForMaster() const
 {
-  auto* const runAction = new RunAction(true, fSettings, fPhantomResponses);
+  auto* const runAction = new RunAction(true, fRunSettings, fPhantomResponses);
   SetUserAction(runAction);
 }
 
 void UserActionInitialization::Build() const
 {
   G4debug << "Starting build of UserActionInitialization for workers" << G4endl;
-  auto* const runAction = new RunAction(false, fSettings, fPhantomResponses);
+  auto* const runAction = new RunAction(false, fRunSettings, fPhantomResponses);
   SetUserAction(runAction);
 
   G4debug << "Proceeding with build of UserActionInitialization for workers" << G4endl;
-  auto* const primary = new PrimaryGeneratorAction();
-  SetUserAction(primary);
+  auto* const primaryGeneratorAction = new PrimaryGeneratorAction();
+  SetUserAction(primaryGeneratorAction);
 }
 
 }  // namespace atris

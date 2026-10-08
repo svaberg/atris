@@ -27,7 +27,7 @@ class RunAction : public ::G4UserRunAction
 {
   public:
     /// Creates a master action when `isMaster` is true, otherwise a worker action.
-    RunAction(G4bool isMaster, const RunSettings& settings,
+    RunAction(G4bool isMaster, const RunSettings& runSettings,
               const PhantomResponses& phantomResponses);
     ~RunAction() override;
 
@@ -42,7 +42,7 @@ class RunAction : public ::G4UserRunAction
 
   private:
     AnalysisOutput* fAnalysisOutput;
-    const RunSettings& fSettings;
+    const RunSettings& fRunSettings;
     const PhantomResponses& fPhantomResponses;
 };
 

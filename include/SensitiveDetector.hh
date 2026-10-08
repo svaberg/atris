@@ -27,7 +27,7 @@ class SensitiveDetector : public G4VSensitiveDetector
 {
   public:
     /// Creates a detector whose name is the integer sensitive-volume ID.
-    SensitiveDetector(const G4String& name, const RunSettings& settings,
+    SensitiveDetector(const G4String& name, const RunSettings& runSettings,
                       const PhantomResponses& phantomResponses);
     ~SensitiveDetector() override = default;
 
@@ -41,7 +41,7 @@ class SensitiveDetector : public G4VSensitiveDetector
     /// Scores one particle entering a sensitive volume through an interface.
     void ScoreBoundaryCrossing(const G4Step& step, G4int detectorId, G4double primaryEnergy) const;
 
-    const RunSettings& fSettings;
+    const RunSettings& fRunSettings;
     const PhantomResponses& fPhantomResponses;
 };
 

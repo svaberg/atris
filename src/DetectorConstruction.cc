@@ -17,17 +17,17 @@
 namespace atris
 {
 
-DetectorConstruction::DetectorConstruction(const ::G4GDMLParser& parser,
-                                           const RunSettings& settings,
+DetectorConstruction::DetectorConstruction(const ::G4GDMLParser& gdmlParser,
+                                           const RunSettings& runSettings,
                                            const PhantomResponses& phantomResponses)
-  : fParser(parser), fSettings(settings), fPhantomResponses(phantomResponses)
+  : fGDMLParser(gdmlParser), fRunSettings(runSettings), fPhantomResponses(phantomResponses)
 {
   G4debug << "### AtRIS: Initialized the DetectorConstruction object." << G4endl;
 }
 
 G4VPhysicalVolume* DetectorConstruction::Construct()
 {
-  return fParser.GetWorldVolume();
+  return fGDMLParser.GetWorldVolume();
 }
 void DetectorConstruction::ConstructSDandField()
 {
@@ -37,7 +37,7 @@ void DetectorConstruction::ConstructSDandField()
           << G4endl;
   G4debug << "### AtRIS: proceeding with detector construction." << G4endl;
   G4SDManager* const sdManager = G4SDManager::GetSDMpointer();
-  const G4GDMLAuxMapType* const auxiliaryMap = fParser.GetAuxMap();
+  const G4GDMLAuxMapType* const auxiliaryMap = fGDMLParser.GetAuxMap();
   // Attach one SensitiveDetector to each GDML volume marked SensDet.
   for (auto volume = auxiliaryMap->begin(); volume != auxiliaryMap->end(); ++volume)
   {
@@ -48,7 +48,7 @@ void DetectorConstruction::ConstructSDandField()
         const G4String detectorName = auxiliary->value;
         const G4int detectorId = std::stoi(detectorName);
         SensitiveDetector* const sensitiveDetector =
-          new SensitiveDetector(detectorName, fSettings, fPhantomResponses);
+          new SensitiveDetector(detectorName, fRunSettings, fPhantomResponses);
         sdManager->AddNewDetector(sensitiveDetector);
         G4VSensitiveDetector* const detector = sdManager->FindSensitiveDetector(auxiliary->value);
         if (detector)
@@ -81,7 +81,7 @@ void DetectorConstruction::ConstructSDandField()
     G4debug << "### AtRIS: detailed information about all materials" << G4endl;
     G4debug << *(G4Material::GetMaterialTable()) << G4endl;
   }
-  G4cout << "### AtRIS: gdml construction complete. In total we have " << fSettings.detectorCount
+  G4cout << "### AtRIS: gdml construction complete. In total we have " << fRunSettings.detectorCount
          << " sensitive detectors" << G4endl;
 }
 

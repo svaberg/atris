@@ -26,7 +26,7 @@ class DetectorConstruction : public G4VUserDetectorConstruction
 {
   public:
     /// Creates a detector construction backed by an already populated parser.
-    DetectorConstruction(const ::G4GDMLParser& parser, const RunSettings& settings,
+    DetectorConstruction(const ::G4GDMLParser& gdmlParser, const RunSettings& runSettings,
                          const PhantomResponses& phantomResponses);
     ~DetectorConstruction() override = default;
 
@@ -37,8 +37,8 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     G4VPhysicalVolume* Construct() override;
 
   private:
-    const ::G4GDMLParser& fParser;
-    const RunSettings& fSettings;
+    const ::G4GDMLParser& fGDMLParser;
+    const RunSettings& fRunSettings;
     const PhantomResponses& fPhantomResponses;
 };
 

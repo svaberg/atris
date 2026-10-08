@@ -25,7 +25,7 @@ class AnalysisOutput
 {
   public:
     /// Books all histograms and ntuples required by the resolved run settings.
-    AnalysisOutput(const RunSettings& settings, const PhantomResponses& phantomResponses);
+    AnalysisOutput(const RunSettings& runSettings, const PhantomResponses& phantomResponses);
     ~AnalysisOutput();
 
     /// Writes run and response definitions to the metadata ntuples.
@@ -38,7 +38,7 @@ class AnalysisOutput
     /// Books metadata and optional particle-record ntuples in ID order.
     void BookNtuples() const;
 
-    const RunSettings& fSettings;
+    const RunSettings& fRunSettings;
     const PhantomResponses& fPhantomResponses;
 };
 

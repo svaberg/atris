@@ -20,7 +20,8 @@ struct RunSettings;
 class UserActionInitialization : public G4VUserActionInitialization
 {
   public:
-    UserActionInitialization(const RunSettings& settings, const PhantomResponses& phantomResponses);
+    UserActionInitialization(const RunSettings& runSettings,
+                             const PhantomResponses& phantomResponses);
     ~UserActionInitialization() override = default;
 
     /// Installs event-generation and run actions for a worker thread.
@@ -30,7 +31,7 @@ class UserActionInitialization : public G4VUserActionInitialization
     void BuildForMaster() const override;
 
   private:
-    const RunSettings& fSettings;
+    const RunSettings& fRunSettings;
     const PhantomResponses& fPhantomResponses;
 };
 

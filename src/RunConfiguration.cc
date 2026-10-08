@@ -32,10 +32,10 @@ atris::OutputMode OutputModeValue(const G4String& name)
   return atris::OutputMode::kInvalid;
 }
 
-G4int CountSensitiveDetectors(const G4GDMLParser& parser)
+G4int CountSensitiveDetectors(const G4GDMLParser& gdmlParser)
 {
   G4int detectorCount = 0;
-  const G4GDMLAuxMapType* const auxiliaryMap = parser.GetAuxMap();
+  const G4GDMLAuxMapType* const auxiliaryMap = gdmlParser.GetAuxMap();
   for (const auto& [volume, auxiliaries] : *auxiliaryMap)
   {
     static_cast<void>(volume);
@@ -49,17 +49,17 @@ G4int CountSensitiveDetectors(const G4GDMLParser& parser)
 
 void DeclareHistogramBinsProperties(G4GenericMessenger& messenger, std::array<G4int, 2>& bins)
 {
-  auto& azimuthBins =
+  auto& azimuthBinsCommand =
     messenger.DeclareProperty("azimuthBins", bins[0], "Set the number of azimuth bins.");
-  azimuthBins.SetParameterName("azimuthBins", false);
-  azimuthBins.SetRange("azimuthBins>0");
-  azimuthBins.SetStates(G4State_PreInit);
+  azimuthBinsCommand.SetParameterName("azimuthBins", false);
+  azimuthBinsCommand.SetRange("azimuthBins>0");
+  azimuthBinsCommand.SetStates(G4State_PreInit);
 
-  auto& cosineBins =
+  auto& cosineBinsCommand =
     messenger.DeclareProperty("cosineBins", bins[1], "Set the number of cosine bins.");
-  cosineBins.SetParameterName("cosineBins", false);
-  cosineBins.SetRange("cosineBins>0");
-  cosineBins.SetStates(G4State_PreInit);
+  cosineBinsCommand.SetParameterName("cosineBins", false);
+  cosineBinsCommand.SetRange("cosineBins>0");
+  cosineBinsCommand.SetStates(G4State_PreInit);
 }
 
 }  // namespace
@@ -67,13 +67,13 @@ void DeclareHistogramBinsProperties(G4GenericMessenger& messenger, std::array<G4
 namespace atris
 {
 
-RunConfiguration::RunConfiguration(G4RunManager* runManager, RunSettings& settings,
-                                   ::G4GDMLParser& parser, PhantomResponses& phantomResponses)
+RunConfiguration::RunConfiguration(G4RunManager* runManager, RunSettings& runSettings,
+                                   ::G4GDMLParser& gdmlParser, PhantomResponses& phantomResponses)
   : fRunManager(runManager),
-    fSettings(settings),
-    fParser(parser),
+    fRunSettings(runSettings),
+    fGDMLParser(gdmlParser),
     fPhantomResponses(phantomResponses),
-    fMessenger(this, "/atris/", "AtRIS run configuration."),
+    fRunMessenger(this, "/atris/", "AtRIS run configuration."),
     fDirectionHistogramMessenger(this, "/atris/directionHistogram/",
                                  "Source-direction histogram configuration."),
     fPositionHistogramMessenger(this, "/atris/positionHistogram/",
@@ -82,22 +82,22 @@ RunConfiguration::RunConfiguration(G4RunManager* runManager, RunSettings& settin
     fPhantomResponseMessenger(this, "/atris/phantom/response/",
                               "One response for the selected phantom.")
 {
-  fMessenger
-    .DeclareProperty("geometryFile", fSettings.geometryFileName,
+  fRunMessenger
+    .DeclareProperty("geometryFile", fRunSettings.geometryFileName,
                      "Read the run geometry from a GDML file.")
     .SetStates(G4State_PreInit);
 
-  fMessenger
-    .DeclareProperty("energyBinsFile", fSettings.energyBinsFileName,
+  fRunMessenger
+    .DeclareProperty("energyBinsFile", fRunSettings.energyBinsFileName,
                      "Read the primary-energy histogram edges from a file.")
     .SetStates(G4State_PreInit);
 
-  fMessenger
-    .DeclareProperty("outputStem", fSettings.outputStem,
+  fRunMessenger
+    .DeclareProperty("outputStem", fRunSettings.outputStem,
                      "Set the filename stem shared by the analysis outputs.")
     .SetStates(G4State_PreInit);
 
-  auto& randomSeedsCommand = fMessenger.DeclareMethod(
+  auto& randomSeedsCommand = fRunMessenger.DeclareMethod(
     "randomSeeds", &RunConfiguration::SetRandomSeeds, "Set the two random seeds for this run.");
   randomSeedsCommand.SetParameterName(G4int{0}, "firstSeed", false);
   randomSeedsCommand.SetParameterName(G4int{1}, "secondSeed", false);
@@ -139,39 +139,39 @@ RunConfiguration::RunConfiguration(G4RunManager* runManager, RunSettings& settin
   addPhantomResponseCommand.SetStates(G4State_PreInit);
   fAddPhantomResponseCommand = addPhantomResponseCommand.command;
 
-  fMessenger
-    .DeclareProperty("physicsList", fSettings.physicsListName,
+  fRunMessenger
+    .DeclareProperty("physicsList", fRunSettings.physicsListName,
                      "Set the Geant4 reference physics list.")
     .SetStates(G4State_PreInit);
 
-  auto& outputModeCommand = fMessenger.DeclareMethod("outputMode", &RunConfiguration::SetOutputMode,
-                                                     "Set the AtRIS output mode.");
+  auto& outputModeCommand = fRunMessenger.DeclareMethod(
+    "outputMode", &RunConfiguration::SetOutputMode, "Set the AtRIS output mode.");
   outputModeCommand.SetCandidates("response profile shower");
   outputModeCommand.SetStates(G4State_PreInit);
 
-  fMessenger
-    .DeclareProperty("outputFormat", fSettings.outputFileFormat,
+  fRunMessenger
+    .DeclareProperty("outputFormat", fRunSettings.outputFileFormat,
                      "Set the Geant4 analysis output format.")
     .SetStates(G4State_PreInit);
 
   auto& initializeCommand =
-    fMessenger.DeclareMethod("initialize", &RunConfiguration::Initialize,
-                             "Apply the final AtRIS configuration and initialize Geant4.");
+    fRunMessenger.DeclareMethod("initialize", &RunConfiguration::Initialize,
+                                "Apply the final AtRIS configuration and initialize Geant4.");
   initializeCommand.SetStates(G4State_PreInit);
   fInitializeCommand = initializeCommand.command;
 
-  DeclareHistogramBinsProperties(fDirectionHistogramMessenger, fSettings.directionHistogramBins);
-  DeclareHistogramBinsProperties(fPositionHistogramMessenger, fSettings.positionHistogramBins);
+  DeclareHistogramBinsProperties(fDirectionHistogramMessenger, fRunSettings.directionHistogramBins);
+  DeclareHistogramBinsProperties(fPositionHistogramMessenger, fRunSettings.positionHistogramBins);
 }
 
 void RunConfiguration::SetRandomSeeds(const G4long firstSeed, const G4long secondSeed)
 {
-  fSettings.explicitSeeds = {firstSeed, secondSeed};
+  fRunSettings.explicitSeeds = {firstSeed, secondSeed};
 }
 
 void RunConfiguration::SetOutputMode(G4String outputModeName)
 {
-  fSettings.outputMode = OutputModeValue(outputModeName);
+  fRunSettings.outputMode = OutputModeValue(outputModeName);
 }
 
 void RunConfiguration::AddPhantomResponse()
@@ -201,7 +201,7 @@ void RunConfiguration::AddPhantomResponse()
 
 G4bool RunConfiguration::ReadEnergyBins()
 {
-  std::ifstream energyBinsFile(fSettings.energyBinsFileName);
+  std::ifstream energyBinsFile(fRunSettings.energyBinsFileName);
   std::vector<G4double> energyBins;
   G4double energyBinEdge;
   while (energyBinsFile >> energyBinEdge)
@@ -209,24 +209,24 @@ G4bool RunConfiguration::ReadEnergyBins()
   if (!energyBinsFile.eof() || energyBins.size() < 2)
   {
     G4ExceptionDescription message;
-    message << "AtRIS energy-bin file '" << fSettings.energyBinsFileName
+    message << "AtRIS energy-bin file '" << fRunSettings.energyBinsFileName
             << "' must contain at least two numeric edges.";
     fInitializeCommand->CommandFailed(message);
     return false;
   }
-  fSettings.energyBins = std::move(energyBins);
-  G4cout << "### AtRIS: read " << fSettings.energyBins.size() << " energy-bin edges from "
-         << fSettings.energyBinsFileName << G4endl;
+  fRunSettings.energyBins = std::move(energyBins);
+  G4cout << "### AtRIS: read " << fRunSettings.energyBins.size() << " energy-bin edges from "
+         << fRunSettings.energyBinsFileName << G4endl;
   return true;
 }
 
 void RunConfiguration::DescribeOutputMode() const
 {
-  if (fSettings.outputMode == OutputMode::kProfile)
+  if (fRunSettings.outputMode == OutputMode::kProfile)
   {
     G4cout << "### AtRIS: profile mode writes histograms and interface ntuples" << G4endl;
   }
-  if (fSettings.outputMode == OutputMode::kShower)
+  if (fRunSettings.outputMode == OutputMode::kShower)
   {
     G4cout << "### AtRIS: shower mode writes histograms, interface, and "
               "transport-step ntuples; output may be very large"
@@ -236,53 +236,53 @@ void RunConfiguration::DescribeOutputMode() const
 
 void RunConfiguration::PrepareGeometry()
 {
-  fParser.Read(fSettings.geometryFileName);
-  std::filesystem::path inputPath(fSettings.geometryFileName.c_str());
+  fGDMLParser.Read(fRunSettings.geometryFileName);
+  std::filesystem::path inputPath(fRunSettings.geometryFileName.c_str());
   inputPath.replace_extension();
-  fSettings.simulationInputPrefix = inputPath.string();
-  fSettings.detectorCount = CountSensitiveDetectors(fParser);
-  fSettings.detectorBins.clear();
-  fSettings.detectorBins.reserve(fSettings.detectorCount + 1);
+  fRunSettings.simulationInputPrefix = inputPath.string();
+  fRunSettings.detectorCount = CountSensitiveDetectors(fGDMLParser);
+  fRunSettings.detectorBins.clear();
+  fRunSettings.detectorBins.reserve(fRunSettings.detectorCount + 1);
   constexpr G4double detectorBinHalfWidth = 0.5;
-  for (G4int index = 0; index <= fSettings.detectorCount; ++index)
+  for (G4int index = 0; index <= fRunSettings.detectorCount; ++index)
   {
-    fSettings.detectorBins.push_back(index - detectorBinHalfWidth);
+    fRunSettings.detectorBins.push_back(index - detectorBinHalfWidth);
   }
-  G4cout << "### AtRIS: geometry contains " << fSettings.detectorCount << " sensitive detectors"
+  G4cout << "### AtRIS: geometry contains " << fRunSettings.detectorCount << " sensitive detectors"
          << G4endl;
 }
 
 void RunConfiguration::InstallRunComponents()
 {
   fRunManager->SetUserInitialization(
-    new DetectorConstruction(fParser, fSettings, fPhantomResponses));
-  G4PhysListFactory factory;
+    new DetectorConstruction(fGDMLParser, fRunSettings, fPhantomResponses));
+  G4PhysListFactory physicsListFactory;
   G4VModularPhysicsList* const physicsList =
-    factory.GetReferencePhysList(fSettings.physicsListName);
+    physicsListFactory.GetReferencePhysList(fRunSettings.physicsListName);
   physicsList->RegisterPhysics(new G4StepLimiterPhysics());
   fRunManager->SetUserInitialization(physicsList);
-  fRunManager->SetUserInitialization(new UserActionInitialization(fSettings, fPhantomResponses));
+  fRunManager->SetUserInitialization(new UserActionInitialization(fRunSettings, fPhantomResponses));
 }
 
 void RunConfiguration::ApplyRandomSeeds() const
 {
-  if (fSettings.explicitSeeds[0] != 0)
+  if (fRunSettings.explicitSeeds[0] != 0)
   {
     // CLHEP expects two seeds followed by a zero terminator.
     const std::array<G4long, 3> seeds = {
-      fSettings.explicitSeeds[0],
-      fSettings.explicitSeeds[1],
+      fRunSettings.explicitSeeds[0],
+      fRunSettings.explicitSeeds[1],
       0,
     };
     G4Random::setTheSeeds(seeds.data());
-    G4cout << "### AtRIS: using random seeds " << fSettings.explicitSeeds[0] << " and "
-           << fSettings.explicitSeeds[1] << G4endl;
+    G4cout << "### AtRIS: using random seeds " << fRunSettings.explicitSeeds[0] << " and "
+           << fRunSettings.explicitSeeds[1] << G4endl;
   }
 }
 
 void RunConfiguration::Initialize()
 {
-  if (fSettings.outputStem.empty())
+  if (fRunSettings.outputStem.empty())
   {
     G4ExceptionDescription message;
     message << "AtRIS initialization requires outputStem.";

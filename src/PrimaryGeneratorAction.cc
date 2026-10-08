@@ -24,7 +24,7 @@ constexpr G4int kSourcePositionHistogramId = 1;
 }  // namespace
 
 PrimaryGeneratorAction::PrimaryGeneratorAction()
-  : fParticleGenerator(new G4GeneralParticleSource),
+  : fGeneralParticleSource(new G4GeneralParticleSource),
     fStartTime(static_cast<G4int>(std::time(nullptr)))
 {
   G4debug << "### AtRIS: Created the particle gun." << G4endl;
@@ -32,13 +32,13 @@ PrimaryGeneratorAction::PrimaryGeneratorAction()
 
 PrimaryGeneratorAction::~PrimaryGeneratorAction()
 {
-  delete fParticleGenerator;
+  delete fGeneralParticleSource;
 }
 
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
-  G4AnalysisManager* const analysis = G4AnalysisManager::Instance();
-  fParticleGenerator->GeneratePrimaryVertex(anEvent);
+  G4AnalysisManager* const analysisManager = G4AnalysisManager::Instance();
+  fGeneralParticleSource->GeneratePrimaryVertex(anEvent);
 
   const G4int current = anEvent->GetEventID();
   if (current % kProgressEventInterval == 0)
@@ -56,24 +56,24 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
       G4cout << "Starting primary particle generation" << G4endl;
     }
   }
-  const G4ThreeVector direction = fParticleGenerator->GetParticleMomentumDirection();
+  const G4ThreeVector direction = fGeneralParticleSource->GetParticleMomentumDirection();
   const G4double directionTheta = direction.theta();
   G4double directionPhi = direction.phi();
   if (directionPhi < 0.) directionPhi += twopi;
   const G4double directionCosine = std::cos(directionTheta);
 
-  const G4double primaryVertexEnergy = fParticleGenerator->GetParticleEnergy();
+  const G4double primaryVertexEnergy = fGeneralParticleSource->GetParticleEnergy();
 
-  const G4ThreeVector position = fParticleGenerator->GetParticlePosition();
+  const G4ThreeVector position = fGeneralParticleSource->GetParticlePosition();
   const G4double positionTheta = position.theta();
   G4double positionPhi = position.phi();
   if (positionPhi < 0.) positionPhi += twopi;
   const G4double positionCosine = std::cos(positionTheta);
 
   // Unit weights preserve per-energy primary counts in CSV and ROOT output.
-  analysis->FillH1(kPrimaryEnergyHistogramId, primaryVertexEnergy);
-  analysis->FillH2(kSourceDirectionHistogramId, directionPhi, directionCosine);
-  analysis->FillH2(kSourcePositionHistogramId, positionPhi, positionCosine);
+  analysisManager->FillH1(kPrimaryEnergyHistogramId, primaryVertexEnergy);
+  analysisManager->FillH2(kSourceDirectionHistogramId, directionPhi, directionCosine);
+  analysisManager->FillH2(kSourcePositionHistogramId, positionPhi, positionCosine);
 }
 
 }  // namespace atris
