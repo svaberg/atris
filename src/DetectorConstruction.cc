@@ -14,13 +14,6 @@
 
 #include <string>
 
-namespace
-{
-
-constexpr G4int kDiagnosticPrecision = 15;
-
-}  // namespace
-
 namespace atris
 {
 
@@ -38,8 +31,9 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 }
 void DetectorConstruction::ConstructSDandField()
 {
-  G4debug.precision(kDiagnosticPrecision);
-  G4debug << "### AtRIS: increased precision to " << kDiagnosticPrecision << ", printing pi=" << pi
+  constexpr G4int diagnosticPrecision = 15;
+  G4debug.precision(diagnosticPrecision);
+  G4debug << "### AtRIS: increased precision to " << diagnosticPrecision << ", printing pi=" << pi
           << G4endl;
   G4debug << "### AtRIS: proceeding with detector construction." << G4endl;
   G4SDManager* const sdManager = G4SDManager::GetSDMpointer();
