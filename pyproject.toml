@@ -17,8 +17,8 @@ plot = ["matplotlib>=3.7,<4"]
 test = [
     "pytest",
     "matplotlib>=3.7,<4",
-    "clang-format",
-    "black",
+    "clang-format>=17",
+    "black>=24.10",
 ]
 notebook = ["jupyterlab>=4,<5", "ipykernel>=6.29,<7", "matplotlib>=3.7,<4"]
 docs = [
