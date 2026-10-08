@@ -17,7 +17,7 @@
 namespace
 {
 
-constexpr G4bool kAtrisVerbose = false;
+constexpr G4bool kDebugLogging = ATRIS_DEBUG_LOGGING;
 constexpr G4int kDiagnosticPrecision = 15;
 
 }  // namespace
@@ -30,7 +30,10 @@ DetectorConstruction::DetectorConstruction(const ::G4GDMLParser& parser,
                                            const PhantomResponses& phantomResponses)
   : fParser(parser), fSettings(settings), fPhantomResponses(phantomResponses)
 {
-  G4cout << "### AtRIS: Initialized the DetectorConstruction object." << G4endl;
+  if constexpr (kDebugLogging)
+  {
+    G4debug << "### AtRIS: Initialized the DetectorConstruction object." << G4endl;
+  }
 }
 
 G4VPhysicalVolume* DetectorConstruction::Construct()
@@ -39,10 +42,13 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 }
 void DetectorConstruction::ConstructSDandField()
 {
-  G4cout.precision(kDiagnosticPrecision);
-  G4cout << "### AtRIS: increased precision to " << kDiagnosticPrecision << ", printing pi=" << pi
-         << G4endl;
-  G4cout << "### AtRIS: proceeding with detector construction." << G4endl;
+  if constexpr (kDebugLogging)
+  {
+    G4debug.precision(kDiagnosticPrecision);
+    G4debug << "### AtRIS: increased precision to " << kDiagnosticPrecision
+            << ", printing pi=" << pi << G4endl;
+    G4debug << "### AtRIS: proceeding with detector construction." << G4endl;
+  }
   G4SDManager* const sdManager = G4SDManager::GetSDMpointer();
   const G4GDMLAuxMapType* const auxiliaryMap = fParser.GetAuxMap();
   // Attach one SensitiveDetector to each GDML volume marked SensDet.
@@ -52,10 +58,6 @@ void DetectorConstruction::ConstructSDandField()
     {
       if (auxiliary->type == "SensDet")
       {
-        if (kAtrisVerbose)
-        {
-          G4cout << "SD " << auxiliary->value << " to " << volume->first->GetName() << ", ";
-        }
         const G4String detectorName = auxiliary->value;
         const G4int detectorId = std::stoi(detectorName);
         SensitiveDetector* const sensitiveDetector =
@@ -66,14 +68,18 @@ void DetectorConstruction::ConstructSDandField()
         {
           G4LogicalVolume* const logicalVolume = volume->first;
           logicalVolume->SetSensitiveDetector(detector);
-          const G4double mass = logicalVolume->GetMass();
-          G4VSolid* const solid = logicalVolume->GetSolid();
-          const G4double surface = solid->GetSurfaceArea();
-          const G4double solidVolume = solid->GetCubicVolume();
-          const G4double density = mass / solidVolume;
-          // Print detector ID, mass, surface area, volume, and density.
-          G4cout << "SDIDr: " << detectorId << ", " << mass / kg << ", " << surface / cm2 << ", "
-                 << solidVolume / cm3 << ", " << density / (g / cm3) << G4endl;
+          if constexpr (kDebugLogging)
+          {
+            const G4double mass = logicalVolume->GetMass();
+            G4VSolid* const solid = logicalVolume->GetSolid();
+            const G4double surface = solid->GetSurfaceArea();
+            const G4double solidVolume = solid->GetCubicVolume();
+            const G4double density = mass / solidVolume;
+            G4debug << "SD " << detectorId << " attached to " << logicalVolume->GetName()
+                    << ": mass=" << mass / kg << " kg, area=" << surface / cm2
+                    << " cm2, volume=" << solidVolume / cm3
+                    << " cm3, density=" << density / (g / cm3) << " g/cm3" << G4endl;
+          }
         }
         else
         {
@@ -83,8 +89,11 @@ void DetectorConstruction::ConstructSDandField()
     }
   }
 
-  G4cout << "### AtRIS: printing detailed information about all materials" << G4endl;
-  if (kAtrisVerbose) G4cout << *(G4Material::GetMaterialTable()) << G4endl;
+  if constexpr (kDebugLogging)
+  {
+    G4debug << "### AtRIS: detailed information about all materials" << G4endl;
+    G4debug << *(G4Material::GetMaterialTable()) << G4endl;
+  }
   G4cout << "### AtRIS: gdml construction complete. In total we have " << fSettings.detectorCount
          << " sensitive detectors" << G4endl;
 }

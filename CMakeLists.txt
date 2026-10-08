@@ -55,7 +55,11 @@ add_executable(AtRIS)
 target_sources(AtRIS PRIVATE ${ATRIS_SOURCES} ${ATRIS_HEADERS})
 target_include_directories(AtRIS PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(AtRIS PRIVATE ${Geant4_LIBRARIES})
-target_compile_definitions(AtRIS PRIVATE ATRIS_VERSION="${ATRIS_VERSION}")
+# Compile detailed G4debug diagnostics only in standard Debug builds.
+target_compile_definitions(AtRIS PRIVATE
+  ATRIS_VERSION="${ATRIS_VERSION}"
+  ATRIS_DEBUG_LOGGING=$<CONFIG:Debug>
+)
 target_compile_features(AtRIS PRIVATE cxx_std_17)
 set_property(TARGET AtRIS PROPERTY CXX_EXTENSIONS OFF)
 target_compile_options(AtRIS PRIVATE
