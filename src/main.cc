@@ -55,8 +55,18 @@ int main(int argc, char** argv)
 
   const auto macroStart = std::chrono::steady_clock::now();
 
-  // Particle transport starts when the macro reaches /run/beamOn. This call
-  // executes synchronously and returns after the complete macro has run.
+  // ========================================================================
+  //
+  //                  MACRO EXECUTION AND PARTICLE TRANSPORT
+  //
+  // Geant4 executes the selected macro in the call below. Particle transport
+  // starts whenever the macro reaches /run/beamOn.
+  //
+  // This call is synchronous: execution stays here while Geant4 processes
+  // the macro and runs the requested particle transport. Control returns
+  // only when macro execution finishes or fails.
+  //
+  // ========================================================================
   const G4int commandStatus = G4UImanager::GetUIpointer()->ApplyCommand(command);
 
   const auto macroEnd = std::chrono::steady_clock::now();
