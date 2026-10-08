@@ -8,7 +8,7 @@ class G4Run;
 namespace atris
 {
 
-class HistoManager;
+class AnalysisOutput;
 class PhantomResponses;
 struct RunSettings;
 
@@ -17,10 +17,10 @@ struct RunSettings;
  *
  * Geant4 creates this action for the master and for each worker. At the start of
  * a run it selects the configured output backend, enables ntuple merging when
- * required, creates a HistoManager, and opens the output. At the end of the run
+ * required, creates an AnalysisOutput, and opens the output. At the end of the run
  * it asks Geant4 to write and close that output.
  *
- * The action owns its HistoManager. RunSettings and PhantomResponses are
+ * The action owns its AnalysisOutput. RunSettings and PhantomResponses are
  * borrowed and must outlive the action.
  */
 class RunAction : public ::G4UserRunAction
@@ -41,7 +41,7 @@ class RunAction : public ::G4UserRunAction
     void EndOfRunAction(const G4Run* aRun) override;
 
   private:
-    HistoManager* fHisto;
+    AnalysisOutput* fAnalysisOutput;
     const RunSettings& fSettings;
     const PhantomResponses& fPhantomResponses;
 };

@@ -1,4 +1,4 @@
-#include "HistoManager.hh"
+#include "AnalysisOutput.hh"
 
 #include "G4AnalysisManager.hh"
 #include "G4PhysicalConstants.hh"
@@ -38,18 +38,20 @@ G4String AccumulatedWeight(const atris::PhantomResponse& response)
 namespace atris
 {
 
-HistoManager::HistoManager(const RunSettings& settings, const PhantomResponses& phantomResponses)
+AnalysisOutput::AnalysisOutput(const RunSettings& settings,
+                               const PhantomResponses& phantomResponses)
   : fSettings(settings), fPhantomResponses(phantomResponses)
 {
-  Book();
+  BookHistograms();
+  BookNtuples();
 }
 
-HistoManager::~HistoManager()
+AnalysisOutput::~AnalysisOutput()
 {
-  G4debug << "HistoManager deleted." << G4endl;
+  G4debug << "AnalysisOutput deleted." << G4endl;
 }
 
-void HistoManager::Book() const
+void AnalysisOutput::BookHistograms() const
 {
   G4AnalysisManager* const analysis = G4AnalysisManager::Instance();
   const G4int phantomCount = fPhantomResponses.GetPhantomCount();
@@ -105,8 +107,12 @@ void HistoManager::Book() const
     analysis->SetH2ZAxisTitle(id, accumulatedWeight);
     analysis->SetH2Activation(id, true);
   }
+}
 
-  id = analysis->CreateNtuple("metadata", "AtRIS output metadata");
+void AnalysisOutput::BookNtuples() const
+{
+  auto* const analysis = G4AnalysisManager::Instance();
+  G4int id = analysis->CreateNtuple("metadata", "AtRIS output metadata");
   analysis->CreateNtupleIColumn(id, "schema");
   analysis->CreateNtupleSColumn(id, "atris_version");
   analysis->CreateNtupleSColumn(id, "input_prefix");
@@ -163,7 +169,7 @@ void HistoManager::Book() const
   analysis->FinishNtuple(id);
 }
 
-void HistoManager::FillMetadata() const
+void AnalysisOutput::FillMetadata() const
 {
   // One worker records the shared run metadata while Geant4 merges all ntuples.
   if (G4Threading::G4GetThreadId() != 0) return;

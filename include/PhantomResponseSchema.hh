@@ -11,7 +11,7 @@ namespace atris
  *
  * These constants describe the established phantom response-table format and
  * the histogram booking order. They are centralized here because
- * PhantomResponses, HistoManager, and SensitiveDetector must interpret those
+ * PhantomResponses, AnalysisOutput, and SensitiveDetector must interpret those
  * layouts identically.
  */
 
@@ -36,7 +36,7 @@ constexpr G4int kNeutralPionPDG = 111;
 constexpr G4int kNeutronPDG = 2112;
 constexpr G4int kProtonPDG = 2212;
 
-// H2 histogram IDs are assigned in HistoManager::Book() in this order.
+// H2 histogram IDs are assigned in AnalysisOutput::BookHistograms() in this order.
 constexpr G4int kIonizingEnergyHistogramId = 2;
 constexpr G4int kTotalEnergyHistogramId = 3;
 constexpr G4int kFirstResponseHistogramId = 4;

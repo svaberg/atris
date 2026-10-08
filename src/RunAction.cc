@@ -4,7 +4,7 @@
 #include "G4Exception.hh"
 #include "G4Run.hh"
 
-#include "HistoManager.hh"
+#include "AnalysisOutput.hh"
 #include "OutputMode.hh"
 #include "PhantomResponses.hh"
 #include "RunSettings.hh"
@@ -14,7 +14,7 @@ namespace atris
 
 RunAction::RunAction(G4bool isMaster, const RunSettings& settings,
                      const PhantomResponses& phantomResponses)
-  : fHisto(nullptr), fSettings(settings), fPhantomResponses(phantomResponses)
+  : fAnalysisOutput(nullptr), fSettings(settings), fPhantomResponses(phantomResponses)
 {
   SetMaster(isMaster);
 }
@@ -26,7 +26,7 @@ RunAction::~RunAction()
     G4debug << "### AtRIS: now writing out histograms... " << G4endl;
     G4debug << "=== MASTER: " << IsMaster() << G4endl;
   }
-  delete fHisto;
+  delete fAnalysisOutput;
 }
 
 G4Run* RunAction::GenerateRun()
@@ -46,7 +46,7 @@ void RunAction::BeginOfRunAction(const G4Run*)
   {
     analysis->SetNtupleMerging(true);
   }
-  fHisto = new HistoManager(fSettings, fPhantomResponses);
+  fAnalysisOutput = new AnalysisOutput(fSettings, fPhantomResponses);
   if (analysis->IsActive())
   {
     analysis->SetFileName(fSettings.outputStem);
@@ -59,7 +59,7 @@ void RunAction::BeginOfRunAction(const G4Run*)
       G4Exception("atris::RunAction::BeginOfRunAction()", "AtRISOutput001", FatalException,
                   message);
     }
-    fHisto->FillMetadata();
+    fAnalysisOutput->FillMetadata();
   }
 }
 

@@ -16,7 +16,7 @@ namespace
 
 constexpr G4int kProgressEventInterval = 100;
 
-// These IDs match the H1 and H2 creation order in HistoManager::Book().
+// These IDs match the H1 and H2 creation order in AnalysisOutput::BookHistograms().
 constexpr G4int kPrimaryEnergyHistogramId = 0;
 constexpr G4int kSourceDirectionHistogramId = 0;
 constexpr G4int kSourcePositionHistogramId = 1;

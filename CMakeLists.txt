@@ -25,8 +25,8 @@ endif()
 message(STATUS "AtRIS version: ${ATRIS_VERSION}")
 
 set(ATRIS_HEADERS
+  include/AnalysisOutput.hh
   include/DetectorConstruction.hh
-  include/HistoManager.hh
   include/NtupleSchema.hh
   include/OutputMode.hh
   include/PhantomResponses.hh
@@ -41,8 +41,8 @@ set(ATRIS_HEADERS
 
 set(ATRIS_SOURCES
   src/main.cc
+  src/AnalysisOutput.cc
   src/DetectorConstruction.cc
-  src/HistoManager.cc
   src/PhantomResponses.cc
   src/PrimaryGeneratorAction.cc
   src/RunAction.cc

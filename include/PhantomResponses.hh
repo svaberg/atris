@@ -50,7 +50,7 @@ struct PhantomResponse
  * dense lookup, while sparse ion codes use a map.
  *
  * The collection owns all numeric table storage. PhantomResponse entries refer
- * to that stable storage and are consumed by HistoManager and SensitiveDetector
+ * to that stable storage and are consumed by AnalysisOutput and SensitiveDetector
  * after macro configuration is complete.
  */
 class PhantomResponses

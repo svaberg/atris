@@ -7,13 +7,13 @@ namespace atris
 {
 
 /**
- * Column positions for ntuples booked by HistoManager and filled elsewhere.
+ * Column positions for ntuples booked by AnalysisOutput and filled elsewhere.
  *
  * Geant4 identifies ntuples and their columns by integer position. These names
- * keep the booking order synchronized with writes from HistoManager and
+ * keep the booking order synchronized with writes from AnalysisOutput and
  * SensitiveDetector. Changing the metadata layout or meaning requires a schema
  * version increment; changing any enum requires updating the corresponding
- * booking calls in HistoManager::Book().
+ * booking calls in AnalysisOutput::BookNtuples().
  */
 
 // Increment this when the metadata ntuple layout or meaning changes.

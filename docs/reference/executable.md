@@ -141,5 +141,5 @@ and the total. The macro interval includes serial Geant4 initialization,
 coordination, and output work as well as particle transport.
 
 Implementation: `src/main.cc`, `src/RunConfiguration.cc`,
-`src/PhantomResponses.cc`, `src/HistoManager.cc`, and
+`src/PhantomResponses.cc`, `src/AnalysisOutput.cc`, and
 `src/SensitiveDetector.cc`.

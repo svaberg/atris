@@ -316,7 +316,7 @@ it does not automatically collect per-chunk particle ntuples. See
 [Scatter/gather files](chunks.md) for logs, completion markers, gathered-state
 files, and the convergence CSV schema.
 
-Implementation: `src/PrimaryGeneratorAction.cc`, `src/HistoManager.cc`,
+Implementation: `src/PrimaryGeneratorAction.cc`, `src/AnalysisOutput.cc`,
 `src/SensitiveDetector.cc`, `include/NtupleSchema.hh`, and
 `atris_tools/postprocess.py`, `response_histograms.py`, `root_output.py`,
 `interface_output.py`, `step_output.py`, and `plotting.py`.
