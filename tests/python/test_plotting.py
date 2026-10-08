@@ -90,9 +90,7 @@ def prepare_processed_run(run_directory, phantom_count, gdml_text):
         (run_directory / "phantoms.txt").write_text("".join(phantom_rows))
 
 
-def test_plot_run_writes_generic_and_per_phantom_pngs(
-    tmp_path, monkeypatch, gdml_text
-):
+def test_plot_run_writes_generic_and_per_phantom_pngs(tmp_path, monkeypatch, gdml_text):
     prepare_processed_run(tmp_path, 2, gdml_text)
     monkeypatch.chdir(tmp_path)
 
@@ -118,9 +116,7 @@ def test_plot_run_without_phantoms_writes_only_generic_plot(
     assert [path.name for path in tmp_path.glob("*.png")] == ["protons.png"]
 
 
-def test_plot_run_reads_raw_diagnostics_from_root(
-    tmp_path, monkeypatch, gdml_text
-):
+def test_plot_run_reads_raw_diagnostics_from_root(tmp_path, monkeypatch, gdml_text):
     prepare_processed_run(tmp_path, 0, gdml_text)
     for path in tmp_path.glob("protons_h*.csv"):
         path.unlink()
@@ -148,9 +144,7 @@ def test_plot_run_reads_raw_diagnostics_from_root(
 
 
 def test_angular_plot_uses_linear_counts_and_global_angle_labels():
-    figure, axis = plotting.plt.subplots(
-        subplot_kw={"projection": "mollweide"}
-    )
+    figure, axis = plotting.plt.subplots(subplot_kw={"projection": "mollweide"})
     histogram = np.pad(np.array([[1.0, 2.0], [3.0, 4.0]]), 1)
 
     mesh = plotting._add_angular_plot(
@@ -184,9 +178,7 @@ def test_plot_convergence_writes_png_from_one_comparison(tmp_path, monkeypatch):
         "cell_relative_se_p50_percent,cell_relative_se_p90_percent\n"
         "2,600,1,50,12.5,8,25,15,40\n"
     )
-    (tmp_path / "chunks.txt").write_text(
-        "protons 111111 222222\n" * 20
-    )
+    (tmp_path / "chunks.txt").write_text("protons 111111 222222\n" * 20)
     monkeypatch.chdir(tmp_path)
 
     filename = plotting.plot_convergence("protons")
@@ -224,7 +216,7 @@ def test_inverse_sqrt_reference_recovers_expected_curve():
 
 def test_recent_power_law_fit_recovers_recent_trend():
     chunks = np.arange(2.0, 80.0)
-    expected = 120.0 * chunks ** -0.3
+    expected = 120.0 * chunks**-0.3
 
     fitted = plotting._recent_power_law_fit(chunks, expected)
 
@@ -281,5 +273,9 @@ def test_main_skips_species_without_processed_output(tmp_path, monkeypatch, capl
     with caplog.at_level(logging.INFO, logger="atris_tools.plotting"):
         plotting.main()
 
-    assert "Skipping protons response plots: processed output not found" in caplog.messages
-    assert "Skipping alphas response plots: processed output not found" in caplog.messages
+    assert (
+        "Skipping protons response plots: processed output not found" in caplog.messages
+    )
+    assert (
+        "Skipping alphas response plots: processed output not found" in caplog.messages
+    )

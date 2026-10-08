@@ -1,5 +1,5 @@
 """
-This is the new simplified simulator for Earth applications. 
+This is the new simplified simulator for Earth applications.
 
 Nessary input files: before you start a simulation, make sure to prepare the following input files:
   + the .psf file specifing the planetary model in a human readable format
@@ -12,25 +12,25 @@ Phantoms:
   + Secondary phantom is choosen at start by entering one of the available names
   + The phantoms with "2" as sufix cannot consider the contribution to absorbed dose due to particles heavier than alpha particles.
   + the code is extremely sensitive on the proper definition of the phantom header. Take care not to change.
-  + the new simulate.py automatically provides the correct mass and surface for the secondary phantom. 
+  + the new simulate.py automatically provides the correct mass and surface for the secondary phantom.
 
 Differential spectra:
   + The differential spectrum for protons should be provided as protons.spec.
-  + The x-axis (first column)  is the energy per nucleon 
+  + The x-axis (first column)  is the energy per nucleon
   + the y-axis (second column) is the differential spectrm j in 1 / (MeV m^2 s sr)
   + I is recommended to have 20 bins per decade. The binning is best created on a logarithmic scale. Exampel: 10**np.linspace(2,6,81) (here 81 is (6-2)*2+1)
   + The proton spectrum file protons.spec is mandatory
   + The alpha spectrum is also mandatory.
-  + Twe two files need to have exactly the same bin edges! Note that the alpha spectrum needs to have its bins in "energy per nucleon". 
+  + Twe two files need to have exactly the same bin edges! Note that the alpha spectrum needs to have its bins in "energy per nucleon".
   + Thus a 100 MeV j corresponds to alphas of 400 MeV.
   + You need to calculate the spectra before you start the calculation!
   + pick a meaningful lower energy limit. If you have a certain magnetic cutoff rigidity, do not simulate too far below it.
   + The werkzeug tool can modify the cutoff rigidity for what-if investigations.
-  + Use a meaningful upper energy limit. Typically, it is sufficent to go up to 100 GeV. 
+  + Use a meaningful upper energy limit. Typically, it is sufficent to go up to 100 GeV.
   + I've prepared an example jupyter notebook illustrating the procedure. You can find it in the atris-werkzeug repository, under
     ./spectrum/spectrum_example.ipynb. To use it, cd in to the atris-workshop folder and start "jupyter lab" or "jupyter notebook".
-    Note that I am using in this part python3. 
- 
+    Note that I am using in this part python3.
+
 Other simulation settings:
   + These are best-practices which were investigated in my phd thesis:
     - with 1km shell thickness, you should expect approx 15% error at 5 km, for other altitudes, this error is lower.
@@ -59,6 +59,7 @@ How to use:
     - after a dosen seconds you should see that the simulation is calculating particles
     - if you do not see two processor cores at 100%, something is wrong. Check the protons.out and protons.error file for more information.
 """
+
 # Energy is constant
 import argparse
 import logging
@@ -76,7 +77,6 @@ from .cli import (
 )
 from .phantoms import configured_phantom_files, read_phantoms
 from .psf import OUTER_RADIUS, load_psf
-
 
 GENERATED_INPUTS = (
     "protons.mac",
@@ -193,8 +193,7 @@ def genMacro(
         _add_commands(
             lines,
             (
-                "Divide source-%s azimuth into %i histogram bins."
-                % (label, bins[0]),
+                "Divide source-%s azimuth into %i histogram bins." % (label, bins[0]),
                 "/atris/%sHistogram/azimuthBins %i" % (histogram, bins[0]),
             ),
             (
@@ -230,9 +229,7 @@ def genMacro(
     for phantom in phantoms:
         response, counting = configured_phantom_files(output_dir, phantom)
         stem = os.path.basename(phantom["stem"])
-        lines.extend(
-            ("", "# Phantom: " + stem, "/atris/phantom/name %s" % stem)
-        )
+        lines.extend(("", "# Phantom: " + stem, "/atris/phantom/name %s" % stem))
         for response_name, response_description, filename, factors in (
             ("dos", "absorbed dose", response.name, (True, False, True)),
             (
@@ -251,15 +248,13 @@ def genMacro(
             lines.extend(
                 (
                     "",
-                    "# Response: %s (name: %s)"
-                    % (response_description, response_name),
+                    "# Response: %s (name: %s)" % (response_description, response_name),
                     "/atris/phantom/response/name %s" % response_name,
                     "/atris/phantom/response/tableFile %s" % filename,
                 )
             )
             lines.extend(
-                "/atris/phantom/response/%s %s"
-                % (command, str(enabled).lower())
+                "/atris/phantom/response/%s %s" % (command, str(enabled).lower())
                 for command, enabled in zip(factor_commands, factors)
             )
             lines.append("/atris/phantom/response/add")
@@ -297,7 +292,7 @@ def genMacro(
     )
 
     bins = thebins * fact
-    np.savetxt(os.path.join(output_dir, name + '.bins'), bins)
+    np.savetxt(os.path.join(output_dir, name + ".bins"), bins)
     _add_section(
         lines,
         "GPS primary particle and energy",
@@ -376,16 +371,18 @@ def macroSetup(
     output_format=DEFAULT_OUTPUT_FORMAT,
 ):
     if base_bins is None:
-        base_bins = 10**np.linspace(0,6,121)
+        base_bins = 10 ** np.linspace(0, 6, 121)
     if rng is None:
         rng = random
-    radius  = load_psf(os.path.join(output_dir, 'simulation.psf'))[-2, OUTER_RADIUS] + 0.001 # we add 1 meter to the radius to aviod overlap.
+    radius = (
+        load_psf(os.path.join(output_dir, "simulation.psf"))[-2, OUTER_RADIUS] + 0.001
+    )  # we add 1 meter to the radius to aviod overlap.
     # We are taking two random seeds. Control this for the ability to reproduce.
-    seed1     = rng.randint(31,999999)
-    seed2     = rng.randint(31,999999)
+    seed1 = rng.randint(31, 999999)
+    seed2 = rng.randint(31, 999999)
     shutil.copy2(
-        os.path.join(output_dir, 'simulation.gdml'),
-        os.path.join(output_dir, prefix + '.gdml'),
+        os.path.join(output_dir, "simulation.gdml"),
+        os.path.join(output_dir, prefix + ".gdml"),
     )
     lines = genMacro(
         seed1,
@@ -401,9 +398,9 @@ def macroSetup(
         output_mode,
         output_format,
     )
-    with open(os.path.join(output_dir, prefix + '.mac'), 'w') as filehandle:
+    with open(os.path.join(output_dir, prefix + ".mac"), "w") as filehandle:
         filehandle.write(lines)
-    
+
 
 def macroGenManager(
     partspb,
@@ -424,14 +421,30 @@ def macroGenManager(
         raise FileNotFoundError("Run directory does not exist: " + output_dir)
     refuse_existing_inputs(output_dir)
     rng = random.Random(random_seed) if random_seed is not None else random
-    base_bins = 10**np.linspace(energy_min_power,energy_max_power,energy_points)
+    base_bins = 10 ** np.linspace(energy_min_power, energy_max_power, energy_points)
     macroSetup(
-        'protons', "proton", 1, partspb, output_dir,
-        base_bins, rng, physics_list, output_mode, output_format,
+        "protons",
+        "proton",
+        1,
+        partspb,
+        output_dir,
+        base_bins,
+        rng,
+        physics_list,
+        output_mode,
+        output_format,
     )
     macroSetup(
-        'alphas', "alpha", 4, int(partspb*alphafactor),
-        output_dir, base_bins, rng, physics_list, output_mode, output_format,
+        "alphas",
+        "alpha",
+        4,
+        int(partspb * alphafactor),
+        output_dir,
+        base_bins,
+        rng,
+        physics_list,
+        output_mode,
+        output_format,
     )
 
 
@@ -467,8 +480,7 @@ def main():
         default=3000,
         metavar="COUNT",
         help=(
-            "Proton event-count factor multiplied by ENERGY_POINTS "
-            "(default: 3000)."
+            "Proton event-count factor multiplied by ENERGY_POINTS " "(default: 3000)."
         ),
     )
     parser.add_argument(

@@ -17,7 +17,6 @@ from atris_tools.response_histograms import (
     read_csv_histogram,
 )
 
-
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "minimal"
 
 
@@ -42,11 +41,7 @@ def write_root_response(path, include_total_deposition=True):
 
 def test_csv_histogram_axes_reads_edge_and_fixed_axes(tmp_path):
     histogram = tmp_path / "histogram.csv"
-    histogram.write_text(
-        "#axis edges 1 10 100\n"
-        "#axis fixed 2 0 1\n"
-        "entries,Sw\n"
-    )
+    histogram.write_text("#axis edges 1 10 100\n" "#axis fixed 2 0 1\n" "entries,Sw\n")
 
     axes = csv_histogram_axes(histogram)
 
@@ -71,9 +66,7 @@ def test_read_csv_histogram_accepts_variable_length_annotations(tmp_path):
 def test_input_output_warnings_report_mismatched_run_files(tmp_path, monkeypatch):
     (tmp_path / "protons.bins").write_text("1\n20\n100\n")
     (tmp_path / "protons.mac").write_text(
-        "/gps/ene/min 1 MeV\n"
-        "/gps/ene/max 200 MeV\n"
-        "/run/beamOn 10\n"
+        "/gps/ene/min 1 MeV\n" "/gps/ene/max 200 MeV\n" "/run/beamOn 10\n"
     )
     (tmp_path / "protons_h1_h1.1.csv").write_text(
         "#class tools::histo::h1d\n"
@@ -86,13 +79,10 @@ def test_input_output_warnings_report_mismatched_run_files(tmp_path, monkeypatch
         "0,0\n4,0\n4,0\n0,0\n"
     )
     (tmp_path / "simulation.psf").write_text(
-        "0 1 0 1 0 1 0 1 1 1 1 0 0 0 0 0\n"
-        "1 2 0 1 0 1 1 1 1 1 1 0 0 0 0 0\n"
+        "0 1 0 1 0 1 0 1 1 1 1 0 0 0 0 0\n" "1 2 0 1 0 1 1 1 1 1 1 0 0 0 0 0\n"
     )
     (tmp_path / "protons_h2_h2.ion.csv").write_text(
-        "#axis edges 1 10 100\n"
-        "#axis edges -0.5 0.5 1.5 2.5\n"
-        "entries,Sw\n"
+        "#axis edges 1 10 100\n" "#axis edges -0.5 0.5 1.5 2.5\n" "entries,Sw\n"
     )
     (tmp_path / "phantoms.txt").write_text("test  1.0  2.0\n")
     monkeypatch.chdir(tmp_path)
@@ -103,8 +93,7 @@ def test_input_output_warnings_report_mismatched_run_files(tmp_path, monkeypatch
         "protons: protons.bins does not match the energy edges recorded in "
         "protons_h1_h1.1.csv",
         "protons: protons.mac energy range does not match protons.bins",
-        "protons: protons.mac requests 10 events, but "
-        "protons_h1_h1.1.csv records 8",
+        "protons: protons.mac requests 10 events, but " "protons_h1_h1.1.csv records 8",
         "protons: simulation.psf defines 2 detector layers, but "
         "protons_h2_h2.ion.csv records 3",
         "protons: phantoms.txt selects test, but raw output contains no phantoms",
@@ -116,9 +105,7 @@ def test_input_output_warnings_accept_matching_energy_and_event_inputs(
 ):
     (tmp_path / "protons.bins").write_text("1\n10\n100\n")
     (tmp_path / "protons.mac").write_text(
-        "/gps/ene/min 1 MeV\n"
-        "/gps/ene/max 100 MeV\n"
-        "/run/beamOn 8\n"
+        "/gps/ene/min 1 MeV\n" "/gps/ene/max 100 MeV\n" "/run/beamOn 8\n"
     )
     (tmp_path / "protons_h1_h1.1.csv").write_text(
         "#class tools::histo::h1d\n"
@@ -137,9 +124,7 @@ def test_input_output_warnings_accept_matching_energy_and_event_inputs(
 
 def test_input_output_warnings_report_angular_flow_entries(tmp_path, monkeypatch):
     (tmp_path / "protons_h1_h1.1.csv").write_text(
-        "#axis edges 1 10 100\n"
-        "entries,Sw\n"
-        "0,0\n4,0\n4,0\n0,0\n"
+        "#axis edges 1 10 100\n" "entries,Sw\n" "0,0\n4,0\n4,0\n0,0\n"
     )
     angular_rows = np.zeros((4, 4))
     angular_rows[0, 1] = 3
@@ -149,8 +134,7 @@ def test_input_output_warnings_report_angular_flow_entries(tmp_path, monkeypatch
         (tmp_path / ("protons_h2_h2.%s.csv" % name)).write_text(
             "#axis fixed 2 0 6.283185307179586\n"
             "#axis fixed 2 -1 1\n"
-            "entries,Sw\n"
-            + table
+            "entries,Sw\n" + table
         )
     monkeypatch.chdir(tmp_path)
 
@@ -190,10 +174,7 @@ def test_process_phantoms_uses_stems_independently_of_row_order(
     tmp_path,
     monkeypatch,
 ):
-    (tmp_path / "phantoms.txt").write_text(
-        "second  30.5 40.5\n"
-        "first   10.5 20.5\n"
-    )
+    (tmp_path / "phantoms.txt").write_text("second  30.5 40.5\n" "first   10.5 20.5\n")
     monkeypatch.chdir(tmp_path)
 
     phantoms = postprocess.process_phantoms(["first", "second"])
@@ -301,9 +282,7 @@ def test_postprocess_reads_root_response_histograms(tmp_path, monkeypatch):
     np.testing.assert_allclose(total_deposition, 2 * ionization, rtol=1e-5)
 
 
-def test_postprocess_accepts_output_without_total_deposition(
-    tmp_path, monkeypatch
-):
+def test_postprocess_accepts_output_without_total_deposition(tmp_path, monkeypatch):
     write_root_response(
         tmp_path / "protons.root",
         include_total_deposition=False,

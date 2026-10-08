@@ -16,7 +16,6 @@ from .cli import (
 from .gather import chunk_name, read_chunk_plan
 from .phantoms import configured_phantom_files, read_phantoms
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -68,9 +67,7 @@ def select_entries(entries, entry=None, worker_index=0, worker_count=1):
     if worker_count < 1:
         raise ValueError("Worker count must be at least 1")
     if worker_index < 0 or worker_index >= worker_count:
-        raise ValueError(
-            "Worker index must be between 0 and %i" % (worker_count - 1)
-        )
+        raise ValueError("Worker index must be between 0 and %i" % (worker_count - 1))
     if entry is not None:
         if entry < 1 or entry > len(entries):
             raise ValueError("Chunk entry must be between 1 and %i" % len(entries))
@@ -188,8 +185,7 @@ def run_chunks(
 
         if deadline is not None and clock() >= deadline - stop_before_end:
             logger.info(
-                "%s not started because "
-                "the wall-time safety window has begun",
+                "%s not started because " "the wall-time safety window has begun",
                 progress,
             )
             break
@@ -225,9 +221,7 @@ def run_chunks(
         completed += 1
         chunk_minutes = (timer() - started) / 60
         elapsed_minutes += chunk_minutes
-        estimated_minutes = (
-            elapsed_minutes / completed * (pending_count - completed)
-        )
+        estimated_minutes = elapsed_minutes / completed * (pending_count - completed)
         estimated_time = format_estimated_time(estimated_minutes)
         logger.info(
             "%s complete in %.1f min. ETA: %s",
@@ -326,8 +320,7 @@ def main():
         default=0,
         metavar="SECONDS",
         help=(
-            "Do not start another chunk within SECONDS of --deadline "
-            "(default: 0)."
+            "Do not start another chunk within SECONDS of --deadline " "(default: 0)."
         ),
     )
     chunk_options.add_argument(
@@ -358,7 +351,7 @@ def main():
             "\n"
             "G4FORCENUMBEROFTHREADS=7 atris-run runs/earth \\\n"
             "  --worker-index 2 --worker-count 11 \\\n"
-            "  --deadline \"$JOB_END_TIME\" --stop-before-end 1800\n"
+            '  --deadline "$JOB_END_TIME" --stop-before-end 1800\n'
             "  Run worker index 2's round-robin shard of an 11-worker pool with "
             "seven Geant4 threads. It does not start a new chunk during the "
             "allocation's final 30 minutes. Launch the other worker indices "

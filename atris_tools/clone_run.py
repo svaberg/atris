@@ -13,7 +13,6 @@ from .cli import (
     configure_logging,
 )
 
-
 INPUT_NAMES = (
     "simulation.psf",
     "phantoms.txt",

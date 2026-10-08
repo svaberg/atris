@@ -3,7 +3,6 @@ from types import SimpleNamespace
 
 import pytest
 
-
 ENTRY_POINT_HELP = (
     (
         "atris-nrlmsis-to-psf",

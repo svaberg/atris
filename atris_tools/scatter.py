@@ -16,7 +16,6 @@ from .cli import (
     configure_logging,
 )
 
-
 SPECIES = ("protons", "alphas")
 logger = logging.getLogger(__name__)
 
@@ -29,9 +28,7 @@ def command_index(lines, source, command):
         if line.lstrip().startswith(command + " ")
     ]
     if len(indices) != 1:
-        raise ValueError(
-            "%s must contain exactly one %s command" % (source, command)
-        )
+        raise ValueError("%s must contain exactly one %s command" % (source, command))
     return indices[0]
 
 
@@ -47,9 +44,7 @@ def macro_lines_and_events(source):
     except ValueError as error:
         raise ValueError("Invalid /run/beamOn command in %s" % source) from error
     if total_events < 1:
-        raise ValueError(
-            "/run/beamOn must request at least one event in %s" % source
-        )
+        raise ValueError("/run/beamOn must request at least one event in %s" % source)
 
     return lines, beam_index, total_events
 
@@ -58,10 +53,7 @@ def chunk_macro(source, chunks):
     lines, beam_index, total_events = macro_lines_and_events(source)
 
     events_per_chunk = (total_events + chunks - 1) // chunks
-    if (
-        beam_index > 0
-        and lines[beam_index - 1].lstrip().startswith("# Process ")
-    ):
+    if beam_index > 0 and lines[beam_index - 1].lstrip().startswith("# Process "):
         lines[beam_index - 1] = (
             "# Process %i events in each chunk.\n" % events_per_chunk
         )
@@ -317,10 +309,7 @@ def main():
         "--chunks",
         type=int,
         metavar="COUNT",
-        help=(
-            "Create a new plan with COUNT proton chunks and COUNT alpha "
-            "chunks."
-        ),
+        help=("Create a new plan with COUNT proton chunks and COUNT alpha " "chunks."),
     )
     operation.add_argument(
         "--extend",

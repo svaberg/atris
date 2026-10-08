@@ -10,7 +10,6 @@ import atris_tools.psf2gdml as psf2gdml_module
 from atris_tools.atrismacrogen import macroGenManager
 from atris_tools.psf2gdml import psf2gdml
 
-
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "minimal"
 
 
@@ -128,10 +127,7 @@ def test_macro_generation_is_reproducible_and_preserves_requested_counts(tmp_pat
         if line.startswith("/") and not line.startswith("/atris/phantom/"):
             assert proton_lines[line_number - 1].startswith("# ")
 
-    assert (
-        proton_macro.count("# Each response starts with its table coefficient.")
-        == 1
-    )
+    assert proton_macro.count("# Each response starts with its table coefficient.") == 1
     assert proton_macro.endswith("# End of AtRIS simulation macro.\n")
     assert alpha_macro.endswith("# End of AtRIS simulation macro.\n")
 
@@ -141,10 +137,7 @@ def test_macro_generation_is_reproducible_and_preserves_requested_counts(tmp_pat
 
 def test_macro_names_each_phantom_input_file(tmp_path):
     prepare_run(tmp_path)
-    (tmp_path / "phantoms.txt").write_text(
-        "ramona 1.0 2.0\n"
-        "cell 3.0 4.0\n"
-    )
+    (tmp_path / "phantoms.txt").write_text("ramona 1.0 2.0\n" "cell 3.0 4.0\n")
     for stem in ("ramona", "cell"):
         (tmp_path / (stem + "_response.txt")).write_text("response\n")
         (tmp_path / (stem + "_counting.txt")).write_text("counting\n")
@@ -265,9 +258,7 @@ def test_psf_conversion_uses_explicit_composition_for_every_state(
 def test_psf_conversion_accepts_named_input(tmp_path, monkeypatch):
     input_path = tmp_path / "mercury.psf"
     shutil.copyfile(FIXTURE / "simulation.psf", input_path)
-    monkeypatch.setattr(
-        "sys.argv", ["atris-psf-to-gdml", str(input_path)]
-    )
+    monkeypatch.setattr("sys.argv", ["atris-psf-to-gdml", str(input_path)])
 
     psf2gdml_module.main()
 

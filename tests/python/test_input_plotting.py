@@ -5,7 +5,6 @@ import pytest
 
 from atris_tools import input_plotting
 
-
 MACRO = """\
 /atris/geometryFile protons.gdml
 /atris/energyBinsFile protons.bins
@@ -51,9 +50,7 @@ def prepare_inputs(run_directory, gdml_text):
     (run_directory / "protons.gdml").write_text(gdml_text)
     (run_directory / "protons.mac").write_text(MACRO)
     np.savetxt(run_directory / "protons.bins", [1, 10, 100])
-    (run_directory / "phantoms.txt").write_text(
-        "test-phantom  1.0  2.0\n"
-    )
+    (run_directory / "phantoms.txt").write_text("test-phantom  1.0  2.0\n")
 
     response = np.vstack(
         (
@@ -185,9 +182,10 @@ def test_shell_profiles_share_density_pressure_axis_and_twin_temperature_axis():
     axis.legend.assert_not_called()
     temperature_axis.legend.assert_called_once()
     temperature_axis.set_ylim.assert_called_once_with((-0.15, 3.15))
-    assert [
-        call.args[0] for call in temperature_axis.axhline.call_args_list
-    ] == [0.0, 3.0]
+    assert [call.args[0] for call in temperature_axis.axhline.call_args_list] == [
+        0.0,
+        3.0,
+    ]
     assert [call.args[2] for call in temperature_axis.text.call_args_list] == [
         "Ground",
         "Space",
@@ -265,18 +263,14 @@ def test_source_summary_explains_radius_and_atmosphere_clearance():
 
 
 def test_particle_groups_include_every_particle_once():
-    particle_codes = np.array(
-        [22, 2212, 2112, -2112, 11, -11, 1000010020, 1000030070]
-    )
+    particle_codes = np.array([22, 2212, 2112, -2112, 11, -11, 1000010020, 1000030070])
 
     groups = input_plotting._particle_groups(particle_codes)
 
     assert groups == ([0, 1, 2, 3, 4, 5], [6, 7])
 
 
-def test_plot_inputs_writes_species_and_phantom_pngs(
-    tmp_path, monkeypatch, gdml_text
-):
+def test_plot_inputs_writes_species_and_phantom_pngs(tmp_path, monkeypatch, gdml_text):
     prepare_inputs(tmp_path, gdml_text)
     monkeypatch.chdir(tmp_path)
 
@@ -310,8 +304,8 @@ def test_plot_inputs_writes_planet_specification_without_species_inputs(
 
     assert filenames == ["simulation.psf.png"]
     assert errors == []
-    assert (tmp_path / "simulation.psf.png").read_bytes().startswith(
-        b"\x89PNG\r\n\x1a\n"
+    assert (
+        (tmp_path / "simulation.psf.png").read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
     )
 
 
@@ -342,9 +336,7 @@ def test_plot_inputs_reports_missing_phantom_response_but_keeps_species_plot(
     filenames, errors = input_plotting.plot_inputs()
 
     assert filenames == ["protons.inputs.png"]
-    assert errors == [
-        "phantom test-phantom inputs: missing test-phantom_counting.txt"
-    ]
+    assert errors == ["phantom test-phantom inputs: missing test-phantom_counting.txt"]
 
 
 def test_plot_inputs_uses_macro_stem_without_phantom_metadata(

@@ -7,9 +7,7 @@ from atris_tools.version import (
 
 
 def test_git_describe_version_is_converted_to_pep440():
-    assert git_describe_to_pep440("v3.1.0-5-gabcdef0123") == (
-        "3.1.1.dev5+gabcdef0123"
-    )
+    assert git_describe_to_pep440("v3.1.0-5-gabcdef0123") == ("3.1.1.dev5+gabcdef0123")
     assert git_describe_to_pep440("v3.1.0") == "3.1.0"
 
 
@@ -20,9 +18,7 @@ def test_displayed_commit_is_shortened_without_changing_comparison():
     assert not versions_match(version, "v3.1.0-5-g1234567")
 
 
-def test_executable_version_error_is_passed_through(
-    tmp_path, monkeypatch, capfd
-):
+def test_executable_version_error_is_passed_through(tmp_path, monkeypatch, capfd):
     executable = tmp_path / "AtRIS"
     executable.write_text("#!/bin/sh\necho 'missing runtime library' >&2\nexit 1\n")
     executable.chmod(0o755)

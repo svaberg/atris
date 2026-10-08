@@ -6,7 +6,6 @@ import pytest
 
 from atris_tools.scatter import chunk_plan, extend_plan, scatter
 
-
 ORDINARY_MACRO = """/atris/geometryFile {species}.gdml
 /atris/energyBinsFile {species}.bins
 # Use this filename stem for all simulation output.
@@ -36,7 +35,9 @@ def test_chunk_plan_is_reproducible_unique_and_six_digit():
     assert first == second
     assert len(first) == 8
     assert [line.split()[0] for line in first] == ["protons"] * 4 + ["alphas"] * 4
-    assert all(re.fullmatch(r"(?:protons|alphas) \d{6} \d{6}\n", line) for line in first)
+    assert all(
+        re.fullmatch(r"(?:protons|alphas) \d{6} \d{6}\n", line) for line in first
+    )
 
     pairs = [tuple(line.split()[1:]) for line in first]
     assert len(set(pairs)) == len(pairs)
@@ -44,15 +45,11 @@ def test_chunk_plan_is_reproducible_unique_and_six_digit():
 
 def test_chunk_plan_skips_seed_pairs_already_in_an_existing_plan():
     original = chunk_plan(2, random.Random(17))
-    used_pairs = {
-        tuple(int(seed) for seed in line.split()[1:])
-        for line in original
-    }
+    used_pairs = {tuple(int(seed) for seed in line.split()[1:]) for line in original}
 
     extension = chunk_plan(1, random.Random(17), used_pairs)
     extension_pairs = {
-        tuple(int(seed) for seed in line.split()[1:])
-        for line in extension
+        tuple(int(seed) for seed in line.split()[1:]) for line in extension
     }
 
     assert len(extension) == 2
@@ -82,7 +79,7 @@ def test_scatter_preserves_ordinary_macros_and_rounds_chunk_event_count(
         assert "/atris/randomSeeds 123456 654321" not in chunk
         assert "/run/beamOn 4" in chunk
         assert (
-                "# atris-run supplies a separate output stem for each chunk.\n"
+            "# atris-run supplies a separate output stem for each chunk.\n"
             "/atris/outputStem {ATRIS_OUTPUT_STEM}\n" in chunk
         )
         assert (
@@ -158,9 +155,7 @@ def test_scatter_rejects_zero_chunks(tmp_path):
         scatter(tmp_path, chunks=0)
 
 
-def test_extend_plan_preserves_existing_work_and_adds_unique_chunks(
-    tmp_path, caplog
-):
+def test_extend_plan_preserves_existing_work_and_adds_unique_chunks(tmp_path, caplog):
     write_ordinary_macros(tmp_path)
     scatter(tmp_path, chunks=2, random_seed=17)
     caplog.clear()

@@ -24,10 +24,7 @@ def prepare_run(tmp_path, plan=None):
     (tmp_path / "chunks.txt").write_text(
         "".join("%s %s %s\n" % entry for entry in plan)
     )
-    (tmp_path / "phantoms.txt").write_text(
-        "first 1.0 2.0\n"
-        "second 3.0 4.0\n"
-    )
+    (tmp_path / "phantoms.txt").write_text("first 1.0 2.0\n" "second 3.0 4.0\n")
     for stem in ("first", "second"):
         (tmp_path / (stem + "_response.txt")).touch()
         (tmp_path / (stem + "_counting.txt")).touch()
@@ -39,9 +36,7 @@ def test_run_chunks_executes_plan_and_marks_success(tmp_path, monkeypatch):
 
     def fake_run(command, cwd, stdout, stderr, check):
         wrapper = cwd / command[1]
-        calls.append(
-            (command[0], wrapper.read_text(), cwd, stdout.name, stderr, check)
-        )
+        calls.append((command[0], wrapper.read_text(), cwd, stdout.name, stderr, check))
 
     monkeypatch.setattr("atris_tools.run_chunks.subprocess.run", fake_run)
 
@@ -79,6 +74,7 @@ def test_run_chunks_skips_complete_entries(tmp_path, monkeypatch, caplog):
     prepare_run(tmp_path)
     (tmp_path / "chunks/protons_111111_222222.COMPLETE").touch()
     calls = []
+
     def fake_run(command, cwd, **kwargs):
         calls.append((Path(cwd) / command[1]).read_text())
 
@@ -96,17 +92,18 @@ def test_run_chunks_skips_complete_entries(tmp_path, monkeypatch, caplog):
     assert messages.index(
         "Chunk 1/2 complete: chunks/protons_111111_222222"
     ) < messages.index("1/2 chunk already processed")
-    assert messages.index(
-        "1/2 chunk already processed"
-    ) < messages.index("Processing remaining 1/2 chunk...")
-    assert messages.index(
+    assert messages.index("1/2 chunk already processed") < messages.index(
         "Processing remaining 1/2 chunk..."
-    ) < messages.index("Chunk 2/2 starting: chunks/alphas_333333_444444")
+    )
+    assert messages.index("Processing remaining 1/2 chunk...") < messages.index(
+        "Chunk 2/2 starting: chunks/alphas_333333_444444"
+    )
 
 
 def test_run_chunks_can_select_one_plan_entry(tmp_path, monkeypatch):
     prepare_run(tmp_path)
     calls = []
+
     def fake_run(command, cwd, **kwargs):
         calls.append((Path(cwd) / command[1]).read_text())
 
@@ -135,8 +132,7 @@ def test_run_chunks_does_not_mark_failed_entry(tmp_path, monkeypatch):
 
 def test_select_entries_assigns_disjoint_round_robin_worker_shards():
     entries = [
-        ("protons", "%06i" % number, "%06i" % (number + 100))
-        for number in range(1, 8)
+        ("protons", "%06i" % number, "%06i" % (number + 100)) for number in range(1, 8)
     ]
 
     shards = [
@@ -176,6 +172,7 @@ def test_run_chunks_executes_only_the_workers_shard(tmp_path, monkeypatch):
     ]
     prepare_run(tmp_path, plan)
     calls = []
+
     def fake_run(command, cwd, **kwargs):
         calls.append((Path(cwd) / command[1]).read_text())
 
@@ -269,10 +266,7 @@ def test_worker_label_is_conditional_and_space_aligned():
 
 def test_chunk_label_is_conditional_and_space_aligned():
     assert chunk_label("", 1, 200) == "Chunk   1/200"
-    assert (
-        chunk_label("Worker   1/200", 1, 200)
-        == "Worker   1/200 chunk   1/200"
-    )
+    assert chunk_label("Worker   1/200", 1, 200) == "Worker   1/200 chunk   1/200"
 
 
 def test_run_chunks_stops_before_the_job_deadline(tmp_path, monkeypatch, caplog):
@@ -284,12 +278,15 @@ def test_run_chunks_stops_before_the_job_deadline(tmp_path, monkeypatch, caplog)
     )
 
     with caplog.at_level(logging.INFO, logger="atris_tools.run_chunks"):
-        assert run_chunks(
-            tmp_path,
-            deadline=1000,
-            stop_before_end=100,
-            clock=lambda: 900,
-        ) == 0
+        assert (
+            run_chunks(
+                tmp_path,
+                deadline=1000,
+                stop_before_end=100,
+                clock=lambda: 900,
+            )
+            == 0
+        )
 
     assert calls == []
     assert "wall-time safety window has begun" in caplog.text

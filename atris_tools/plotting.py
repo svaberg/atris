@@ -39,7 +39,6 @@ from .root_output import has_ntuple
 from .step_plotting import plot_mode_one_output
 from .units import energy_to_mev
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -97,9 +96,7 @@ def _inverse_sqrt_reference(completed_chunks, values, reference_chunks=None):
     completed_chunks = np.asarray(completed_chunks)
     values = np.asarray(values)
     finite = np.isfinite(values) & (values >= 0)
-    amplitude = np.median(
-        values[finite] * np.sqrt(completed_chunks[finite])
-    )
+    amplitude = np.median(values[finite] * np.sqrt(completed_chunks[finite]))
     if reference_chunks is None:
         reference_chunks = completed_chunks
     return amplitude / np.sqrt(reference_chunks)
@@ -136,20 +133,14 @@ def _plot_striped_guide(axis, chunks, values, color, label):
         )
 
 
-def _add_inverse_sqrt_guides(
-    axis, completed_chunks, planned_chunks, lines, series
-):
+def _add_inverse_sqrt_guides(axis, completed_chunks, planned_chunks, lines, series):
     """Add colour-matched inverse-square-root guides to convergence curves."""
-    reference_chunks = np.geomspace(
-        completed_chunks[0], planned_chunks, 300
-    )
+    reference_chunks = np.geomspace(completed_chunks[0], planned_chunks, 300)
     for index, (line, values) in enumerate(zip(lines, series)):
         _plot_striped_guide(
             axis,
             reference_chunks,
-            _inverse_sqrt_reference(
-                completed_chunks, values, reference_chunks
-            ),
+            _inverse_sqrt_reference(completed_chunks, values, reference_chunks),
             line.get_color(),
             r"$1/\sqrt{N}$ guides" if index == 0 else "_nolegend_",
         )
@@ -177,21 +168,15 @@ def _recent_power_law_fit(completed_chunks, values, reference_chunks=None):
     if reference_chunks is None:
         reference_chunks = completed_chunks
     reference_chunks = np.asarray(reference_chunks, dtype=float)
-    return np.exp(log_amplitude) * reference_chunks ** exponent
+    return np.exp(log_amplitude) * reference_chunks**exponent
 
 
-def _add_uncertainty_fits(
-    axis, completed_chunks, planned_chunks, lines, series
-):
+def _add_uncertainty_fits(axis, completed_chunks, planned_chunks, lines, series):
     """Add recent empirical power-law fits to the uncertainty curves."""
-    reference_chunks = np.geomspace(
-        completed_chunks[0], planned_chunks, 300
-    )
+    reference_chunks = np.geomspace(completed_chunks[0], planned_chunks, 300)
     labelled = False
     for line, values in zip(lines, series):
-        fitted = _recent_power_law_fit(
-            completed_chunks, values, reference_chunks
-        )
+        fitted = _recent_power_law_fit(completed_chunks, values, reference_chunks)
         if fitted is None:
             continue
         _plot_striped_guide(
@@ -199,11 +184,7 @@ def _add_uncertainty_fits(
             reference_chunks,
             fitted,
             line.get_color(),
-            (
-                "Recent power-law fits"
-                if not labelled
-                else "_nolegend_"
-            ),
+            ("Recent power-law fits" if not labelled else "_nolegend_"),
         )
         labelled = True
 
@@ -533,9 +514,7 @@ def plot_convergence(simname):
 
 
 def _get_processed_phantom_stems(simname):
-    pattern = re.compile(
-        "^" + re.escape(simname) + r"\.(.+)\.(?:dose|equi|rates)$"
-    )
+    pattern = re.compile("^" + re.escape(simname) + r"\.(.+)\.(?:dose|equi|rates)$")
     return sorted(
         {
             match.group(1)
@@ -547,14 +526,9 @@ def _get_processed_phantom_stems(simname):
 
 def _has_processed_output(simname):
     pattern = re.compile(
-        "^"
-        + re.escape(simname)
-        + r"\.(?:ioni|edep|.+\.(?:dose|equi|rates))$"
+        "^" + re.escape(simname) + r"\.(?:ioni|edep|.+\.(?:dose|equi|rates))$"
     )
-    return any(
-        pattern.match(filename) is not None
-        for filename in os.listdir(".")
-    )
+    return any(pattern.match(filename) is not None for filename in os.listdir("."))
 
 
 def plot_run(simname):
@@ -721,23 +695,17 @@ def main():
                 try:
                     plotted.append(plot_interface_output(simulation))
                 except Exception as error:
-                    errors.append(
-                        "%s interface output: %s" % (simulation, error)
-                    )
+                    errors.append("%s interface output: %s" % (simulation, error))
             if root_steps:
                 try:
                     plotted.extend(plot_mode_one_output(simulation))
                 except Exception as error:
-                    errors.append(
-                        "%s mode-1 output: %s" % (simulation, error)
-                    )
+                    errors.append("%s mode-1 output: %s" % (simulation, error))
             if Path(simulation + ".convergence.csv").is_file():
                 try:
                     plotted.append(plot_convergence(simulation))
                 except Exception as error:
-                    errors.append(
-                        "%s convergence: %s" % (simulation, error)
-                    )
+                    errors.append("%s convergence: %s" % (simulation, error))
             if not _has_processed_output(simulation):
                 logger.info(
                     "Skipping %s response plots: processed output not found",

@@ -8,7 +8,6 @@ from atris_tools.interface_output import (
     read_root,
 )
 
-
 SAMPLE_RECORDS = np.array(
     [
         (2212, 2, 125, 100.0, 100.0),

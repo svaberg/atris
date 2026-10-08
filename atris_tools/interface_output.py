@@ -6,7 +6,6 @@ import numpy as np
 
 from .root_output import read_ntuple
 
-
 FIELD_NAMES = (
     "pdg",
     "interface",

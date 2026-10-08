@@ -12,7 +12,6 @@ from .psf import read_psf_layers
 from .response_histograms import read_macro_responses
 from .units import energy_to_mev
 
-
 PHANTOM_ENERGY_EDGES_MEV = 10.0 ** np.linspace(-6.0, 7.0, 651)
 PHANTOM_ENERGIES_MEV = (
     PHANTOM_ENERGY_EDGES_MEV[:-1] + PHANTOM_ENERGY_EDGES_MEV[1:]
@@ -291,11 +290,7 @@ def shell_coordinates(
     layers, detector_ids=None, location="center", reference_radius=None
 ):
     """Calculate signed physical coordinates for detector shells."""
-    radius = (
-        surface_radius(layers)
-        if reference_radius is None
-        else reference_radius
-    )
+    radius = surface_radius(layers) if reference_radius is None else reference_radius
 
     if detector_ids is not None:
         by_id = {layer["detector_id"]: layer for layer in layers}
@@ -386,8 +381,7 @@ def _source_summary(settings, layers, energy_count):
         lines.extend(
             (
                 "Source sphere radius: " + radius,
-                "Altitude above surface: %.3f km"
-                % (radius_km - planet_radius_km),
+                "Altitude above surface: %.3f km" % (radius_km - planet_radius_km),
             )
         )
         if modeled_layers:
@@ -417,8 +411,7 @@ def _source_summary(settings, layers, energy_count):
             "Particles per event: " + _setting(settings, "/gps/number"),
             "Events: " + _setting(settings, "/run/beamOn"),
             "Threads in macro: " + _setting(settings, "/run/numberOfThreads"),
-            "Secondary production range cut: "
-            + _setting(settings, "/run/setCut"),
+            "Secondary production range cut: " + _setting(settings, "/run/setCut"),
             "Random seeds: " + _setting(settings, "/atris/randomSeeds"),
         )
     )
@@ -490,18 +483,12 @@ def _plot_shell_profiles(
 def _plot_composition(axis, layers, edges, model_edges):
     mark_model_regions(axis, model_edges)
     elements = sorted(
-        {
-            element
-            for layer in layers
-            for element in layer["fractions"]
-        },
+        {element for layer in layers for element in layer["fractions"]},
         key=element_sort_key,
     )
     for element in elements:
         label = element_label(element)
-        fractions = np.array(
-            [layer["fractions"].get(element, 0.0) for layer in layers]
-        )
+        fractions = np.array([layer["fractions"].get(element, 0.0) for layer in layers])
         fractions[fractions < MASS_FRACTION_PLOT_MINIMUM] = np.nan
         curve = axis.stairs(
             fractions,
@@ -636,8 +623,7 @@ def plot_phantom_inputs(
     counting_codes, counting = read_phantom_table(counting_file)
     if not np.array_equal(radiation_codes, counting_codes):
         raise ValueError(
-            "Radiation and counting particle codes differ for phantom "
-            + phantom_name
+            "Radiation and counting particle codes differ for phantom " + phantom_name
         )
 
     groups = _particle_groups(radiation_codes)

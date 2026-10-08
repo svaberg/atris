@@ -9,7 +9,6 @@ import uproot
 
 from .root_output import read_ntuple
 
-
 PRIMARY_HISTOGRAM = "h1.1"
 IONIZATION_HISTOGRAM = "h2.ion"
 TOTAL_DEPOSITION_HISTOGRAM = "h2.edep"
@@ -116,14 +115,11 @@ def read_macro_responses(filename):
             elif command == "/atris/phantom/response/add":
                 if len(fields) != 1 or phantom_name is None:
                     raise ValueError(
-                        "Incomplete phantom response at %s:%i"
-                        % (filename, line_number)
+                        "Incomplete phantom response at %s:%i" % (filename, line_number)
                     )
                 response["phantom_stem"] = phantom_name
                 responses.append(
-                    _response_definition(
-                        response, "%s:%i" % (filename, line_number)
-                    )
+                    _response_definition(response, "%s:%i" % (filename, line_number))
                 )
                 response = {}
     if response:
@@ -143,9 +139,7 @@ def response_output_format(prefix):
     csv_exists = csv_histogram_path(prefix, PRIMARY_HISTOGRAM).is_file()
     root_exists = Path(str(prefix) + ".root").is_file()
     if csv_exists and root_exists:
-        raise ValueError(
-            "Both CSV and ROOT response output exist for " + prefix.name
-        )
+        raise ValueError("Both CSV and ROOT response output exist for " + prefix.name)
     if csv_exists:
         return "csv"
     if root_exists:
@@ -259,9 +253,7 @@ class ResponseHistogramReader:
             }
 
         pattern = re.compile(
-            "^"
-            + re.escape(self.prefix.name)
-            + r"_(h[12])_(h[12]\..+)\.csv$"
+            "^" + re.escape(self.prefix.name) + r"_(h[12])_(h[12]\..+)\.csv$"
         )
         return {
             match.group(2)
@@ -281,9 +273,7 @@ class ResponseHistogramReader:
             path = csv_histogram_path(self.prefix, name)
             table = read_csv_histogram(path)[2]
             column = 0 if name == PRIMARY_HISTOGRAM else 1
-            return table_histogram_values(
-                table, csv_histogram_axes(path), column
-            )
+            return table_histogram_values(table, csv_histogram_axes(path), column)
 
         histogram = self._root()[name]
         values = np.asarray(histogram.values(flow=True), dtype=float)
@@ -297,9 +287,7 @@ class ResponseHistogramReader:
                         % (self.prefix.name, PRIMARY_HISTOGRAM)
                     )
         if len(histogram.axes) not in (1, 2):
-            raise ValueError(
-                "Unsupported response histogram dimension for " + name
-            )
+            raise ValueError("Unsupported response histogram dimension for " + name)
         return values
 
     def responses(self):
@@ -334,24 +322,20 @@ class ResponseHistogramReader:
                     for key, field in _RESPONSE_ANNOTATIONS.items()
                     if key in annotations
                 }
-                configured.append(
-                    _response_definition(values, histogram_name)
-                )
+                configured.append(_response_definition(values, histogram_name))
 
         by_histogram = {}
         for response in configured:
             previous = by_histogram.get(response.histogram_name)
             if previous is not None and previous != response:
                 raise ValueError(
-                    "Conflicting response configuration for "
-                    + response.histogram_name
+                    "Conflicting response configuration for " + response.histogram_name
                 )
             by_histogram[response.histogram_name] = response
         missing = output_names - by_histogram.keys()
         if missing:
             raise ValueError(
-                "No response configuration found for "
-                + ", ".join(sorted(missing))
+                "No response configuration found for " + ", ".join(sorted(missing))
             )
         return [by_histogram[name] for name in sorted(output_names)]
 

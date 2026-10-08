@@ -10,7 +10,6 @@ from uproot.writing.identify import to_TAxis, to_TH1x, to_TH2x
 
 from .response_histograms import PRIMARY_HISTOGRAM
 
-
 ROOT_STATISTICS = (
     "fEntries",
     "fTsumw",
@@ -51,9 +50,7 @@ def read_root_file(path):
                 "title": source.title,
                 "values": np.asarray(source.values(flow=True), dtype=float),
                 "variances": (
-                    None
-                    if variances is None
-                    else np.asarray(variances, dtype=float)
+                    None if variances is None else np.asarray(variances, dtype=float)
                 ),
                 "axes": [
                     {
@@ -97,13 +94,10 @@ def _validate_histograms(reference, current, path):
         if (other["variances"] is None) != (first["variances"] is None):
             raise ValueError("ROOT histogram differs: %s in %s" % (name, path))
         for first_axis, other_axis in zip(first["axes"], other["axes"]):
-            if (
-                first_axis["title"] != other_axis["title"]
-                or not np.array_equal(first_axis["edges"], other_axis["edges"])
+            if first_axis["title"] != other_axis["title"] or not np.array_equal(
+                first_axis["edges"], other_axis["edges"]
             ):
-                raise ValueError(
-                    "ROOT histogram axes differ: %s in %s" % (name, path)
-                )
+                raise ValueError("ROOT histogram axes differ: %s in %s" % (name, path))
 
 
 def _combine_records(records, *, unique=False):
@@ -119,9 +113,7 @@ def _combine_records(records, *, unique=False):
     if not unique or not combined:
         return combined
 
-    rows = list(
-        dict.fromkeys(zip(*(values.tolist() for values in combined.values())))
-    )
+    rows = list(dict.fromkeys(zip(*(values.tolist() for values in combined.values()))))
     return {
         name: np.asarray([row[index] for row in rows], dtype=values.dtype)
         for index, (name, values) in enumerate(combined.items())
@@ -185,9 +177,7 @@ def _writable_histogram(histogram):
         "fTsumw2": statistics["fTsumw2"],
         "fTsumwx": statistics["fTsumwx"],
         "fTsumwx2": statistics["fTsumwx2"],
-        "fSumw2": (
-            None if variances is None else variances.ravel(order="F")
-        ),
+        "fSumw2": (None if variances is None else variances.ravel(order="F")),
         "fXaxis": _root_axis(histogram["axes"][0], "xaxis"),
     }
     if len(histogram["axes"]) == 1:

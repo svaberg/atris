@@ -7,37 +7,81 @@ import uproot
 from atris_tools import plotting, step_plotting
 from atris_tools.step_output import STEP_FIELDS
 
-
 TRACE_ROWS = (
     (
-        0, 1, 0, 1, 2212, 2,
-        0, 0, 2, 0, 0, 1,
-        100, 90, 10, 0, 1, 2, 100,
-        "primary", "Transportation",
+        0,
+        1,
+        0,
+        1,
+        2212,
+        2,
+        0,
+        0,
+        2,
+        0,
+        0,
+        1,
+        100,
+        90,
+        10,
+        0,
+        1,
+        2,
+        100,
+        "primary",
+        "Transportation",
     ),
     (
-        0, 2, 1, 1, 11, 1,
-        0, 0, 1, 0, 0, 0,
-        5, 4, 1, 0, 1, 3, 100,
-        "protonInelastic", "eIoni",
+        0,
+        2,
+        1,
+        1,
+        11,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        5,
+        4,
+        1,
+        0,
+        1,
+        3,
+        100,
+        "protonInelastic",
+        "eIoni",
     ),
     (
-        1, 1, 0, 1, 2212, 2,
-        0, 0, 2, 0, 0, 1,
-        50, 45, 5, 0, 1, 2, 50,
-        "primary", "Transportation",
+        1,
+        1,
+        0,
+        1,
+        2212,
+        2,
+        0,
+        0,
+        2,
+        0,
+        0,
+        1,
+        50,
+        45,
+        5,
+        0,
+        1,
+        2,
+        50,
+        "primary",
+        "Transportation",
     ),
 )
 
 
 STEP_BRANCH_TYPES = {
-    name: (
-        "int32"
-        if index < 6
-        else "float64"
-        if index < 19
-        else "string"
-    )
+    name: ("int32" if index < 6 else "float64" if index < 19 else "string")
     for index, name in enumerate(STEP_FIELDS)
 }
 
@@ -99,14 +143,10 @@ def test_plot_mode_one_output_writes_overview_and_shower_pngs(
 
     assert filenames == ["protons.steps.png", "protons.shower.png"]
     for filename in filenames:
-        assert (tmp_path / filename).read_bytes().startswith(
-            b"\x89PNG\r\n\x1a\n"
-        )
+        assert (tmp_path / filename).read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
 
 
-def test_atris_plot_routes_mode_one_outputs_to_both_plotters(
-    tmp_path, monkeypatch
-):
+def test_atris_plot_routes_mode_one_outputs_to_both_plotters(tmp_path, monkeypatch):
     write_step_trace(tmp_path / "protons.root")
     step_calls = []
     interface_calls = []

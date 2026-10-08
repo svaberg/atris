@@ -10,7 +10,6 @@ import pytest
 from atris_tools import cli
 from atris_tools.cli import add_logging_arguments, configure_logging
 
-
 MODERN_COMMAND_MODULES = (
     "atrismacrogen",
     "clone_run",

@@ -18,10 +18,7 @@ def make_archive(tmp_path):
 
 def write_phantoms(
     run_directory,
-    rows=(
-        "first    1.5  2.5\n"
-        "second  30.5 40.5\n"
-    ),
+    rows=("first    1.5  2.5\n" "second  30.5 40.5\n"),
 ):
     contents = "# Phantom  mass [g]  area [cm2]\n" + rows
     (run_directory / "phantoms.txt").write_text(contents)
@@ -34,8 +31,7 @@ def test_phantom_stems_preserve_row_order(tmp_path):
     run_directory.mkdir()
     metadata = write_phantoms(
         run_directory,
-        "second  30.5 40.5\n"
-        "first   10.5 20.5\n",
+        "second  30.5 40.5\n" "first   10.5 20.5\n",
     )
 
     count = stage_phantoms(run_directory, archive)
@@ -152,9 +148,7 @@ def test_stage_phantoms_leaves_descriptive_links_for_removed_rows(tmp_path):
     assert (run_directory / "second_counting.txt").is_symlink()
 
 
-def test_stage_phantoms_keeps_old_links_when_replacement_is_missing(
-    tmp_path, caplog
-):
+def test_stage_phantoms_keeps_old_links_when_replacement_is_missing(tmp_path, caplog):
     archive = make_archive(tmp_path)
     run_directory = tmp_path / "run"
     run_directory.mkdir()
@@ -196,12 +190,8 @@ def test_stage_phantoms_accepts_custom_files_in_run_directory(tmp_path):
 
     stage_phantoms(run_directory)
 
-    assert (run_directory / "custom_response.txt").read_text() == (
-        "custom radiation\n"
-    )
-    assert (run_directory / "custom_counting.txt").read_text() == (
-        "custom counting\n"
-    )
+    assert (run_directory / "custom_response.txt").read_text() == ("custom radiation\n")
+    assert (run_directory / "custom_counting.txt").read_text() == ("custom counting\n")
 
 
 def test_stage_phantoms_stages_absolute_stem_under_local_names(tmp_path):

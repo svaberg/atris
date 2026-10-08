@@ -2,7 +2,6 @@
 
 from .root_output import iterate_ntuple
 
-
 STEP_FIELDS = (
     "event_id",
     "track_id",

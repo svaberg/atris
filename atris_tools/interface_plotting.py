@@ -18,7 +18,6 @@ from .input_plotting import (
 )
 from .interface_output import read_interface_output
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -59,16 +58,12 @@ def plot_interface_output(simname):
     species_axis = axes[1, 0]
     energy_transfer_axis = axes[1, 1]
     altitude_energy_axis.sharey(crossings_axis)
-    particle_codes, particle_counts = np.unique(
-        records["pdg"], return_counts=True
-    )
+    particle_codes, particle_counts = np.unique(records["pdg"], return_counts=True)
     order = np.argsort(particle_counts)[::-1]
     particle_codes = particle_codes[order]
     particle_counts = particle_counts[order]
     display_limit = 12
-    labels = [
-        particle_symbol(int(code)) for code in particle_codes[:display_limit]
-    ]
+    labels = [particle_symbol(int(code)) for code in particle_codes[:display_limit]]
     counts = particle_counts[:display_limit]
     if particle_codes.size > display_limit:
         labels.append("other")
@@ -87,9 +82,7 @@ def plot_interface_output(simname):
         layers,
         location="outer",
     )
-    interface_edges = np.concatenate(
-        ([interface_ids[0] - 0.5], interface_ids + 0.5)
-    )
+    interface_edges = np.concatenate(([interface_ids[0] - 0.5], interface_ids + 0.5))
     mark_model_regions(crossings_axis, model_edges)
     for mask, label in (
         (records["angle"] < 90, "Upward"),

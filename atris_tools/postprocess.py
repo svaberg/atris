@@ -16,7 +16,13 @@ from .cli import (
 )
 from .phantoms import read_phantoms
 from .psf import (
-    INNER_RADIUS, OUTER_RADIUS, PHI_START, PHI_END, THETA_START, THETA_END, DETECTOR_ID,
+    INNER_RADIUS,
+    OUTER_RADIUS,
+    PHI_START,
+    PHI_END,
+    THETA_START,
+    THETA_END,
+    DETECTOR_ID,
     load_psf,
 )
 from .response_histograms import (
@@ -28,7 +34,6 @@ from .response_histograms import (
     response_output_format,
 )
 from .units import energy_to_mev
-
 
 logger = logging.getLogger(__name__)
 
@@ -92,9 +97,8 @@ def _input_output_warnings(simname, histograms):
     input_edges = None
     if bins_path.is_file():
         input_edges = np.atleast_1d(np.loadtxt(bins_path))
-        if (
-            input_edges.shape != output_edges.shape
-            or not np.allclose(input_edges, output_edges)
+        if input_edges.shape != output_edges.shape or not np.allclose(
+            input_edges, output_edges
         ):
             warnings.append(
                 "%s: %s does not match the energy edges recorded in %s"
@@ -161,8 +165,7 @@ def _input_output_warnings(simname, histograms):
     phantom_path = Path("phantoms.txt")
     if phantom_path.is_file():
         configured_stems = {
-            Path(phantom["stem"]).name
-            for phantom in read_phantoms(Path.cwd())
+            Path(phantom["stem"]).name for phantom in read_phantoms(Path.cwd())
         }
         output_stems = histograms.phantom_stems()
         if output_stems != configured_stems:
@@ -192,8 +195,7 @@ def process_phantoms(phantom_stems):
     if not phantom_stems:
         return np.empty((0, 2))
     phantoms = {
-        Path(phantom["stem"]).name: phantom
-        for phantom in read_phantoms(Path.cwd())
+        Path(phantom["stem"]).name: phantom for phantom in read_phantoms(Path.cwd())
     }
     missing = set(phantom_stems) - phantoms.keys()
     if missing:
@@ -201,10 +203,7 @@ def process_phantoms(phantom_stems):
             "phantoms.txt has no metadata for " + ", ".join(sorted(missing))
         )
     return np.array(
-        [
-            [phantoms[stem]["mass"], phantoms[stem]["area"]]
-            for stem in phantom_stems
-        ]
+        [[phantoms[stem]["mass"], phantoms[stem]["area"]] for stem in phantom_stems]
     )
 
 
@@ -222,9 +221,7 @@ def scale_data(
         new_data = data[hist_index][1:-1, 1:-1].T
         data[hist_index] = new_data / nrparticles[None, :]
         data[hist_index] = data[hist_index] / geometry["volume/cm3"][:, None]
-    phantom_indices = {
-        stem: index for index, stem in enumerate(phantom_stems)
-    }
+    phantom_indices = {stem: index for index, stem in enumerate(phantom_stems)}
     for response_index, response in enumerate(responses):
         hist_index = phantom_start + response_index
         new_data = data[hist_index][1:-1, 1:-1].T
@@ -234,9 +231,7 @@ def scale_data(
         if response.scale_by_inverse_phantom_mass:
             phantom_surface = phantom_surface / phantom_data[phantom_nr, 0]
         data[hist_index] = (
-            data[hist_index]
-            * phantom_surface
-            / geometry["inn_surface/cm2"][:, None]
+            data[hist_index] * phantom_surface / geometry["inn_surface/cm2"][:, None]
         )
     return data
 
@@ -324,9 +319,7 @@ def process_run(simname):
         geometry,
         simname,
         responses,
-        atmospheric_extensions=tuple(
-            extension for _, extension in atmospheric_outputs
-        ),
+        atmospheric_extensions=tuple(extension for _, extension in atmospheric_outputs),
     )
     logger.info("Wrote processed %s response files", simname)
 

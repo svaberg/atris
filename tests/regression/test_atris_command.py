@@ -23,7 +23,6 @@ from atris_tools.run_chunks import run_chunks
 from atris_tools.scatter import chunk_macro
 from atris_tools.step_output import STEP_FIELDS, process_name
 
-
 REPOSITORY_ROOT = Path(__file__).parents[2]
 FIXTURE = REPOSITORY_ROOT / "tests" / "fixtures" / "minimal"
 PHANTOMS = REPOSITORY_ROOT / "phantoms"
@@ -250,9 +249,7 @@ def histogram_entries(path):
     column_index = next(
         index for index, line in enumerate(lines) if not line.startswith("#")
     )
-    data = np.atleast_2d(
-        np.loadtxt(path, delimiter=",", skiprows=column_index + 1)
-    )
+    data = np.atleast_2d(np.loadtxt(path, delimiter=",", skiprows=column_index + 1))
     return int(data[:, 0].sum())
 
 
@@ -340,9 +337,7 @@ def test_macro_runs_one_worker_and_writes_expected_histograms(
             assert set(metadata.keys()) == EXPECTED_ROOT_METADATA
             assert metadata.num_entries == 1
             assert metadata["schema"].array(library="np").tolist() == [2]
-            assert metadata["output_mode"].array(library="np").tolist() == [
-                output_mode
-            ]
+            assert metadata["output_mode"].array(library="np").tolist() == [output_mode]
             assert metadata["phantom_count"].array(library="np").tolist() == [1]
             responses = root_file["responses"]
             assert set(responses.keys()) == EXPECTED_ROOT_RESPONSE_METADATA
@@ -363,8 +358,7 @@ def test_macro_runs_one_worker_and_writes_expected_histograms(
             ).tolist() == [1, 1, 0]
     else:
         written_suffixes = {
-            path.name[len("protons") :]
-            for path in tmp_path.glob("protons_h*.csv")
+            path.name[len("protons") :] for path in tmp_path.glob("protons_h*.csv")
         }
         assert written_suffixes == EXPECTED_HISTOGRAM_SUFFIXES
         assert histogram_entries(tmp_path / "protons_h1_h1.1.csv") == 2
@@ -390,15 +384,12 @@ def test_macro_runs_one_worker_and_writes_expected_histograms(
             assert annotations["atris.response_file"] == (
                 "%s_%s.txt" % (RESPONSE_STEM, source_suffix)
             )
-            assert annotations[
-                "atris.response_scale_by_crossing_energy"
-            ] == factors[0]
-            assert annotations[
-                "atris.response_scale_by_radiation_weight"
-            ] == factors[1]
-            assert annotations[
-                "atris.response_scale_by_inverse_phantom_mass"
-            ] == factors[2]
+            assert annotations["atris.response_scale_by_crossing_energy"] == factors[0]
+            assert annotations["atris.response_scale_by_radiation_weight"] == factors[1]
+            assert (
+                annotations["atris.response_scale_by_inverse_phantom_mass"]
+                == factors[2]
+            )
             assert "atris.phantom_id" not in annotations
 
     with ResponseHistogramReader(tmp_path / "protons") as histograms:
@@ -620,9 +611,7 @@ def test_csv_and_root_response_histograms_gather_equivalently(
             (run_directory / "protons.mac").unlink()
 
         with ResponseHistogramReader(run_directory / "protons") as histograms:
-            response_definitions[output_format] = (
-                histograms.response_definitions()
-            )
+            response_definitions[output_format] = histograms.response_definitions()
             outputs[output_format] = {
                 name: (histograms.axes(name), histograms.values(name))
                 for name in histograms.names()
@@ -865,8 +854,7 @@ def test_zero_phantoms_runs_without_phantom_histograms(tmp_path, atris_command):
 
     assert result.returncode == 0, result.stdout + result.stderr
     written_suffixes = {
-        path.name[len("protons") :]
-        for path in tmp_path.glob("protons_*.csv")
+        path.name[len("protons") :] for path in tmp_path.glob("protons_*.csv")
     }
     assert written_suffixes == EXPECTED_HISTOGRAM_SUFFIXES_WITHOUT_PHANTOMS
 

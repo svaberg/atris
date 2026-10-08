@@ -11,7 +11,6 @@ from .cli import (
     configure_logging,
 )
 
-
 logger = logging.getLogger(__name__)
 RESPONSE_ENERGY_BINS = 650
 
@@ -69,9 +68,7 @@ def configured_phantom_files(run_directory, phantom):
         return response, counting
     if dummy_counting.is_file():
         return response, dummy_counting
-    raise FileNotFoundError(
-        "Phantom counting file does not exist: " + str(counting)
-    )
+    raise FileNotFoundError("Phantom counting file does not exist: " + str(counting))
 
 
 def find_phantom_file(filename, run_directory, archive):
@@ -142,15 +139,15 @@ def _stage_phantom(
 ):
     source_stem = phantom["stem"]
     source_stem_path = Path(source_stem)
-    staged_stem = source_stem_path.name if source_stem_path.is_absolute() else source_stem
+    staged_stem = (
+        source_stem_path.name if source_stem_path.is_absolute() else source_stem
+    )
     response_filename = source_stem + "_response.txt"
     response_source = find_phantom_file(response_filename, run_directory, archive)
     counting_filename = source_stem + "_counting.txt"
     dummy = None
     try:
-        counting_source = find_phantom_file(
-            counting_filename, run_directory, archive
-        )
+        counting_source = find_phantom_file(counting_filename, run_directory, archive)
     except FileNotFoundError:
         if not accept_missing_counting:
             raise
@@ -202,8 +199,7 @@ def _stage_phantom(
 
     if dummy is not None:
         logger.info(
-            "Using dummy counting response with values of one for phantom "
-            "%s: %s",
+            "Using dummy counting response with values of one for phantom " "%s: %s",
             source_stem,
             counting_source,
         )

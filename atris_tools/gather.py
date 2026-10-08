@@ -30,7 +30,6 @@ from .root_histograms import (
     write_root_histograms,
 )
 
-
 PLANE_SUM_PREFIX = "#planes_Sxyw "
 SEED_PAIRS_PREFIX = "#annotation atris.random_seed_pairs "
 GATHERED_CHUNKS_PREFIX = "#annotation atris.gathered_chunks "
@@ -95,10 +94,7 @@ def complete_entries(run_directory, entries, simulation):
         entry
         for entry in entries
         if entry[0] == simulation
-        and (
-            chunks_directory
-            / (chunk_name(entry) + ".COMPLETE")
-        ).is_file()
+        and (chunks_directory / (chunk_name(entry) + ".COMPLETE")).is_file()
     ]
 
 
@@ -124,9 +120,7 @@ def chunk_progress(run_directory, entries, simulations):
 
     completion_times = sorted(marker.stat().st_mtime for marker in markers)
     recent_times = completion_times[-ETA_COMPLETION_WINDOW:]
-    seconds_per_chunk = (recent_times[-1] - recent_times[0]) / (
-        len(recent_times) - 1
-    )
+    seconds_per_chunk = (recent_times[-1] - recent_times[0]) / (len(recent_times) - 1)
     return (
         completed,
         total,
@@ -204,10 +198,10 @@ def merge_provenance(headers):
         chunk_count = 1
         for line in header:
             if line.startswith(GATHERED_CHUNKS_PREFIX):
-                chunk_count = int(line[len(GATHERED_CHUNKS_PREFIX):])
+                chunk_count = int(line[len(GATHERED_CHUNKS_PREFIX) :])
                 has_provenance = True
             elif line.startswith(SEED_PAIRS_PREFIX):
-                values = line[len(SEED_PAIRS_PREFIX):]
+                values = line[len(SEED_PAIRS_PREFIX) :]
                 if values and values != "runtime-default":
                     seed_pairs.extend(values.split(","))
                 has_provenance = True
@@ -223,8 +217,7 @@ def merge_provenance(headers):
         represented_chunks += chunk_count
 
     output_header = [
-        line for line in headers[0]
-        if not line.startswith(ATRIS_ANNOTATION_PREFIX)
+        line for line in headers[0] if not line.startswith(ATRIS_ANNOTATION_PREFIX)
     ]
     merged_annotations = [
         "#annotation %s %s" % (key, " | ".join(values))
@@ -246,8 +239,7 @@ def merge_provenance(headers):
     if seed_pairs:
         merged_annotations.append(SEED_PAIRS_PREFIX + ",".join(seed_pairs))
     merged_annotations.append(
-        SEED_PAIRS_COMPLETE_PREFIX
-        + str(len(seed_pairs) == represented_chunks).lower()
+        SEED_PAIRS_COMPLETE_PREFIX + str(len(seed_pairs) == represented_chunks).lower()
     )
     insertion = next(
         (
@@ -264,7 +256,7 @@ def merge_provenance(headers):
 def plane_sum(header):
     for line in header:
         if line.startswith(PLANE_SUM_PREFIX):
-            return float(line[len(PLANE_SUM_PREFIX):])
+            return float(line[len(PLANE_SUM_PREFIX) :])
     return None
 
 
@@ -347,8 +339,7 @@ def reusable_chunk_count(
     if output_mtime > state_mtime:
         return None
     if any(
-        path.stat().st_mtime_ns > output_mtime
-        for path in source_paths[:gathered_count]
+        path.stat().st_mtime_ns > output_mtime for path in source_paths[:gathered_count]
     ):
         return None
     return gathered_count
@@ -394,9 +385,7 @@ def ionization_components(primary_energy, ionization):
 
 def ionization_response(primary_energy, ionization, geometry):
     """Return the ionization matrix displayed by the quick-look plot."""
-    primary_counts, ionization_sum = ionization_components(
-        primary_energy, ionization
-    )
+    primary_counts, ionization_sum = ionization_components(primary_energy, ionization)
     with np.errstate(divide="ignore", invalid="ignore"):
         response = ionization_sum / primary_counts[None, :]
         response = response / geometry["volume/cm3"][1:-1, None]
@@ -440,14 +429,11 @@ def change_reference_count(completed_count):
     return completed_count - comparison_count
 
 
-def ionization_convergence_observer(
-    run_directory, completed_count, primary_snapshots
-):
+def ionization_convergence_observer(run_directory, completed_count, primary_snapshots):
     """Return an observer that calculates convergence after every chunk."""
     geometry, _ = process_psf(run_directory / "simulation.psf")
     references = {
-        count: change_reference_count(count)
-        for count in range(2, completed_count + 1)
+        count: change_reference_count(count) for count in range(2, completed_count + 1)
     }
     last_use = {}
     for count, reference in references.items():
@@ -468,9 +454,7 @@ def ionization_convergence_observer(
         else:
             primary_chunk = primary_total - primary_snapshots[count - 1]
 
-        chunk_counts, chunk_sum = ionization_components(
-            primary_chunk, ionization_chunk
-        )
+        chunk_counts, chunk_sum = ionization_components(primary_chunk, ionization_chunk)
         if weights is None:
             weights = np.zeros(chunk_counts.shape)
             mean = np.zeros(chunk_sum.shape)
@@ -494,9 +478,7 @@ def ionization_convergence_observer(
             where=new_weights > 0,
         )
         new_mean = mean + delta * fraction[None, :]
-        squared_residuals += (
-            chunk_counts[None, :] * delta * (chunk_mean - new_mean)
-        )
+        squared_residuals += chunk_counts[None, :] * delta * (chunk_mean - new_mean)
         contributing_chunks += chunk_counts > 0
         weights = new_weights
         mean = new_mean
@@ -510,13 +492,12 @@ def ionization_convergence_observer(
             reference_count = references[count]
             reference = stored_responses[reference_count]
             comparison_chunks = count - reference_count
-            cell_change = 100.0 * cell_change_percentiles(
-                reference, current
-            )
+            cell_change = 100.0 * cell_change_percentiles(reference, current)
             with np.errstate(divide="ignore", invalid="ignore"):
-                variance = np.maximum(squared_residuals, 0.0) / (
-                    contributing_chunks - 1
-                )[None, :]
+                variance = (
+                    np.maximum(squared_residuals, 0.0)
+                    / (contributing_chunks - 1)[None, :]
+                )
                 standard_error = np.sqrt(variance / weights[None, :])
                 relative_error = standard_error / np.abs(mean)
             cell_uncertainty = 100.0 * finite_percentiles(relative_error)
@@ -541,9 +522,7 @@ def ionization_convergence_observer(
     return observe, rows
 
 
-def combine_ionization_histograms(
-    run_directory, source_paths, primary_snapshots
-):
+def combine_ionization_histograms(run_directory, source_paths, primary_snapshots):
     """Combine ionization files and calculate convergence after every chunk."""
     observe_values, rows = ionization_convergence_observer(
         run_directory, len(source_paths), primary_snapshots
@@ -590,9 +569,7 @@ def log_ionization_change(simulation, row):
     )
 
 
-def gather_root_simulation(
-    run_directory, current_entries, prefixes, simulation
-):
+def gather_root_simulation(run_directory, current_entries, prefixes, simulation):
     """Gather response histograms from ROOT chunks, leaving ntuples sharded."""
     source_paths = [Path(str(prefix) + ".root") for prefix in prefixes]
     primary_snapshots = {}
@@ -654,10 +631,7 @@ def gather_root_simulation(
 def gather_simulation(run_directory, entries, simulation):
     current_entries = complete_entries(run_directory, entries, simulation)
     chunks_directory = run_directory / "chunks"
-    prefixes = [
-        chunks_directory / chunk_name(entry)
-        for entry in current_entries
-    ]
+    prefixes = [chunks_directory / chunk_name(entry) for entry in current_entries]
     if not prefixes:
         logger.info("No completed %s runs to gather", simulation)
         return 0
@@ -691,15 +665,19 @@ def gather_simulation(run_directory, entries, simulation):
 
     histogram_paths = sorted(first_prefix.parent.glob(first_prefix.name + "_*.csv"))
     if not histogram_paths:
-        raise FileNotFoundError("Completed run has no histogram files: " + str(first_prefix))
+        raise FileNotFoundError(
+            "Completed run has no histogram files: " + str(first_prefix)
+        )
 
     paths_by_suffix = {}
     for first_path in histogram_paths:
-        suffix = first_path.name[len(first_prefix.name):]
+        suffix = first_path.name[len(first_prefix.name) :]
         source_paths = [prefix.parent / (prefix.name + suffix) for prefix in prefixes]
         for source_path in source_paths:
             if not source_path.is_file():
-                raise FileNotFoundError("Missing histogram from completed run: " + str(source_path))
+                raise FileNotFoundError(
+                    "Missing histogram from completed run: " + str(source_path)
+                )
         paths_by_suffix[suffix] = source_paths
     logger.debug(
         "Found %i histogram groups for %s",
@@ -722,11 +700,9 @@ def gather_simulation(run_directory, entries, simulation):
     if primary_suffix in paths_by_suffix:
         logger.debug("Combining %s primary histogram", simulation)
         primary_paths = paths_by_suffix.pop(primary_suffix)
-        header, columns, total, total_plane_sum, primary_snapshots = (
-            combine_histograms(
-                primary_paths,
-                range(1, len(prefixes) + 1),
-            )
+        header, columns, total, total_plane_sum, primary_snapshots = combine_histograms(
+            primary_paths,
+            range(1, len(prefixes) + 1),
         )
         write_histogram(
             run_directory / (simulation + primary_suffix),

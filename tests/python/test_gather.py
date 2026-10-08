@@ -23,7 +23,6 @@ from atris_tools.gather import (
     write_convergence,
 )
 
-
 COLUMNS = "entries,Sw,Sw2,Sxw0,Sx2w0"
 
 
@@ -53,9 +52,7 @@ def write_histogram(
     Path(path).write_text("\n".join(lines) + "\n")
 
 
-def write_root_histograms(
-    path, primary, direction, ionization=None, responses=None
-):
+def write_root_histograms(path, primary, direction, ionization=None, responses=None):
     energy_edges = np.array([1.0, 10.0, 100.0])
     phi_edges = np.array([0.0, 1.0, 2.0])
     cosine_edges = np.array([0.0, 0.5, 1.0])
@@ -79,8 +76,7 @@ def write_root_histograms(
 
 def test_read_chunk_plan_reports_malformed_line_number(tmp_path):
     (tmp_path / "chunks.txt").write_text(
-        "protons 123456 654321\n"
-        "alphas only-two-fields\n"
+        "protons 123456 654321\n" "alphas only-two-fields\n"
     )
 
     with pytest.raises(ValueError, match=r"line 2$"):
@@ -91,8 +87,7 @@ def test_chunk_progress_estimates_from_completion_marker_times(tmp_path):
     chunks = tmp_path / "chunks"
     chunks.mkdir()
     entries = [
-        ("protons", "%06i" % seed, "%06i" % (seed + 1))
-        for seed in range(100, 105)
+        ("protons", "%06i" % seed, "%06i" % (seed + 1)) for seed in range(100, 105)
     ]
     for entry, timestamp in zip(entries[:3], (100, 110, 120)):
         simulation, seed1, seed2 = entry
@@ -126,9 +121,7 @@ def test_chunk_progress_filters_species_and_logs_estimate(tmp_path, caplog):
     ]
 
 
-def test_chunk_progress_reports_complete_and_formats_long_durations(
-    tmp_path, caplog
-):
+def test_chunk_progress_reports_complete_and_formats_long_durations(tmp_path, caplog):
     chunks = tmp_path / "chunks"
     chunks.mkdir()
     entries = [("alphas", "111111", "222222")]
@@ -191,13 +184,9 @@ def test_ionization_response_matches_postprocess_scaling():
     np.testing.assert_allclose(response, [[9.0 / 8.0, 10.0 / 16.0]])
 
 
-def test_convergence_has_one_row_per_chunk_from_two_onward(
-    tmp_path, monkeypatch
-):
+def test_convergence_has_one_row_per_chunk_from_two_onward(tmp_path, monkeypatch):
     geometry = {"volume/cm3": np.ones(3)}
-    monkeypatch.setattr(
-        "atris_tools.gather.process_psf", lambda path: (geometry, 3)
-    )
+    monkeypatch.setattr("atris_tools.gather.process_psf", lambda path: (geometry, 3))
     primary = np.array([0.0, 1.0, 1.0, 0.0])
     primary_snapshots = {count: count * primary for count in (1, 2, 3)}
     ionization_paths = []
@@ -245,8 +234,7 @@ def test_ionization_change_reports_actual_comparison_fraction(caplog):
         log_ionization_change("alphas", row)
 
     assert caplog.messages == [
-        "Alpha ionization change after final 3 of 21 completed chunks "
-        "(14.3%): 1.80%"
+        "Alpha ionization change after final 3 of 21 completed chunks " "(14.3%): 1.80%"
     ]
 
 
@@ -255,7 +243,9 @@ def test_gather_histogram_sums_all_columns_and_plane_values(tmp_path):
     second = tmp_path / "second.csv"
     destination = tmp_path / "total.csv"
     write_histogram(first, [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]], plane_sum=2.5)
-    write_histogram(second, [[10, 20, 30, 40, 50], [60, 70, 80, 90, 100]], plane_sum=4.0)
+    write_histogram(
+        second, [[10, 20, 30, 40, 50], [60, 70, 80, 90, 100]], plane_sum=4.0
+    )
 
     total = gather_histogram([first, second], destination)
 
@@ -285,8 +275,7 @@ def test_gather_histogram_combines_seed_provenance(tmp_path):
     header, _, _ = read_histogram(destination)
     assert "#annotation atris.gathered_chunks 2" in header
     assert (
-        "#annotation atris.random_seed_pairs "
-        "123456:654321,111111:222222"
+        "#annotation atris.random_seed_pairs " "123456:654321,111111:222222"
     ) in header
     assert "#annotation atris.random_seed_pairs_complete true" in header
 
@@ -309,12 +298,8 @@ def test_incremental_gather_reads_only_new_chunks(tmp_path, monkeypatch):
     second = tmp_path / "second.csv"
     destination = tmp_path / "total.csv"
     state = tmp_path / "protons.gathered-chunks.txt"
-    write_histogram(
-        first, [[1, 2, 3, 4, 5]], seed_pairs="111111:222222"
-    )
-    write_histogram(
-        second, [[10, 20, 30, 40, 50]], seed_pairs="333333:444444"
-    )
+    write_histogram(first, [[1, 2, 3, 4, 5]], seed_pairs="111111:222222")
+    write_histogram(second, [[10, 20, 30, 40, 50]], seed_pairs="333333:444444")
     gather_histogram([first], destination)
     state.write_text("protons 111111 222222\n")
 
@@ -342,14 +327,11 @@ def test_incremental_gather_reads_only_new_chunks(tmp_path, monkeypatch):
     np.testing.assert_array_equal(total, [[11, 22, 33, 44, 55]])
     assert "#annotation atris.gathered_chunks 2" in header
     assert (
-        "#annotation atris.random_seed_pairs "
-        "111111:222222,333333:444444"
+        "#annotation atris.random_seed_pairs " "111111:222222,333333:444444"
     ) in header
 
 
-def test_incremental_gather_rebuilds_after_prior_chunk_changes(
-    tmp_path, monkeypatch
-):
+def test_incremental_gather_rebuilds_after_prior_chunk_changes(tmp_path, monkeypatch):
     first = tmp_path / "first.csv"
     second = tmp_path / "second.csv"
     destination = tmp_path / "total.csv"
@@ -399,7 +381,9 @@ def test_gather_histogram_rejects_incompatible_input_without_replacing_destinati
         write_histogram(second, [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
     else:
         write_histogram(second, [[1, 2, 3, 4, 5]])
-        second.write_text(second.read_text().replace(COLUMNS, "entries,Sw,other,Sxw0,Sx2w0"))
+        second.write_text(
+            second.read_text().replace(COLUMNS, "entries,Sw,other,Sxw0,Sx2w0")
+        )
 
     destination.write_text("existing canonical output\n")
     with pytest.raises(ValueError):
@@ -442,9 +426,7 @@ def test_gather_simulation_uses_only_completed_chunks(tmp_path, caplog):
 def test_gather_simulation_with_no_complete_chunks_writes_nothing(tmp_path):
     (tmp_path / "chunks").mkdir()
 
-    assert gather_simulation(
-        tmp_path, [("alphas", "123456", "654321")], "alphas"
-    ) == 0
+    assert gather_simulation(tmp_path, [("alphas", "123456", "654321")], "alphas") == 0
     assert list(tmp_path.glob("alphas_*.csv")) == []
 
 
@@ -534,9 +516,7 @@ def test_gather_root_histograms_writes_convergence(tmp_path, monkeypatch):
         ("protons", "333333", "444444"),
     ]
     geometry = {"volume/cm3": np.ones(3)}
-    monkeypatch.setattr(
-        "atris_tools.gather.process_psf", lambda path: (geometry, 3)
-    )
+    monkeypatch.setattr("atris_tools.gather.process_psf", lambda path: (geometry, 3))
     for entry, value in zip(entries, (1.0, 3.0)):
         prefix = chunks / ("%s_%s_%s" % entry)
         write_root_histograms(

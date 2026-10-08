@@ -1,6 +1,5 @@
 """Small unit conversions used when reading AtRIS input files."""
 
-
 ENERGY_TO_MEV = {
     "eV": 1.0e-6,
     "keV": 1.0e-3,

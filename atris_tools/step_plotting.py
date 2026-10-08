@@ -22,7 +22,6 @@ from .input_plotting import (
 )
 from .step_output import iterate_step_records, process_name
 
-
 ENERGY_SAMPLE_LIMIT = 100_000
 BAR_LIMIT = 12
 SHOWER_SPECIES_LIMIT = 6
@@ -62,9 +61,7 @@ def read_step_trace(filename, sample_limit=ENERGY_SAMPLE_LIMIT):
             first_event = (
                 event_id if first_event is None else min(first_event, event_id)
             )
-            last_event = (
-                event_id if last_event is None else max(last_event, event_id)
-            )
+            last_event = event_id if last_event is None else max(last_event, event_id)
             event_counts[event_id] += 1
             particle_counts[pdg] += 1
             process_counts[process_name(row["step_process"]) or "unknown"] += 1
@@ -140,20 +137,14 @@ def plot_step_trace(simname, summary):
     )
 
     development_axis = axes[1, 0]
-    detector_ids, plot_positions, plot_edges = shell_coordinates(
-        layers, detector_ids
-    )
-    counts = np.asarray(
-        [summary["detector_counts"][value] for value in detector_ids]
-    )
+    detector_ids, plot_positions, plot_edges = shell_coordinates(layers, detector_ids)
+    counts = np.asarray([summary["detector_counts"][value] for value in detector_ids])
     deposits = np.asarray(
         [summary["detector_deposit"][value] for value in detector_ids]
     )
     positive_deposit = deposits > 0
     deposit_axis = development_axis.twiny() if np.any(positive_deposit) else None
-    boundary_axis = (
-        deposit_axis if deposit_axis is not None else development_axis
-    )
+    boundary_axis = deposit_axis if deposit_axis is not None else development_axis
     mark_model_regions(boundary_axis, model_edges)
     development_axis.plot(counts, plot_positions, color="#18788f", label="Steps")
     setup_shell_axis(development_axis)

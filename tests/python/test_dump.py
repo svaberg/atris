@@ -10,10 +10,7 @@ from atris_tools.step_output import STEP_FIELDS
 
 
 def write_ntuple(path, name, fields, row):
-    columns = {
-        field: np.asarray([value])
-        for field, value in zip(fields, row)
-    }
+    columns = {field: np.asarray([value]) for field, value in zip(fields, row)}
     branch_types = {
         field: "string" if values.dtype.kind in "SU" else values.dtype
         for field, values in columns.items()

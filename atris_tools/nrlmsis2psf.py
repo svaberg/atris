@@ -15,10 +15,18 @@ from .cli import (
     configure_logging,
 )
 from .psf import (
-    INNER_RADIUS, OUTER_RADIUS, PHI_END, THETA_END, DETECTOR_ID,
-    TEMPERATURE, DENSITY, PRESSURE, STATE, FIRST_ELEMENT, load_psf,
+    INNER_RADIUS,
+    OUTER_RADIUS,
+    PHI_END,
+    THETA_END,
+    DETECTOR_ID,
+    TEMPERATURE,
+    DENSITY,
+    PRESSURE,
+    STATE,
+    FIRST_ELEMENT,
+    load_psf,
 )
-
 
 HEADER_MARKER = "Year Mon Day"
 HEADER_FIELD_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9.-]*(?:\([^)]*\))?")
@@ -115,23 +123,25 @@ def _write_psf(data, filename="simulation.psf"):
 
     boltzmann_constant = 1.38064852e-23
     total_pressure = (
-        oxygen_molecules
-        + nitrogen
-        + argon
-        + helium
-        + hydrogen
-    ) * boltzmann_constant * 1_000_000 * temperature
+        (oxygen_molecules + nitrogen + argon + helium + hydrogen)
+        * boltzmann_constant
+        * 1_000_000
+        * temperature
+    )
 
     atomic_mass_unit = 1.66054e-24
-    masses = np.column_stack(
-        (
-            nitrogen * (2 * 14.0067),
-            oxygen_molecules * (2 * 15.9994),
-            argon * 39.948,
-            helium * 4.0026,
-            hydrogen * 1.008,
+    masses = (
+        np.column_stack(
+            (
+                nitrogen * (2 * 14.0067),
+                oxygen_molecules * (2 * 15.9994),
+                argon * 39.948,
+                helium * 4.0026,
+                hydrogen * 1.008,
+            )
         )
-    ) * atomic_mass_unit
+        * atomic_mass_unit
+    )
     mass_fractions = masses / masses.sum(axis=1, keepdims=True)
 
     atmosphere = np.zeros((len(data), FIRST_ELEMENT + mass_fractions.shape[1]))
@@ -186,14 +196,12 @@ def _read_table(path):
 
     header = lines[header_indices[0]]
     header_fields = [
-        field.partition("(")[0]
-        for field in HEADER_FIELD_PATTERN.findall(header)
+        field.partition("(")[0] for field in HEADER_FIELD_PATTERN.findall(header)
     ]
     missing = [field for field in TABLE_FIELDS if field not in header_fields]
     if missing:
         raise ValueError(
-            "%s is missing NRLMSIS columns: %s"
-            % (path, ", ".join(missing))
+            "%s is missing NRLMSIS columns: %s" % (path, ", ".join(missing))
         )
     selected_columns = [header_fields.index(field) for field in TABLE_FIELDS]
     altitude_column = header_fields.index("Heit")
@@ -308,8 +316,7 @@ def merge_nrlmsis(input_paths):
     if missing_replacements:
         altitudes = ", ".join("%.3f" % value for value in missing_replacements)
         raise ValueError(
-            "Suspicious NRLMSIS rows at %s km have no valid replacement"
-            % altitudes
+            "Suspicious NRLMSIS rows at %s km have no valid replacement" % altitudes
         )
 
     altitudes = sorted(valid_rows)
@@ -363,14 +370,15 @@ def _validate_psf(path, atmosphere_rows):
             % (path, output.shape, expected_rows, expected_columns)
         )
     atmosphere = output[2:-1]
-    physical = np.column_stack((
-        atmosphere[:, [TEMPERATURE, DENSITY, PRESSURE]],
-        atmosphere[:, FIRST_ELEMENT:],
-    ))
+    physical = np.column_stack(
+        (
+            atmosphere[:, [TEMPERATURE, DENSITY, PRESSURE]],
+            atmosphere[:, FIRST_ELEMENT:],
+        )
+    )
     if not np.all(np.isfinite(physical)) or np.any(physical <= 0):
         raise RuntimeError(
-            "%s contains non-finite, zero, or negative atmospheric values"
-            % path
+            "%s contains non-finite, zero, or negative atmospheric values" % path
         )
 
 
@@ -421,8 +429,7 @@ def main():
         type=Path,
         metavar="PSF_FILE",
         help=(
-            "PSF file to write. Required when more than one input table is "
-            "supplied."
+            "PSF file to write. Required when more than one input table is " "supplied."
         ),
     )
     add_logging_arguments(parser)

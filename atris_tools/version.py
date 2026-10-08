@@ -6,7 +6,6 @@ import re
 import subprocess
 import sys
 
-
 GIT_DESCRIBE_VERSION = re.compile(
     r"^v?(\d+)\.(\d+)\.(\d+)-(\d+)-g([0-9a-f]+)(-dirty)?$"
 )
@@ -21,8 +20,15 @@ def git_describe_to_pep440(git_version):
 
     major, minor, patch, distance, commit, dirty = match.groups()
     pep440_version = (
-        major + "." + minor + "." + str(int(patch) + 1)
-        + ".dev" + distance + "+g" + commit
+        major
+        + "."
+        + minor
+        + "."
+        + str(int(patch) + 1)
+        + ".dev"
+        + distance
+        + "+g"
+        + commit
     )
     if dirty:
         pep440_version += ".d" + datetime.now(timezone.utc).strftime("%Y%m%d")
@@ -72,14 +78,17 @@ def report_versions():
         )
         return
 
-    executable_version = output[len("AtRIS "):]
+    executable_version = output[len("AtRIS ") :]
     displayed_executable_version = git_describe_to_pep440(executable_version)
     print("AtRIS executable version (PEP 440): " + displayed_executable_version)
     print("atris-tools version (PEP 440):      " + displayed_tools_version)
     if not versions_match(tools_version, executable_version):
         print(
             "Warning: the AtRIS executable was built from a different source "
-            "revision (atris-tools " + displayed_tools_version
-            + "; AtRIS " + displayed_executable_version + ").",
+            "revision (atris-tools "
+            + displayed_tools_version
+            + "; AtRIS "
+            + displayed_executable_version
+            + ").",
             file=sys.stderr,
         )

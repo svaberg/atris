@@ -16,8 +16,7 @@ def _tree(root_file, tree_name, field_names):
     missing = [name for name in field_names if name not in tree]
     if missing:
         raise ValueError(
-            "%s ntuple is missing columns: %s"
-            % (tree_name, ", ".join(missing))
+            "%s ntuple is missing columns: %s" % (tree_name, ", ".join(missing))
         )
     return tree
 

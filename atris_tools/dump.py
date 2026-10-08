@@ -9,7 +9,6 @@ import sys
 from .cli import HelpFormatter, add_version_argument
 from .root_output import iterate_ntuple, ntuple_fields
 
-
 NTUPLES = ("interfaces", "steps")
 
 
