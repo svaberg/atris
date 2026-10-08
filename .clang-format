@@ -1,4 +1,4 @@
-# Match the formatter configuration used by Geant4.
+# Follow Geant4 formatting while keeping preprocessor directives unindented.
 ---
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: false
@@ -62,7 +62,7 @@ IncludeCategories:
     Priority: 2
 IndentAccessModifiers: true
 IndentCaseLabels: true
-IndentPPDirectives: AfterHash
+IndentPPDirectives: None
 IndentWidth: 2
 IndentWrappedFunctionNames: false
 KeepEmptyLinesAtTheStartOfBlocks: false
