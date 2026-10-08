@@ -26,12 +26,19 @@ int main(int argc, char** argv)
     return 1;
   }
 
+  // ========================================================================
+  //
+  //                         SETUP AND CONFIGURATION
+  //
+  // Create the run state and Geant4 objects, choose worker threads, and
+  // register the commands that the selected macro will use.
+  //
+  // ========================================================================
   const auto totalStart = std::chrono::steady_clock::now();
   const G4String macroName = argv[1];
   atris::RunSettings runSettings;
   atris::PhantomResponses phantomResponses;
 
-  // Configure Geant4 for this process.
   // Set the master random engine before the run manager captures it for workers.
   G4Random::setTheEngine(new CLHEP::MTwistEngine);
   G4MTRunManager* const runManager = new G4MTRunManager;
@@ -48,27 +55,30 @@ int main(int argc, char** argv)
   // Keep the command messengers and their backing state alive for the macro.
   atris::RunConfiguration runConfiguration(runManager, runSettings, gdmlParser, phantomResponses);
 
-  // Execute the selected macro through Geant4's UI manager.
+  // ========================================================================
+  //
+  //                  MACRO EXECUTION AND PARTICLE TRANSPORT
+  //
+  // Geant4 executes the macro synchronously. Particle transport starts at
+  // /run/beamOn; control returns after macro execution finishes or fails.
+  //
+  // ========================================================================
   const G4String command = "/control/execute " + macroName;
   G4cout << "### AtRIS: executing macro " << macroName << G4endl;
   G4cout << "### AtRIS: Starting the simulation " << G4endl;
 
   const auto macroStart = std::chrono::steady_clock::now();
 
-  // ========================================================================
-  //
-  //                  MACRO EXECUTION AND PARTICLE TRANSPORT
-  //
-  // Geant4 executes the selected macro in the call below. Particle transport
-  // starts whenever the macro reaches /run/beamOn.
-  //
-  // This call is synchronous: execution stays here while Geant4 processes
-  // the macro and runs the requested particle transport. Control returns
-  // only when macro execution finishes or fails.
-  //
-  // ========================================================================
   const G4int commandStatus = G4UImanager::GetUIpointer()->ApplyCommand(command);
 
+  // ========================================================================
+  //
+  //                         CLEANUP AND RUN SUMMARY
+  //
+  // Report the macro result, destroy the Geant4 run manager, and print
+  // macro and total wall times before returning the process exit status.
+  //
+  // ========================================================================
   const auto macroEnd = std::chrono::steady_clock::now();
   const G4bool commandSucceeded = commandStatus == fCommandSucceeded;
   const G4int workerThreads = runManager->GetNumberOfThreads();
