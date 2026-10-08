@@ -17,9 +17,9 @@ ionization convergence. **Outputs:** canonical `<species>_*.csv` histograms or
 at least two chunks are available. Outputs are updated/replaced; no completed
 chunks means that species is skipped, not that old canonical files are removed.
 
-For ROOT chunks, response histograms and metadata are gathered while interface
-and step ntuples remain in the chunk files. This command does not run missing
-chunks, normalize response tables, or plot. See
+For CSV and ROOT chunks, response histograms and metadata are gathered while
+interface and step ntuples remain in the chunk files. This command does not run
+missing chunks, normalize response tables, or plot. See
 [gather state and convergence](../chunks.md).
 
 The progress summary reports how many chunks have completed. With at least
@@ -51,7 +51,7 @@ Only chunks with .COMPLETE markers are included; partial files from failed or ru
 chunks are ignored. Primary and ionization histograms are rebuilt to update the
 complete convergence history. Other CSV histograms reuse a validated aggregate and
 add only newly completed chunks; ROOT response histograms are rebuilt together. ROOT
-ntuples remain in their individual chunk files. This command does not run missing
+interface and step ntuples remain in their chunk files. This command does not run missing
 chunks, scale physical response files, or make plots. To select one
 species in the current directory, use an explicit dot, for example: atris-gather .
 protons.

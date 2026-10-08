@@ -22,6 +22,12 @@ from atris_tools.gather import (
     read_histogram,
     write_convergence,
 )
+from atris_tools.output_ntuples import (
+    METADATA_SCHEMA,
+    RESPONSE_SCHEMA,
+    read_csv_ntuple,
+    write_csv_ntuple,
+)
 
 COLUMNS = "entries,Sw,Sw2,Sxw0,Sx2w0"
 
@@ -32,8 +38,6 @@ def write_histogram(
     *,
     plane_sum=1.0,
     title="kinetic energy",
-    seed_pairs=None,
-    annotation=None,
     axes=(),
 ):
     lines = [
@@ -43,10 +47,6 @@ def write_histogram(
         f"#planes_Sxyw {plane_sum}",
     ]
     lines.extend(axes)
-    if seed_pairs is not None:
-        lines.append("#annotation atris.random_seed_pairs " + seed_pairs)
-    if annotation is not None:
-        lines.append("#annotation " + annotation)
     lines.append(COLUMNS)
     lines.extend(",".join(str(value) for value in row) for row in rows)
     Path(path).write_text("\n".join(lines) + "\n")
@@ -72,6 +72,36 @@ def write_root_histograms(path, primary, direction, ionization=None, responses=N
         root_file["interfaces"] = {"event_id": np.array([1], dtype=np.int32)}
         if responses is not None:
             root_file["responses"] = responses
+
+
+def write_csv_ntuples(prefix, seed1, seed2):
+    metadata = {
+        "schema": np.array([2]),
+        "atris_version": np.array(["test"]),
+        "input_prefix": np.array(["simulation"]),
+        "physics_list": np.array(["FTFP_BERT_HP"]),
+        "output_mode": np.array(["response"]),
+        "phantom_count": np.array([0]),
+        "seeds_explicit": np.array([1]),
+        "random_seed_1": np.array([seed1]),
+        "random_seed_2": np.array([seed2]),
+    }
+    responses = {
+        name: np.array([], dtype=int if value_type == "int" else str)
+        for value_type, name in RESPONSE_SCHEMA
+    }
+    write_csv_ntuple(
+        Path(str(prefix) + "_nt_metadata_t0.csv"),
+        "AtRIS output metadata",
+        METADATA_SCHEMA,
+        metadata,
+    )
+    write_csv_ntuple(
+        Path(str(prefix) + "_nt_responses_t0.csv"),
+        "AtRIS phantom response definitions",
+        RESPONSE_SCHEMA,
+        responses,
+    )
 
 
 def test_read_chunk_plan_reports_malformed_line_number(tmp_path):
@@ -263,43 +293,13 @@ def test_gather_histogram_sums_all_columns_and_plane_values(tmp_path):
     assert destination.read_bytes() == first_result
 
 
-def test_gather_histogram_combines_seed_provenance(tmp_path):
-    first = tmp_path / "first.csv"
-    second = tmp_path / "second.csv"
-    destination = tmp_path / "total.csv"
-    write_histogram(first, [[1, 2, 3, 4, 5]], seed_pairs="123456:654321")
-    write_histogram(second, [[1, 2, 3, 4, 5]], seed_pairs="111111:222222")
-
-    gather_histogram([first, second], destination)
-
-    header, _, _ = read_histogram(destination)
-    assert "#annotation atris.gathered_chunks 2" in header
-    assert (
-        "#annotation atris.random_seed_pairs " "123456:654321,111111:222222"
-    ) in header
-    assert "#annotation atris.random_seed_pairs_complete true" in header
-
-
-def test_gather_histogram_records_different_atris_annotations(tmp_path):
-    first = tmp_path / "first.csv"
-    second = tmp_path / "second.csv"
-    write_histogram(first, [[1, 2, 3, 4, 5]], annotation="atris.quantity ionization")
-    write_histogram(second, [[1, 2, 3, 4, 5]], annotation="atris.quantity dose")
-
-    destination = tmp_path / "total.csv"
-    gather_histogram([first, second], destination)
-
-    header, _, _ = read_histogram(destination)
-    assert "#annotation atris.quantity ionization | dose" in header
-
-
 def test_incremental_gather_reads_only_new_chunks(tmp_path, monkeypatch):
     first = tmp_path / "first.csv"
     second = tmp_path / "second.csv"
     destination = tmp_path / "total.csv"
     state = tmp_path / "protons.gathered-chunks.txt"
-    write_histogram(first, [[1, 2, 3, 4, 5]], seed_pairs="111111:222222")
-    write_histogram(second, [[10, 20, 30, 40, 50]], seed_pairs="333333:444444")
+    write_histogram(first, [[1, 2, 3, 4, 5]])
+    write_histogram(second, [[10, 20, 30, 40, 50]])
     gather_histogram([first], destination)
     state.write_text("protons 111111 222222\n")
 
@@ -323,12 +323,8 @@ def test_incremental_gather_reads_only_new_chunks(tmp_path, monkeypatch):
     )
 
     assert reads == [destination, second]
-    header, _, total = original_read_histogram(destination)
+    _, _, total = original_read_histogram(destination)
     np.testing.assert_array_equal(total, [[11, 22, 33, 44, 55]])
-    assert "#annotation atris.gathered_chunks 2" in header
-    assert (
-        "#annotation atris.random_seed_pairs " "111111:222222,333333:444444"
-    ) in header
 
 
 def test_incremental_gather_rebuilds_after_prior_chunk_changes(tmp_path, monkeypatch):
@@ -406,6 +402,7 @@ def test_gather_simulation_uses_only_completed_chunks(tmp_path, caplog):
         complete_prefix.with_name(complete_prefix.name + "_h1_h1.1.csv"),
         [[0, 0, 0, 0, 0], [3, 30, 300, 300, 3000]],
     )
+    write_csv_ntuples(complete_prefix, 111111, 222222)
     write_histogram(
         unfinished_prefix.with_name(unfinished_prefix.name + "_h1_h1.1.csv"),
         [[99, 99, 99, 99, 99]],
@@ -420,6 +417,9 @@ def test_gather_simulation_uses_only_completed_chunks(tmp_path, caplog):
         data,
         np.array([[0, 0, 0, 0, 0], [3, 30, 300, 300, 3000]], dtype=float),
     )
+    metadata = read_csv_ntuple(tmp_path / "protons", "metadata", METADATA_SCHEMA)
+    assert metadata["random_seed_1"].tolist() == [111111]
+    assert metadata["random_seed_2"].tolist() == [222222]
     assert not (tmp_path / "alphas_h1_h1.1.csv").exists()
 
 

@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import uproot
 
+from .output_ntuples import RESPONSE_SCHEMA, read_csv_ntuple
 from .root_output import read_ntuple
 
 PRIMARY_HISTOGRAM = "h1.1"
@@ -23,12 +24,8 @@ _RESPONSE_PROPERTIES = {
     "/atris/phantom/response/" + command: field
     for command, field in _RESPONSE_COMMAND_FIELDS.items()
 }
-_RESPONSE_FIELDS = ("phantom_stem", *_RESPONSE_COMMAND_FIELDS.values())
+_RESPONSE_FIELDS = tuple(name for _, name in RESPONSE_SCHEMA)
 _RESPONSE_SCALE_FIELDS = tuple(_RESPONSE_COMMAND_FIELDS.values())[2:]
-_RESPONSE_ANNOTATIONS = {
-    "atris." + (field if field == "phantom_stem" else "response_" + field): field
-    for field in _RESPONSE_FIELDS
-}
 
 
 @dataclass(frozen=True)
@@ -85,6 +82,16 @@ def _root_response_definitions(filename):
             {field: record[field] for field in _RESPONSE_FIELDS}, filename
         )
         for record in records
+    ]
+
+
+def _csv_response_definitions(prefix):
+    columns = read_csv_ntuple(prefix, "responses", RESPONSE_SCHEMA)
+    return [
+        _response_definition(
+            {field: columns[field][index] for field in _RESPONSE_FIELDS}, prefix
+        )
+        for index in range(len(columns[_RESPONSE_FIELDS[0]]))
     ]
 
 
@@ -161,19 +168,6 @@ def read_csv_histogram(path):
     lines, column_index = _csv_lines(path)
     data = np.loadtxt(path, delimiter=",", skiprows=column_index + 1)
     return lines[:column_index], lines[column_index], np.atleast_2d(data)
-
-
-def csv_histogram_annotations(path):
-    """Return native Geant4 annotations from a CSV histogram header."""
-    annotations = {}
-    for line in Path(path).read_text().splitlines():
-        if not line.startswith("#"):
-            break
-        if line.startswith("#annotation "):
-            fields = line.split(maxsplit=2)
-            if len(fields) == 3:
-                annotations[fields[1]] = fields[2]
-    return annotations
 
 
 def csv_histogram_axes(path):
@@ -312,17 +306,7 @@ class ResponseHistogramReader:
         if self.format == "root":
             configured = _root_response_definitions(str(self.prefix) + ".root")
         else:
-            configured = []
-            for histogram_name in output_names:
-                annotations = csv_histogram_annotations(
-                    csv_histogram_path(self.prefix, histogram_name)
-                )
-                values = {
-                    field: annotations[key]
-                    for key, field in _RESPONSE_ANNOTATIONS.items()
-                    if key in annotations
-                }
-                configured.append(_response_definition(values, histogram_name))
+            configured = _csv_response_definitions(self.prefix)
 
         by_histogram = {}
         for response in configured:

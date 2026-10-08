@@ -38,14 +38,9 @@ when analyzing an existing run.
 
 Files begin with `#` metadata lines, followed by a column header and numeric
 rows. Axes are described by `#axis edges ...` or `#axis fixed N low high`.
-AtRIS adds native Geant4 `#annotation` records identifying the histogram,
-quantity, accumulated weight, simulation input prefix, physics list, output
-mode, phantom count, software version, and random seed pair. Phantom-response
-histograms also record their phantom stem, response name, source file, and
-three response factor settings. A gathered histogram records the number of
-represented chunks and all known seed pairs. Other provenance values that
-differ between compatible chunks are retained with ` | ` separators; they do
-not by themselves prevent gathering.
+Geant4 records axis titles as native `#annotation axis_*.title` lines. Run
+provenance and phantom-response definitions use the same metadata ntuples as
+ROOT output rather than being copied into every histogram header.
 
 | Column | Meaning for a histogram fill with weight `w` |
 | --- | --- |
@@ -63,7 +58,7 @@ Underflow and overflow bins are included. For an energy-versus-detector H2
 with `D` detector bins and `B` energy bins, the post-processor reshapes `Sw` to
 `(D+2, B+2)`: energy varies fastest. Slicing `[1:-1, 1:-1]` removes the
 underflow/overflow rows and columns. The raw primary H1 similarly contains
-`B+2` rows. Header length varies with the available annotations, so readers
+`B+2` rows. Header length varies with the available metadata, so readers
 locate the first non-comment line rather than assuming a fixed line count.
 
 ### Detector and interface IDs
@@ -201,21 +196,18 @@ literally, including the placement of the square inside the logarithm; they
 are not a statement that the implementation matches a particular radiation
 protection standard.
 
-(root-output)=
+(output-metadata)=
 
-## ROOT output: `<name>.root`
+## Output metadata ntuples
 
-When the simulation argument ends in `.root`, Geant4 writes one ROOT file. It
-contains the response histograms listed above, `metadata` and `responses`
-ntuples, and the particle ntuples selected by modes `0` and `1`. AtRIS and its
-Python tools use Uproot, so reading these products does not require a separate
-ROOT installation. ROOT histograms do not retain Geant4's native histogram
-annotations. AtRIS therefore writes the equivalent response definitions and
-factor settings to the `responses` ntuple; post-processing does not require the
-species macro.
+CSV and ROOT output use the same `metadata` and `responses` ntuple schemas. In
+ROOT output they are objects inside `<name>.root`. Geant4 writes the CSV forms
+as `<name>_nt_metadata_t0.csv` and `<name>_nt_responses_t0.csv`; the `t0`
+suffix identifies the worker that writes the shared records. `atris-gather`
+writes canonical gathered files without that suffix.
 
 The `metadata` ntuple contains one row for an ordinary run or one row per
-represented chunk in a gathered ROOT file:
+represented chunk after gathering:
 
 | Field | Meaning |
 | --- | --- |
@@ -243,6 +235,18 @@ The `responses` ntuple contains one row per configured phantom response:
 | `scale_by_crossing_energy` | `1` when each table coefficient is multiplied by crossing kinetic energy. |
 | `scale_by_radiation_weight` | `1` when each table coefficient is multiplied by the implemented radiation weight. |
 | `scale_by_inverse_phantom_mass` | `1` when post-processing divides the response by phantom mass. |
+
+(root-output)=
+
+## ROOT output: `<name>.root`
+
+When the simulation argument ends in `.root`, Geant4 writes one ROOT file. It
+contains the response histograms and metadata ntuples described above, plus the
+particle ntuples selected by modes `0` and `1`. AtRIS and its Python tools use
+Uproot, so reading these products does not require a separate ROOT installation.
+Histogram names, titles, and axis titles are stored in the corresponding ROOT
+objects. Post-processing reads response definitions from the `responses` ntuple
+and does not require the species macro.
 
 ### Interface ntuple: `interfaces`
 

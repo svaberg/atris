@@ -125,7 +125,7 @@ configuration-consistency check.
 
 | Product | Contents |
 | --- | --- |
-| `<species>_*.csv` or `<species>.root` | Sum of the selected completed raw response histograms. |
+| `<species>_*.csv` or `<species>.root` | Sum of the selected completed response histograms and their metadata ntuples. |
 | `<species>.gathered-chunks.txt` | The plan triples included in the aggregate, in plan order. |
 | `<species>.convergence.csv` | Ionization convergence history when at least two chunks are available. |
 
@@ -143,9 +143,9 @@ directory rather than recycling old result directories.
 
 Gather can inspect the completed subset while workers run, provided completed
 chunks remain immutable. For a final result, first verify whole-plan completion.
-Gather does not merge the `interfaces` or `steps` ROOT ntuples, scale response
+Gather does not merge the `interfaces` or `steps` particle ntuples, scale response
 tables, or make plots. Those particle records remain per chunk; the canonical
-ROOT file contains the gathered response histograms and their metadata rows.
+output contains the gathered response histograms and their metadata rows.
 Run post-processing and plotting separately for canonical response products.
 
 ## Convergence CSV

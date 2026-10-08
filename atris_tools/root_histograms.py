@@ -8,6 +8,7 @@ import numpy as np
 import uproot
 from uproot.writing.identify import to_TAxis, to_TH1x, to_TH2x
 
+from .output_ntuples import combine_records
 from .response_histograms import PRIMARY_HISTOGRAM
 
 ROOT_STATISTICS = (
@@ -100,26 +101,6 @@ def _validate_histograms(reference, current, path):
                 raise ValueError("ROOT histogram axes differ: %s in %s" % (name, path))
 
 
-def _combine_records(records, *, unique=False):
-    if not records:
-        return None
-    fields = set.intersection(*(set(record) for record in records))
-    if not fields:
-        return None
-    combined = {
-        name: np.concatenate([record[name] for record in records])
-        for name in sorted(fields)
-    }
-    if not unique or not combined:
-        return combined
-
-    rows = list(dict.fromkeys(zip(*(values.tolist() for values in combined.values()))))
-    return {
-        name: np.asarray([row[index] for row in rows], dtype=values.dtype)
-        for index, (name, values) in enumerate(combined.items())
-    }
-
-
 def combine_root_histograms(source_paths, observe=None):
     """Add compatible ROOT histograms and preserve their metadata."""
     total, metadata, responses = read_root_file(source_paths[0])
@@ -147,8 +128,8 @@ def combine_root_histograms(source_paths, observe=None):
 
     return (
         total,
-        _combine_records(metadata_records),
-        _combine_records(response_records, unique=True),
+        combine_records(metadata_records),
+        combine_records(response_records, unique=True),
     )
 
 

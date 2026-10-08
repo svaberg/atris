@@ -13,11 +13,13 @@ import uproot
 from atris_tools.atrismacrogen import macroGenManager
 from atris_tools.gather import gather_simulation
 from atris_tools.interface_output import read_root
-from atris_tools.postprocess import process_run
-from atris_tools.response_histograms import (
-    ResponseHistogramReader,
-    csv_histogram_annotations,
+from atris_tools.output_ntuples import (
+    METADATA_SCHEMA,
+    RESPONSE_SCHEMA,
+    read_csv_ntuple,
 )
+from atris_tools.postprocess import process_run
+from atris_tools.response_histograms import ResponseHistogramReader
 from atris_tools.root_output import has_ntuple, read_ntuple
 from atris_tools.run_chunks import run_chunks
 from atris_tools.scatter import chunk_macro
@@ -253,15 +255,6 @@ def histogram_entries(path):
     return int(data[:, 0].sum())
 
 
-def histogram_annotations(path):
-    return {
-        fields[1]: fields[2]
-        for line in path.read_text().splitlines()
-        if line.startswith("#annotation ")
-        for fields in [line.split(" ", 2)]
-    }
-
-
 def assert_timing_output(output, worker_threads):
     match = re.search(
         r"### AtRIS timing: Geant4 macro wall time: (\d+\.\d{3}) s "
@@ -362,35 +355,20 @@ def test_macro_runs_one_worker_and_writes_expected_histograms(
         }
         assert written_suffixes == EXPECTED_HISTOGRAM_SUFFIXES
         assert histogram_entries(tmp_path / "protons_h1_h1.1.csv") == 2
-        for path in tmp_path.glob("protons_h*.csv"):
-            annotations = histogram_annotations(path)
-            assert annotations["atris.csv_schema"] == "2"
-            assert annotations["atris.input_prefix"] == "planet"
-            assert annotations["atris.physics_list"] == "FTFP_BERT_HP"
-            assert annotations["atris.output_mode"] == output_mode
-            assert annotations["atris.random_seed_pairs"] == "123456:654321"
-            assert annotations["atris.quantity"]
-        for response_name, factors, source_suffix in (
-            ("dos", ("true", "false", "true"), "response"),
-            ("equi", ("true", "true", "true"), "response"),
-            ("rates", ("false", "false", "false"), "counting"),
-        ):
-            path = tmp_path / (
-                "protons_h2_h2.%s.%s.csv" % (RESPONSE_STEM, response_name)
-            )
-            annotations = histogram_annotations(path)
-            assert annotations["atris.phantom_stem"] == RESPONSE_STEM
-            assert annotations["atris.response_name"] == response_name
-            assert annotations["atris.response_file"] == (
-                "%s_%s.txt" % (RESPONSE_STEM, source_suffix)
-            )
-            assert annotations["atris.response_scale_by_crossing_energy"] == factors[0]
-            assert annotations["atris.response_scale_by_radiation_weight"] == factors[1]
-            assert (
-                annotations["atris.response_scale_by_inverse_phantom_mass"]
-                == factors[2]
-            )
-            assert "atris.phantom_id" not in annotations
+        metadata = read_csv_ntuple(tmp_path / "protons", "metadata", METADATA_SCHEMA)
+        assert set(metadata) == EXPECTED_ROOT_METADATA
+        assert metadata["schema"].tolist() == [2]
+        assert metadata["input_prefix"].tolist() == ["planet"]
+        assert metadata["physics_list"].tolist() == ["FTFP_BERT_HP"]
+        assert metadata["output_mode"].tolist() == [output_mode]
+        assert metadata["random_seed_1"].tolist() == [123456]
+        assert metadata["random_seed_2"].tolist() == [654321]
+        responses = read_csv_ntuple(tmp_path / "protons", "responses", RESPONSE_SCHEMA)
+        assert set(responses) == EXPECTED_ROOT_RESPONSE_METADATA
+        assert responses["name"].tolist() == ["dos", "equi", "rates"]
+        assert responses["scale_by_crossing_energy"].tolist() == [1, 1, 0]
+        assert responses["scale_by_radiation_weight"].tolist() == [0, 1, 0]
+        assert responses["scale_by_inverse_phantom_mass"].tolist() == [1, 1, 0]
 
     with ResponseHistogramReader(tmp_path / "protons") as histograms:
         total_deposition = histograms.values("h2.edep")
@@ -707,11 +685,12 @@ def test_repeated_configuration_uses_last_value(tmp_path, atris_command):
     result = run_atris(atris_command, tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    annotations = csv_histogram_annotations(tmp_path / "protons_h1_h1.1.csv")
-    assert annotations["atris.input_prefix"] == "planet"
-    assert annotations["atris.physics_list"] == "QGSP_BERT"
-    assert annotations["atris.output_mode"] == "response"
-    assert annotations["atris.random_seed_pairs"] == "123456:654321"
+    metadata = read_csv_ntuple(tmp_path / "protons", "metadata", METADATA_SCHEMA)
+    assert metadata["input_prefix"].tolist() == ["planet"]
+    assert metadata["physics_list"].tolist() == ["QGSP_BERT"]
+    assert metadata["output_mode"].tolist() == ["response"]
+    assert metadata["random_seed_1"].tolist() == [123456]
+    assert metadata["random_seed_2"].tolist() == [654321]
     assert not list(tmp_path.glob("superseded*"))
 
 
@@ -732,10 +711,10 @@ def test_macro_uses_cpp_configuration_defaults(tmp_path, atris_command):
     result = run_atris(atris_command, tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    annotations = csv_histogram_annotations(tmp_path / "protons_h1_h1.1.csv")
-    assert annotations["atris.input_prefix"] == "simulation"
-    assert annotations["atris.physics_list"] == "FTFP_BERT_HP"
-    assert annotations["atris.output_mode"] == "response"
+    metadata = read_csv_ntuple(tmp_path / "protons", "metadata", METADATA_SCHEMA)
+    assert metadata["input_prefix"].tolist() == ["simulation"]
+    assert metadata["physics_list"].tolist() == ["FTFP_BERT_HP"]
+    assert metadata["output_mode"].tolist() == ["response"]
 
 
 @pytest.mark.regression
@@ -854,7 +833,7 @@ def test_zero_phantoms_runs_without_phantom_histograms(tmp_path, atris_command):
 
     assert result.returncode == 0, result.stdout + result.stderr
     written_suffixes = {
-        path.name[len("protons") :] for path in tmp_path.glob("protons_*.csv")
+        path.name[len("protons") :] for path in tmp_path.glob("protons_h*.csv")
     }
     assert written_suffixes == EXPECTED_HISTOGRAM_SUFFIXES_WITHOUT_PHANTOMS
 
@@ -932,11 +911,11 @@ def test_repeated_response_identity_uses_last_definition(tmp_path, atris_command
     result = run_atris(atris_command, tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    path = tmp_path / ("protons_h2_h2.%s.dos.csv" % RESPONSE_STEM)
-    annotations = csv_histogram_annotations(path)
-    assert annotations["atris.response_file"] == RESPONSE_STEM + "_counting.txt"
-    assert annotations["atris.response_scale_by_crossing_energy"] == "false"
-    assert annotations["atris.response_scale_by_inverse_phantom_mass"] == "false"
+    responses = read_csv_ntuple(tmp_path / "protons", "responses", RESPONSE_SCHEMA)
+    dos = responses["name"] == "dos"
+    assert responses["file"][dos].tolist() == [RESPONSE_STEM + "_counting.txt"]
+    assert responses["scale_by_crossing_energy"][dos].tolist() == [0]
+    assert responses["scale_by_inverse_phantom_mass"][dos].tolist() == [0]
 
 
 @pytest.mark.regression
