@@ -16,6 +16,7 @@ class HistoManager
 
   private:
     void Book() const;
+    void BookPrimaryMoments() const;
 };
 
 }  // namespace atris

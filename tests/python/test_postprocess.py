@@ -60,6 +60,52 @@ def test_histogram_rejects_inconsistent_arrays_and_incompatible_addition():
     np.testing.assert_array_equal(first.values, np.ones(3))
 
 
+@pytest.mark.parametrize("counts", [0, 1, 2, 4])
+def test_primary_mean_variance_includes_zero_score_primaries(tmp_path, counts):
+    (tmp_path / "protons_h1_h1.1.csv").write_text(
+        f"#axis edges 1 10\nentries,Sw\n0,0\n{counts},{counts}\n0,0\n")
+    # Primary totals [3, 1, 0, 0] give S=4, Q=10; a four-primary mean
+    # has variance 0.5. Companion entries alone must not be used as N.
+    path = tmp_path / "protons_h2_h2.ion.primary.csv"
+    path.write_text("#axis edges 1 10\n#axis edges 0 1\nentries,Sw,Sw2\n"
+                    + "0,0,0\n" * 4 + "2,4,10\n" + "0,0,0\n" * 4)
+    with ResponseHistogramReader(tmp_path / "protons") as reader:
+        variance = reader.mean_variance("h2.ion")
+        assert np.isnan(variance[[0, 2]]).all()
+        if counts < 2:
+            assert np.isnan(variance).all()
+        else:
+            assert variance[1, 1] == pytest.approx(1 if counts == 2 else 0.5)
+            np.testing.assert_array_equal(variance[1, [0, 2]], 0)
+        with pytest.raises(ValueError, match="unavailable"):
+            reader.mean_variance("h2.edep")
+
+
+def test_primary_mean_variance_rejects_missing_or_inconsistent_moments(tmp_path):
+    (tmp_path / "protons_h1_h1.1.csv").write_text(
+        "#axis edges 1 10\nentries,Sw\n0,0\n2,2\n0,0\n")
+    path = tmp_path / "protons_h2_h2.ion.primary.csv"
+    with ResponseHistogramReader(tmp_path / "protons") as reader:
+        for columns, row, message in (("entries,Sw", "2,4", "unavailable"),
+                                      ("entries,Sw,Sw2", "2,4,1", "Inconsistent")):
+            path.write_text("#axis edges 1 10\n#axis edges 0 1\n"
+                            + columns + "\n" + (row + "\n") * 9)
+            with pytest.raises(ValueError, match=message):
+                reader.mean_variance("h2.ion")
+
+
+def test_primary_mean_variance_warns_when_csv_rounding_limits_subtraction(tmp_path):
+    (tmp_path / "protons_h1_h1.1.csv").write_text(
+        "#axis edges 1 10\nentries,Sw\n0,0\n2,2\n0,0\n")
+    (tmp_path / "protons_h2_h2.ion.primary.csv").write_text(
+        "#axis edges 1 10\n#axis edges 0 1\nentries,Sw,Sw2\n"
+        + "0,0,0\n" * 4 + "2,2.46914,3.04831\n" + "0,0,0\n" * 4)
+    with ResponseHistogramReader(tmp_path / "protons") as reader:
+        with pytest.warns(RuntimeWarning, match="CSV rounding"):
+            variance = reader.mean_variance("h2.ion")
+        assert variance[1, 1] == 0
+
+
 def write_root_response(path, include_total_deposition=True):
     energy_edges = np.array([1.0, 10.0, 100.0])
     detector_edges = np.array([-0.5, 0.5, 1.5, 2.5, 3.5])

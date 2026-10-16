@@ -26,6 +26,7 @@ message(STATUS "AtRIS version: ${ATRIS_VERSION}")
 
 set(ATRIS_HEADERS
   include/DetectorConstruction.hh
+  include/EventAction.hh
   include/HistoManager.hh
   include/NtupleSchema.hh
   include/OutputMode.hh
@@ -39,6 +40,7 @@ set(ATRIS_HEADERS
 set(ATRIS_SOURCES
   src/main.cc
   src/DetectorConstruction.cc
+  src/EventAction.cc
   src/HistoManager.cc
   src/PrimaryGeneratorAction.cc
   src/RunAction.cc

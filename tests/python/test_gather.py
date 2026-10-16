@@ -529,6 +529,31 @@ def test_gather_simulation_rejects_mixed_response_formats(tmp_path):
         gather_simulation(tmp_path, entries, "protons")
 
 
+@pytest.mark.parametrize("new_first", [False, True])
+@pytest.mark.parametrize("output", ["csv", "root"])
+def test_gather_rejects_missing_primary_moments_before_writing(tmp_path, new_first, output):
+    chunks = tmp_path / "chunks"
+    chunks.mkdir()
+    entries = [("protons", "111111", "222222"), ("protons", "333333", "444444")]
+    for index, entry in enumerate(entries):
+        prefix = chunks / "_".join(entry)
+        Path(str(prefix) + ".COMPLETE").touch()
+        has_moments = (index == 0) == new_first
+        if output == "csv":
+            write_histogram(Path(str(prefix) + "_h1_h1.1.csv"), [[2, 2, 2, 0, 0]])
+            if has_moments:
+                write_histogram(Path(str(prefix) + "_h2_h2.ion.primary.csv"), [[2, 4, 10, 0, 0]])
+        else:
+            write_root_histograms(Path(str(prefix) + ".root"), [2, 2], [[0, 0], [0, 0]])
+            if has_moments:
+                with uproot.update(Path(str(prefix) + ".root")) as root:
+                    root["h2.ion.primary"] = (np.ones((2, 2)), np.array([1, 10, 100]),
+                                               np.array([0, 1, 2]))
+    with pytest.raises((ValueError, FileNotFoundError), match="histogram"):
+        gather_simulation(tmp_path, entries, "protons")
+    assert not list(tmp_path.glob("protons*"))
+
+
 def test_gather_root_histograms_writes_convergence(tmp_path, monkeypatch):
     chunks = tmp_path / "chunks"
     chunks.mkdir()

@@ -1,5 +1,6 @@
 #include "UserActionInitialization.hh"
 #include "RunAction.hh"
+#include "EventAction.hh"
 #include "PrimaryGeneratorAction.hh"
 #include "G4ios.hh"
 
@@ -27,7 +28,7 @@ void UserActionInitialization::Build() const
   auto* const runAction = new RunAction(false);
   SetUserAction(runAction);
 
- 
+  SetUserAction(new EventAction());
   G4cout << "Proceeding with build of UserActionInitialization for workers" << G4endl;
   auto* const primary = new PrimaryGeneratorAction();
   SetUserAction(primary);

@@ -36,8 +36,8 @@ constexpr G4double kSourceAzimuthMin = 0.;
 constexpr G4double kSourceAzimuthMax = twopi;
 constexpr G4double kSourceCosineMin = -1.;
 constexpr G4double kSourceCosineMax = 1.;
-// One primary-energy H1 and four non-phantom H2 histograms are always booked.
-constexpr G4int kBaseHistogramCount = 5;
+// Three source histograms and two deposition histograms with their companions.
+constexpr G4int kBaseHistogramCount = 7;
 // Version of the annotations written into Geant4 CSV histogram headers.
 constexpr G4int kCsvSchemaVersion = 1;
 
@@ -79,11 +79,36 @@ namespace atris {
 HistoManager::HistoManager()
 {
 	Book();
+	BookPrimaryMoments();
 }
 
 HistoManager::~HistoManager()
 {
 	G4cout << "HistoManager deleted." << G4endl;
+}
+
+void HistoManager::BookPrimaryMoments() const
+{
+	auto* const analysis = G4AnalysisManager::Instance();
+	// Append companions after all original histograms to preserve their IDs.
+	const G4int responseEnd = kFirstPhantomHistogramId
+		+ kPhantomHistogramsPerPhantom*std::max(0, numberOfPhantoms);
+	for (G4int responseId = kIonizingEnergyHistogramId; responseId < responseEnd; ++responseId) {
+		if (analysis->GetH2(responseId, false) == nullptr) continue;
+		const G4String name = analysis->GetH2Name(responseId) + ".primary";
+		const G4int id = analysis->CreateH2(name, analysis->GetH2Title(responseId) + " per primary",
+			energyBins, detectorBins, "MeV", "none", "none", "none");
+		AnnotateHistogram(analysis->GetH2(id), name, analysis->GetH2Title(responseId),
+			"sum of response weights per incoming primary and output bin");
+		if (responseId >= kFirstPhantomHistogramId) {
+			analysis->GetH2(id)->add_annotation("atris.phantom_id", std::to_string(
+				(responseId - kFirstPhantomHistogramId)/kPhantomHistogramsPerPhantom));
+		}
+		analysis->SetH2XAxisTitle(id, analysis->GetH2XAxisTitle(responseId));
+		analysis->SetH2YAxisTitle(id, analysis->GetH2YAxisTitle(responseId));
+		analysis->SetH2ZAxisTitle(id, analysis->GetH2ZAxisTitle(responseId));
+		analysis->SetH2Activation(id, true);
+	}
 }
 
 void HistoManager::Book() const
@@ -168,7 +193,7 @@ void HistoManager::Book() const
 		G4cout << "### AtRIS: Initializing higher order histograms for "
 		       << numberOfPhantoms << " phantoms, with a total number of histograms "
 		       << "equal to "
-		       << numberOfPhantoms*kPhantomHistogramsPerPhantom
+		       << 2*numberOfPhantoms*kPhantomHistogramsPerPhantom
 		          + kBaseHistogramCount << G4endl;
 		// Post-processing removes the extra detector boundary from interface data.
 		const G4String suffix = std::to_string(phantomIndex);

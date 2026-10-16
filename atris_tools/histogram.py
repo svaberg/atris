@@ -5,6 +5,7 @@ from pathlib import Path
 import os
 import re
 import tempfile
+import warnings
 
 from uproot.writing.identify import to_TAxis, to_TH1x, to_TH2x
 import numpy as np
@@ -301,6 +302,44 @@ class ResponseHistogramReader:
         if indexes and indexes != set(range(max(indexes) + 1)):
             raise ValueError("Phantom response histogram indexes are not contiguous")
         return len(indexes)
+
+    def mean_variance(self, name):
+        """Variance of the per-primary mean, in squared raw response units.
+
+        Uses ``name + '.primary'`` and the primary counts, including primaries
+        with no score. Arrays include flow bins, in (energy, layer) order.
+        Bins with fewer than two primaries return NaN. Older outputs without
+        the companion statistic cannot supply this variance. Warns when native
+        CSV rounding prevents reliable subtraction of nearly equal moments.
+        """
+        companion = name + ".primary"
+        if companion not in self.names():
+            raise ValueError("Per-primary squared sums are unavailable for " + name)
+        response = self[companion]
+        primary = self[PRIMARY_HISTOGRAM]
+        if (len(response.axes) != 2
+                or not np.array_equal(response.axes[0], primary.axes[0])):
+            raise ValueError("Response and primary energy axes differ")
+        if response.sumw2 is None:
+            raise ValueError("Per-primary squared sums are unavailable for " + name)
+        counts = primary.values[:, None]
+        valid = counts > 1
+        squared_mean_sum = np.divide(response.values**2, counts,
+                                     out=np.zeros_like(response.values), where=valid)
+        centered = response.sumw2 - squared_mean_sum
+        # Native Geant4 CSV rounds moments to six significant digits. ROOT
+        # retains doubles; neither representation avoids raw-moment cancellation.
+        rtol = 2e-5 if self.format == "csv" else 1e-10
+        tolerance = rtol * np.maximum(response.sumw2, squared_mean_sum)
+        if np.any(valid & (centered < -tolerance)):
+            raise ValueError("Inconsistent per-primary moments for " + name)
+        if self.format == "csv" and np.any(
+                valid & (response.sumw2 > 0) & (np.abs(centered) <= tolerance)):
+            warnings.warn("CSV rounding limits the variance estimate for " + name
+                          + "; use ROOT output to resolve small variances.",
+                          RuntimeWarning, stacklevel=2)
+        return np.divide(np.maximum(centered, 0), counts * (counts - 1),
+                         out=np.full_like(centered, np.nan), where=valid)
 
 
 def _read_metadata(root_file):

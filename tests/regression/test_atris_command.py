@@ -5,6 +5,7 @@ existing executable; they do not imply that the behavior is desirable.
 """
 
 import os
+from contextlib import nullcontext
 from pathlib import Path
 import re
 import shutil
@@ -33,6 +34,11 @@ EXPECTED_HISTOGRAM_SUFFIXES = {
     "_h2_h2.ion.csv",
     "_h2_h2.pos.csv",
     "_h2_h2.rates0.csv",
+    "_h2_h2.ion.primary.csv",
+    "_h2_h2.edep.primary.csv",
+    "_h2_h2.dos0.primary.csv",
+    "_h2_h2.equi0.primary.csv",
+    "_h2_h2.rates0.primary.csv",
 }
 EXPECTED_HISTOGRAM_SUFFIXES_WITHOUT_PHANTOMS = {
     "_h1_h1.1.csv",
@@ -40,6 +46,8 @@ EXPECTED_HISTOGRAM_SUFFIXES_WITHOUT_PHANTOMS = {
     "_h2_h2.edep.csv",
     "_h2_h2.ion.csv",
     "_h2_h2.pos.csv",
+    "_h2_h2.ion.primary.csv",
+    "_h2_h2.edep.primary.csv",
 }
 EXPECTED_ROOT_HISTOGRAMS = {
     "h1.1",
@@ -50,6 +58,11 @@ EXPECTED_ROOT_HISTOGRAMS = {
     "h2.ion",
     "h2.pos",
     "h2.rates0",
+    "h2.ion.primary",
+    "h2.edep.primary",
+    "h2.dos0.primary",
+    "h2.equi0.primary",
+    "h2.rates0.primary",
 }
 EXPECTED_ROOT_METADATA = {
     "schema",
@@ -202,6 +215,61 @@ def histogram_annotations(path):
         if line.startswith("#annotation ")
         for fields in [line.split(" ", 2)]
     }
+
+
+@pytest.mark.regression
+@pytest.mark.parametrize("output,threads", [("root", "1"), ("csv", "2")])
+@pytest.mark.parametrize("energy", [0.1, 10, 1000])
+@pytest.mark.parametrize("particle,radiation_weight", [("proton", 2), ("alpha", 20)])
+def test_primary_moments_combine_both_sides_of_an_interface(
+    tmp_path, atris_command, output, threads, energy, particle, radiation_weight
+):
+    from atris_tools.gdml import psf_to_gdml
+    from atris_tools.psf import PSF
+
+    prepare_run(tmp_path)
+    psf = PSF(inner_radius_km=[0, 1, 2, 3.5], outer_radius_km=[1, 2, 3, 4],
+              temperature_k=293, pressure_pa=0, density_g_cm3=1e-25,
+              mass_fractions={"H": 1})
+    psf_to_gdml(psf.save(tmp_path / "protons.psf"), tmp_path / "protons.gdml")
+    for index, scale in enumerate((1, 0.5)):
+        for kind in ("radiation", "counting"):
+            source = tmp_path / f"{kind}_phantom0.txt"
+            pdgs = np.loadtxt(source, max_rows=1, dtype=int)
+            coefficients = np.loadtxt(source, skiprows=1)
+            np.savetxt(tmp_path / f"{kind}_phantom{index}.txt",
+                       np.full_like(coefficients, scale),
+                       header=" ".join(map(str, pdgs)), comments="")
+    # A chord misses the core, crossing the same interface inward and outward
+    # through two different sensitive volumes. No material interactions occur.
+    (tmp_path / "protons.mac").write_text(
+        f"/run/initialize\n/gps/particle {particle}\n/gps/ene/mono {energy} MeV\n"
+        "/gps/pos/type Point\n/gps/pos/centre 3 1.5 0 km\n/gps/direction -1 0 0\n"
+        "/random/setSeeds 123456 654321\n/run/beamOn 4\n")
+    result = run_atris(atris_command, tmp_path, "protons." + output,
+                       phantom_count="2", threads=threads)
+    assert result.returncode == 0, result.stdout + result.stderr
+    with ResponseHistogramReader(tmp_path / "protons") as reader:
+        assert reader.phantom_count() == 2
+        primary = reader["h1.1"]
+        energy_bin = np.searchsorted(primary.axes[0], energy, side="right")
+        assert primary.values[energy_bin] == 4
+        for index, scale in enumerate((1, 0.5)):
+            for kind, weight in (("dos", energy * 1e6),
+                                 ("equi", energy * 1e6 * radiation_weight), ("rates", 1)):
+                name = f"h2.{kind}{index}"
+                original, companion = reader[name], reader[name + ".primary"]
+                interface_bin = np.searchsorted(original.axes[1], 1, side="right")
+                bin_index = energy_bin, interface_bin
+                assert original.values[bin_index] == pytest.approx(8 * scale * weight)
+                assert original.sumw2[bin_index] == pytest.approx(8 * (scale * weight)**2)
+                assert companion.sumw2[bin_index] == pytest.approx(16 * (scale * weight)**2)
+                np.testing.assert_allclose(companion.values, original.values)
+                with (pytest.warns(RuntimeWarning, match="CSV rounding")
+                      if output == "csv" else nullcontext()):
+                    variance = reader.mean_variance(name)
+                np.testing.assert_allclose(variance[energy_bin], 0, atol=1e-12)
+                assert np.isnan(variance[primary.values == 0]).all()
 
 
 def assert_timing_output(output, worker_threads):
@@ -471,6 +539,8 @@ def test_csv_and_root_response_histograms_gather_equivalently(
         run_directory = tmp_path / directory_name
         run_directory.mkdir()
         prepare_run(run_directory, chunked=True)
+        shutil.copyfile(FIXTURE / "interface.gdml", run_directory / "protons.gdml")
+        shutil.copyfile(FIXTURE / "interface.mac", run_directory / "protons.chunk.mac")
         shutil.copyfile(
             FIXTURE / "simulation.psf",
             run_directory / "simulation.psf",
@@ -508,14 +578,15 @@ def test_csv_and_root_response_histograms_gather_equivalently(
             }
 
     assert outputs["-1"].keys() == outputs["0"].keys()
+    assert outputs["-1"]["h2.rates0.primary"].sumw2.sum() > 0
     for name in outputs["-1"]:
         csv_histogram = outputs["-1"][name]
         root_histogram = outputs["0"][name]
         for csv_axis, root_axis in zip(csv_histogram.axes, root_histogram.axes):
             np.testing.assert_allclose(csv_axis, root_axis, rtol=1e-6)
-        np.testing.assert_allclose(csv_histogram.values, root_histogram.values)
+        np.testing.assert_allclose(csv_histogram.values, root_histogram.values, rtol=5e-6)
         if csv_histogram.sumw2 is not None and root_histogram.sumw2 is not None:
-            np.testing.assert_allclose(csv_histogram.sumw2, root_histogram.sumw2)
+            np.testing.assert_allclose(csv_histogram.sumw2, root_histogram.sumw2, rtol=5e-6)
 
 
 @pytest.mark.regression

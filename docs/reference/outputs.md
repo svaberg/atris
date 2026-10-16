@@ -18,15 +18,70 @@ The internal phantom-statistics mode (`3`) instead defaults to ROOT.
 | `_h2_h2.equiN.csv` / `h2.equiN` | Primary energy, MeV; interface ID | The same energy response multiplied by the implemented radiation weight. |
 | `_h2_h2.ratesN.csv` / `h2.ratesN` | Primary energy, MeV; interface ID | Counting response coefficient. |
 
-All three modes write these histograms. CSV output writes one file per
-histogram; ROOT output stores them as objects in `<name>.root`. There are
-$5 + 3N_{\mathrm{phantom}}$ histogram products, where
-$N_{\mathrm{phantom}}$ is the phantom count. Despite the histogram titles, raw
+All output modes write these histograms, plus the per-primary companions below.
+CSV output writes one file per histogram; ROOT output stores them as objects in
+`<name>.root`. Together there are $7 + 6N_{\mathrm{phantom}}$ histogram products,
+where $N_{\mathrm{phantom}}$ is the phantom count (mode `3` adds two more).
+Despite the histogram titles, raw
 phantom values have not yet been divided by primary counts, masses, or interface
 areas.
 
 Source-position and direction histograms have 120 azimuth bins from 0 to $2\pi$
 and 60 $\cos\theta$ bins from -1 to 1.
+
+### Per-primary sampling uncertainty
+
+Each response histogram (`h2.ion`, `h2.edep`, `h2.dosN`, `h2.equiN`, and
+`h2.ratesN`) has a companion with `.primary` appended to its name. For example,
+`h2.ion.primary` in ROOT is `<name>_h2_h2.ion.primary.csv` in CSV. These use the
+same axes and units as the original histograms. Existing filenames, columns,
+and statistics retain their meanings.
+
+With one incoming primary per Geant4 event, AtRIS temporarily totals the contributions of all
+its tracks to each response bin, including crossings of the same interface from
+either side. At the end of the event it fills the companion with this total.
+Only the accumulated histograms are saved, not individual-primary records.
+
+For a given response bin, let $x_i$ be primary $i$'s total contribution. The
+companion stores $S=\sum_i x_i$ in its bin contents and $Q=\sum_i x_i^2$ in
+`Sw2` (CSV) or `fSumw2` (ROOT). Its contents therefore duplicate the original
+sum, apart from floating-point summation order. The original squared sums still
+refer to individual steps or crossings. The source histograms and the mode `3`
+fraction and detection histograms do not need companions.
+
+Use the corresponding `h1.1` bin for the primary count $N$, including primaries
+that contribute zero. **Do not use the companion's fill count as $N$:** zero
+contributions need no fill. With independent incoming primaries, the mean and
+estimated variance of that mean are
+
+$$
+\bar{x}=\frac{S}{N},\qquad
+\operatorname{Var}(\bar{x})=\frac{Q-S^2/N}{N(N-1)},\qquad N>1.
+$$
+
+`ResponseHistogramReader.mean_variance(name)` calculates this variance in raw
+response units squared, returning an `(energy, layer)` array including flow
+bins. It returns `NaN` where $N<2$ and raises an error if the companion is
+missing. Small negative results from roundoff in moment subtraction are clipped
+to zero. Native Geant4 CSV writes six significant digits. When subtraction
+approaches that rounding limit, this method warns that small variances cannot
+be resolved reliably; use ROOT for those estimates. The zero produced by
+clipping is not evidence of exact zero variance. Older output cannot reconstruct
+$Q$ from its per-fill squared sums.
+Gathering adds the companion histograms just like the originals and rejects
+chunks with differing histogram sets, including mixtures with and without
+companions.
+
+For deterministic normalization, multiply the variance by the square of the
+factor applied to the mean. Folding independent primary-energy bins with fixed
+weights $a_b$ gives variance $\sum_b a_b^2 V_b$, where $V_b$ is the per-primary
+mean variance for energy bin $b$. This supplies pointwise Monte Carlo sampling
+errors; it does not include phantom-table coefficient uncertainty or
+covariances between output bins. Existing post-processed tables are unchanged.
+
+Companions are native Geant4 histograms in both formats. In ROOT each adds a
+contents array and a squared-sum array; this first implementation deliberately
+keeps the duplicate contents rather than introducing a custom compact format.
 
 ### Phantom statistics
 
@@ -405,7 +460,7 @@ files, and the convergence CSV schema.
 
 The Python `ResponseHistogramReader` returns a `Histogram` through
 `histograms[name]` for both CSV and ROOT. Its `values` and `axes` arrays include
-flow-bin values and ordinary bin edges respectively. `variances` contains the
+flow-bin values and ordinary bin edges respectively. `sumw2` contains the
 recorded per-bin squared-weight sums, or `None` when unavailable; it is not the
 standard error of a mean. ROOT labels and accumulated statistics, and CSV header
 annotations, remain attached to the object. CSV primary values are entry counts,
@@ -417,5 +472,5 @@ not recorded. Gathering adds compatible histogram statistics without inventing
 missing moments or converting between the two formats.
 
 Implementation: `src/PrimaryGeneratorAction.cc`, `src/HistoManager.cc`,
-`src/SensitiveDetector.cc`, `include/NtupleSchema.hh`, and
+`src/SensitiveDetector.cc`, `src/EventAction.cc`, `include/NtupleSchema.hh`, and
 `atris_tools/postprocess.py`, `histogram.py`, `root_records.py`, and `plotting.py`.

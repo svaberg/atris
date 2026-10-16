@@ -304,6 +304,11 @@ def gather_simulation(run_directory, entries, simulation):
             if not source_path.is_file():
                 raise FileNotFoundError("Missing histogram from completed run: " + str(source_path))
         paths_by_suffix[suffix] = source_paths
+    for prefix in prefixes[1:]:
+        suffixes = {path.name[len(prefix.name):]
+                    for path in prefix.parent.glob(prefix.name + "_*.csv")}
+        if suffixes != paths_by_suffix.keys():
+            raise ValueError("CSV response histogram sets differ: " + str(prefix))
     logger.debug(
         "Found %i histogram groups for %s",
         len(paths_by_suffix),

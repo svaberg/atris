@@ -11,6 +11,7 @@ from atris_tools.phantom_statistics import (
     read_phantom_statistics,
 )
 from atris_tools.phantom_builder import prepare_phantom_batch
+from atris_tools.histogram import ResponseHistogramReader
 
 from phantom_fixture import water_psf
 from atris_tools.psf import PSF
@@ -80,6 +81,32 @@ def test_phantom_matches_shower_and_retains_per_bin_statistics(
                 outputs[mode] = PhantomStatistics.from_events(
                     PhantomEvents(incident, deposited, ionizing)
                 )
+                for name, totals in (("h2.ion", ionizing), ("h2.edep", deposited)):
+                    companion = root[name + ".primary"]
+                    axes = [axis.edges(flow=True) for axis in companion.axes]
+                    expected = np.histogram2d(incident, np.ones(EVENTS), bins=axes,
+                                              weights=totals**2)[0]
+                    np.testing.assert_allclose(companion.variances(flow=True), expected,
+                        rtol=1e-12, atol=1e-20)
+                    np.testing.assert_allclose(companion.values(flow=True),
+                                               root[name].values(flow=True), rtol=1e-12)
+                    if particle in ("proton", "e-", "alpha"):
+                        assert np.sum(expected) > np.sum(root[name].variances(flow=True))
+                    with ResponseHistogramReader(path.with_suffix("")) as reader:
+                        variance = reader.mean_variance(name)
+                    # Compare the reported mean variance with the sample variance
+                    # of the primary totals reconstructed from diagnostic records.
+                    bins = np.searchsorted(companion.axes[0].edges(), incident, side="right")
+                    sensor_bin = np.searchsorted(companion.axes[1].edges(), 1, side="right")
+                    for energy_bin in np.flatnonzero(root["h1.1"].values(flow=True) > 1):
+                        samples = totals[bins == energy_bin]
+                        assert len(samples) == root["h1.1"].values(flow=True)[energy_bin]
+                        # The raw-moment formula loses precision when subtracting
+                        # nearly equal numbers; scale its roundoff bound by Q.
+                        roundoff = (32 * np.finfo(float).eps * expected[energy_bin, sensor_bin]
+                                    / (len(samples) * (len(samples) - 1)))
+                        assert variance[energy_bin, sensor_bin] == pytest.approx(
+                            np.var(samples, ddof=1) / len(samples), rel=1e-10, abs=roundoff)
             else:
                 assert not {"steps", "interfaces", "phantom_events"} & set(
                     root.keys(cycle=False)
@@ -181,6 +208,10 @@ def test_phantom_counts_primaries_that_never_enter_water(tmp_path, atris_command
         read_phantom_statistics(directory / "phantom.root", threshold_MeV=0.001)
     with uproot.open(directory / "phantom.root") as root:
         assert root["h1.1"].member("fEntries") == EVENTS
+    with ResponseHistogramReader(directory / "phantom") as reader:
+        sampled = reader["h1.1"].values > 1
+        assert sampled.any()
+        np.testing.assert_array_equal(reader.mean_variance("h2.ion")[sampled], 0)
 
 
 @pytest.mark.regression

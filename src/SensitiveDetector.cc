@@ -1,4 +1,6 @@
 #include "SensitiveDetector.hh"
+#include "EventAction.hh"
+#include "G4EventManager.hh"
 #include "G4UnitsTable.hh"
 #include "G4VVisManager.hh"
 #include "G4Circle.hh"
@@ -176,13 +178,15 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*){
 	}
 	const G4double ionizingEnergyDeposit = energyDeposit - nonionizingEnergyDeposit;
 	if (mode == kPhantomOutputMode) fIonizingEnergy += ionizingEnergyDeposit;
-	analysis->FillH2(
+	auto* const eventAction = static_cast<EventAction*>(
+		G4EventManager::GetEventManager()->GetUserEventAction());
+	eventAction->Score(
 		kIonizingEnergyHistogramId,
 		primaryEnergy,
 		detectorId,
 		ionizingEnergyDeposit/MeV
 	);
-	analysis->FillH2(
+	eventAction->Score(
 		kTotalEnergyHistogramId,
 		primaryEnergy,
 		detectorId,
@@ -237,19 +241,19 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*){
 				for (G4int phantomIndex = 0; phantomIndex < numberOfPhantoms; ++phantomIndex) {
 					const G4int offset = kFirstPhantomHistogramId
 						+ kPhantomHistogramsPerPhantom*phantomIndex;
-					analysis->FillH2(
+					eventAction->Score(
 						offset + kPhantomDoseHistogramOffset,
 						primaryEnergy, interfaceId,
 						radiationResponses[phantomIndex][responseIndex]
 							* kineticEnergy/eV
 					);
-					analysis->FillH2(
+					eventAction->Score(
 						offset + kPhantomEquivalentDoseHistogramOffset,
 						primaryEnergy, interfaceId,
 						radiationResponses[phantomIndex][responseIndex]
 							* kineticEnergy/eV * radiationWeight
 					);
-					analysis->FillH2(
+					eventAction->Score(
 						offset + kPhantomCountingHistogramOffset,
 						primaryEnergy, interfaceId,
 						countingResponses[phantomIndex][responseIndex]
@@ -270,19 +274,19 @@ G4bool SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*){
 				for (G4int phantomIndex = 0; phantomIndex < numberOfPhantoms; ++phantomIndex) {
 					const G4int offset = kFirstPhantomHistogramId
 						+ kPhantomHistogramsPerPhantom*phantomIndex;
-					analysis->FillH2(
+					eventAction->Score(
 						offset + kPhantomDoseHistogramOffset,
 						primaryEnergy, interfaceId,
 						radiationResponses[phantomIndex][responseIndex]
 							* kineticEnergy/eV
 					);
-					analysis->FillH2(
+					eventAction->Score(
 						offset + kPhantomEquivalentDoseHistogramOffset,
 						primaryEnergy, interfaceId,
 						radiationResponses[phantomIndex][responseIndex]
 							* kineticEnergy/eV * radiationWeight
 					);
-					analysis->FillH2(
+					eventAction->Score(
 						offset + kPhantomCountingHistogramOffset,
 						primaryEnergy, interfaceId,
 						countingResponses[phantomIndex][responseIndex]
