@@ -42,6 +42,7 @@ std::vector<std::vector<G4double>> countingResponses;
 
 std::vector<G4double> energyBins;
 std::vector<G4double> detectorBins;
+std::chrono::steady_clock::time_point startupStart;
 
 namespace {
 
@@ -114,6 +115,7 @@ int main(int argc,char** argv){
 		return 0;
 	}
 	const auto totalStart = std::chrono::steady_clock::now();
+	startupStart = totalStart;
 	mode = std::string(argv[3]) == "phantom"
 		? atris::kPhantomOutputMode : std::stoi(argv[3]);
 	numberOfPhantoms = std::stoi(argv[4]);

@@ -14,6 +14,7 @@
 
 extern G4String outputFileName;                       // from src/main.cc
 extern G4int mode;
+extern std::chrono::steady_clock::time_point startupStart;
 
 namespace atris {
 
@@ -22,6 +23,7 @@ namespace {
 std::chrono::duration<double> runTimeLimit{0};
 using Clock = std::chrono::steady_clock;
 Clock::time_point runStart;
+thread_local Clock::time_point workerStart;
 std::atomic<G4bool> timeLimitReached{false};
 
 class TimedRun final : public G4Run
@@ -109,10 +111,22 @@ void RunAction::BeginOfRunAction(const G4Run*)
   }
   // Geant4 releases workers after the master's run initialization completes.
   if (IsMaster()) runStart = Clock::now();
+  if (!IsMaster()) {
+    workerStart = Clock::now();
+    G4cout << "### AtRIS timing: Elapsed before worker run: "
+           << std::chrono::duration<double>(workerStart - startupStart).count()
+           << " s" << G4endl;
+  }
 }
 
 void RunAction::EndOfRunAction(const G4Run* run)
 {
+  // Geant4 merges the G4Run before this callback; histogram merging follows below.
+  if (!IsMaster()) {
+    G4cout << "### AtRIS timing: Worker run before histogram merging took "
+           << std::chrono::duration<double>(Clock::now() - workerStart).count()
+           << " s" << G4endl;
+  }
   if (IsMaster()) {
     G4cout << "### AtRIS run: completed " << run->GetNumberOfEvent()
            << " of " << run->GetNumberOfEventToBeProcessed() << " requested events; "
@@ -124,9 +138,15 @@ void RunAction::EndOfRunAction(const G4Run* run)
   auto* const analysis = G4AnalysisManager::Instance();
   if (analysis->IsActive()) {
     analysis->SetVerboseLevel(1);
+    const auto outputStart = Clock::now();
     analysis->Write();
     analysis->CloseFile();
+    const auto outputEnd = Clock::now();
     G4cout << "### AtRIS: histograms written, closed. " << G4endl;
+    G4cout << "### AtRIS timing: "
+           << (IsMaster() ? "Writing histograms took " : "Merging histograms and closing took ")
+           << std::chrono::duration<double>(outputEnd - outputStart).count()
+           << " s" << G4endl;
   }
 }
 
